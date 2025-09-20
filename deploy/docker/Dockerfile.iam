@@ -1,0 +1,16 @@
+# syntax=docker/dockerfile:1
+
+FROM golang:1.25-alpine AS build
+WORKDIR /workspace
+COPY go.mod ./
+COPY internal ./internal
+COPY cmd/iam ./cmd/iam
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /workspace/out/iam ./cmd/iam
+
+FROM alpine:3.20
+WORKDIR /app
+RUN addgroup -S app && adduser -S app -G app
+COPY --from=build /workspace/out/iam /app/iam
+USER app
+EXPOSE 8080
+ENTRYPOINT ["/app/iam"]

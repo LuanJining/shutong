@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  iam:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.iam
+    environment:
+      IAM_SERVER_HOST: 0.0.0.0
+      IAM_SERVER_PORT: 8080
+      IAM_AUTH_JWT_SIGNING_KEY: dev-secret
+    ports:
+      - "8080:8080"
+
+  workflow:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.workflow
+    environment:
+      WORKFLOW_SERVER_HOST: 0.0.0.0
+      WORKFLOW_SERVER_PORT: 8090
+      WORKFLOW_AUTH_JWT_SIGNING_KEY: dev-secret
+    ports:
+      - "8090:8090"
+    depends_on:
+      - iam
