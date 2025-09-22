@@ -39,6 +39,17 @@ func (r *UserRepo) Get(id string) (iam.User, bool) {
 	return r.store.Get(id)
 }
 
+// GetByPhone retrieves a user by phone number.
+func (r *UserRepo) GetByPhone(phone string) (iam.User, bool) {
+	users := r.store.List()
+	for _, user := range users {
+		if user.Phone == phone {
+			return user, true
+		}
+	}
+	return iam.User{}, false
+}
+
 // List returns all users.
 func (r *UserRepo) List() []iam.User {
 	return r.store.List()

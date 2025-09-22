@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gideonzy/knowledge-base/internal/common/auth"
 	"github.com/gideonzy/knowledge-base/internal/common/config"
 	commondb "github.com/gideonzy/knowledge-base/internal/common/db"
 	"github.com/gideonzy/knowledge-base/internal/common/httpserver"
@@ -63,7 +64,8 @@ func main() {
 
 	svc := iamsvc.New(userRepo, roleRepo, spaceRepo, policyRepo)
 
-	handler := iamhandler.New(svc, logger)
+	tokenManager := auth.NewManager(cfg.Auth.JWTSigningKey, cfg.Auth.JWTTTLSeconds)
+	handler := iamhandler.New(svc, tokenManager, logger)
 	server := httpserver.New(cfg.Server.Host, cfg.Server.Port, handler.Routes())
 
 	go func() {

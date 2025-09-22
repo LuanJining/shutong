@@ -4,13 +4,14 @@ import "time"
 
 // User represents a platform user with role assignments.
 type User struct {
-    ID        string    `json:"id"`
-    Name      string    `json:"name"`
-    Phone     string    `json:"phone"`
-    Roles     []string  `json:"roles"`
-	Spaces    []string  `json:"spaces"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID           string    `json:"id"`
+	Name         string    `json:"name"`
+	Phone        string    `json:"phone"`
+	PasswordHash string    `json:"-"`
+	Roles        []string  `json:"roles"`
+	Spaces       []string  `json:"spaces"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // Role defines a named permission bundle.

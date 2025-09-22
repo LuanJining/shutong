@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/gideonzy/knowledge-base/internal/iam"
 	"github.com/gideonzy/knowledge-base/internal/iam/repository"
 )
@@ -25,23 +27,34 @@ func New(users repository.UserRepository, roles repository.RoleRepository, space
 }
 
 // CreateUser creates a new user.
-func (s *IAM) CreateUser(name, phone string, roles, spaces []string) (iam.User, error) {
-    if strings.TrimSpace(name) == "" {
-        return iam.User{}, errors.New("name is required")
-    }
-    if strings.TrimSpace(phone) == "" {
-        return iam.User{}, errors.New("phone is required")
-    }
-    phone = normalizePhone(phone)
-    now := time.Now().UTC()
-    user := iam.User{
-        ID:        generateID(),
-        Name:      name,
-        Phone:     phone,
-        Roles:     uniqueStrings(roles),
-        Spaces:    uniqueStrings(spaces),
-        CreatedAt: now,
-        UpdatedAt: now,
+func (s *IAM) CreateUser(name, phone, password string, roles, spaces []string) (iam.User, error) {
+	if strings.TrimSpace(name) == "" {
+		return iam.User{}, errors.New("name is required")
+	}
+	if strings.TrimSpace(phone) == "" {
+		return iam.User{}, errors.New("phone is required")
+	}
+	if len(password) < 6 {
+		return iam.User{}, errors.New("password must be at least 6 characters")
+	}
+	phone = normalizePhone(phone)
+	if _, exists := s.Users.GetByPhone(phone); exists {
+		return iam.User{}, errors.New("phone already registered")
+	}
+	hash, err := hashPassword(password)
+	if err != nil {
+		return iam.User{}, err
+	}
+	now := time.Now().UTC()
+	user := iam.User{
+		ID:           generateID(),
+		Name:         name,
+		Phone:        phone,
+		PasswordHash: hash,
+		Roles:        uniqueStrings(roles),
+		Spaces:       uniqueStrings(spaces),
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 	if err := s.Users.Save(user); err != nil {
 		return iam.User{}, err
@@ -50,17 +63,27 @@ func (s *IAM) CreateUser(name, phone string, roles, spaces []string) (iam.User, 
 }
 
 // UpdateUser updates an existing user.
-func (s *IAM) UpdateUser(id string, name, phone string, roles, spaces []string) (iam.User, error) {
-    existing, ok := s.Users.Get(id)
-    if !ok {
-        return iam.User{}, errors.New("user not found")
-    }
-    if name != "" {
-        existing.Name = name
-    }
-    if phone != "" {
-        existing.Phone = normalizePhone(phone)
-    }
+func (s *IAM) UpdateUser(id string, name, phone, password string, roles, spaces []string) (iam.User, error) {
+	existing, ok := s.Users.Get(id)
+	if !ok {
+		return iam.User{}, errors.New("user not found")
+	}
+	if name != "" {
+		existing.Name = name
+	}
+	if phone != "" {
+		existing.Phone = normalizePhone(phone)
+	}
+	if password != "" {
+		if len(password) < 6 {
+			return iam.User{}, errors.New("password must be at least 6 characters")
+		}
+		hash, err := hashPassword(password)
+		if err != nil {
+			return iam.User{}, err
+		}
+		existing.PasswordHash = hash
+	}
 	if roles != nil {
 		existing.Roles = uniqueStrings(roles)
 	}
@@ -179,19 +202,43 @@ func uniqueStrings(values []string) []string {
 }
 
 func generateID() string {
-    b := make([]byte, 16)
-    _, _ = rand.Read(b)
-    return hex.EncodeToString(b)
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
 func normalizePhone(phone string) string {
-    phone = strings.TrimSpace(phone)
-    phone = strings.ReplaceAll(phone, " ", "")
-    if strings.HasPrefix(phone, "+") {
-        return phone
-    }
-    if strings.HasPrefix(phone, "00") {
-        return "+" + phone[2:]
-    }
-    return phone
+	phone = strings.TrimSpace(phone)
+	phone = strings.ReplaceAll(phone, " ", "")
+	if strings.HasPrefix(phone, "+") {
+		return phone
+	}
+	if strings.HasPrefix(phone, "00") {
+		return "+" + phone[2:]
+	}
+	return phone
+}
+
+// Authenticate verifies phone/password combination.
+func (s *IAM) Authenticate(phone, password string) (iam.User, error) {
+	if strings.TrimSpace(phone) == "" || strings.TrimSpace(password) == "" {
+		return iam.User{}, errors.New("phone and password required")
+	}
+	phone = normalizePhone(phone)
+	user, ok := s.Users.GetByPhone(phone)
+	if !ok {
+		return iam.User{}, errors.New("invalid credentials")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+		return iam.User{}, errors.New("invalid credentials")
+	}
+	return user, nil
+}
+
+func hashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
 }

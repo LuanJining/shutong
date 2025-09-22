@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gideonzy/knowledge-base/internal/common/auth"
 	"github.com/gideonzy/knowledge-base/internal/common/middleware"
 	"github.com/gideonzy/knowledge-base/internal/iam/service"
 )
@@ -13,18 +14,20 @@ import (
 // Handler exposes IAM HTTP endpoints.
 type Handler struct {
 	service *service.IAM
+	tokens  *auth.Manager
 	logger  *slog.Logger
 }
 
 // New creates a new handler instance.
-func New(svc *service.IAM, logger *slog.Logger) *Handler {
-	return &Handler{service: svc, logger: logger}
+func New(svc *service.IAM, tokens *auth.Manager, logger *slog.Logger) *Handler {
+	return &Handler{service: svc, tokens: tokens, logger: logger}
 }
 
 // Routes returns a http.Handler with IAM routes mounted.
 func (h *Handler) Routes() http.Handler {
-    mux := http.NewServeMux()
+	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", h.handleHealth)
+	mux.HandleFunc("/api/auth/login", h.handleLogin)
 	mux.Handle("/api/users", middleware.RequireAuth(h.logger)(middleware.RequestID(http.HandlerFunc(h.handleUsers))))
 	mux.Handle("/api/users/", middleware.RequireAuth(h.logger)(middleware.RequestID(http.HandlerFunc(h.handleUserByID))))
 	mux.Handle("/api/roles", middleware.RequireAuth(h.logger)(middleware.RequestID(http.HandlerFunc(h.handleRoles))))
@@ -40,23 +43,63 @@ func (h *Handler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	if h.tokens == nil {
+		writeError(w, http.StatusServiceUnavailable, "token manager not configured")
+		return
+	}
+	var payload struct {
+		Phone    string `json:"phone"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	user, err := h.service.Authenticate(payload.Phone, payload.Password)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+	token, err := h.tokens.Generate(user.ID, user.Phone)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to generate token")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"token": token,
+		"user": map[string]any{
+			"id":     user.ID,
+			"name":   user.Name,
+			"phone":  user.Phone,
+			"roles":  user.Roles,
+			"spaces": user.Spaces,
+		},
+	})
+}
+
 func (h *Handler) handleUsers(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		users := h.service.ListUsers()
 		writeJSON(w, http.StatusOK, users)
 	case http.MethodPost:
-        var payload struct {
-            Name   string   `json:"name"`
-            Phone  string   `json:"phone"`
-            Roles  []string `json:"roles"`
-            Spaces []string `json:"spaces"`
-        }
+		var payload struct {
+			Name     string   `json:"name"`
+			Phone    string   `json:"phone"`
+			Password string   `json:"password"`
+			Roles    []string `json:"roles"`
+			Spaces   []string `json:"spaces"`
+		}
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid json")
 			return
 		}
-        user, err := h.service.CreateUser(payload.Name, payload.Phone, payload.Roles, payload.Spaces)
+		user, err := h.service.CreateUser(payload.Name, payload.Phone, payload.Password, payload.Roles, payload.Spaces)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
@@ -75,17 +118,18 @@ func (h *Handler) handleUserByID(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodPatch:
-        var payload struct {
-            Name   string   `json:"name"`
-            Phone  string   `json:"phone"`
-            Roles  []string `json:"roles"`
-            Spaces []string `json:"spaces"`
-        }
+		var payload struct {
+			Name     string   `json:"name"`
+			Phone    string   `json:"phone"`
+			Password string   `json:"password"`
+			Roles    []string `json:"roles"`
+			Spaces   []string `json:"spaces"`
+		}
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid json")
 			return
 		}
-        user, err := h.service.UpdateUser(id, payload.Name, payload.Phone, payload.Roles, payload.Spaces)
+		user, err := h.service.UpdateUser(id, payload.Name, payload.Phone, payload.Password, payload.Roles, payload.Spaces)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return

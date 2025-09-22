@@ -4,9 +4,10 @@ import "github.com/gideonzy/knowledge-base/internal/iam"
 
 // UserRepository manages users.
 type UserRepository interface {
-	Get(id string) (iam.User, bool)
-	List() []iam.User
-	Save(user iam.User) error
+    Get(id string) (iam.User, bool)
+    GetByPhone(phone string) (iam.User, bool)
+    List() []iam.User
+    Save(user iam.User) error
 	Delete(id string) error
 }
 
