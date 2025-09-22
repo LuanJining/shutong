@@ -1,0 +1,20 @@
+app:
+  name: "knowledge-base"
+  env: "development"
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+database:
+  dsn: "postgres://postgres:password@localhost:5432/iam_platform?sslmode=disable"
+
+cache:
+  addr: "localhost:6379"
+
+auth:
+  jwt_signing_key: "TkUiFIMum0yPHgPWOPSNQboIDAU6c97geOGEmvLtmL8BKfw5voM7guDdkz+/H1eyHVQtrJJ3LVTWmqHY1VkD6A=="
+  jwt_ttl_seconds: 3600
+
+workflow:
+  default_approver_role: "content_reviewer"

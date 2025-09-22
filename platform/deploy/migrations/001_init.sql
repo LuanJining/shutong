@@ -75,3 +75,16 @@ CREATE TABLE IF NOT EXISTS wf_history (
 CREATE INDEX IF NOT EXISTS idx_iam_policies_space ON iam_policies(space_id);
 CREATE INDEX IF NOT EXISTS idx_wf_instances_definition ON wf_instances(definition_id);
 CREATE INDEX IF NOT EXISTS idx_wf_history_instance ON wf_history(instance_id);
+
+
+-- 初始化管理员账号，默认密码admin123
+INSERT INTO iam_users (
+    id, 
+    name, 
+    phone, 
+    password_hash, 
+    roles, 
+    spaces, 
+    created_at, 
+    updated_at
+    ) VALUES ('1', 'admin', '13800138000', '$2a$10$FDX66S5GcX1RSRsd/AVqpea0.QwX4OXIM5F66O45ncUBtnftXHI5G', ARRAY['admin'], ARRAY['default'], NOW(), NOW());
