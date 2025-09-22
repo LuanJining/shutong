@@ -24,7 +24,7 @@ IAM_SERVER_PORT=8080 IAM_DATABASE_DSN="postgres://kb:kb@127.0.0.1:5432/kb_platfo
 WORKFLOW_SERVER_PORT=8090 WORKFLOW_DATABASE_DSN="postgres://kb:kb@127.0.0.1:5432/kb_platform?sslmode=disable" go run ./cmd/workflow
 ```
 
-Both services require an `Authorization` header (placeholder check only) for protected endpoints. When `*_DATABASE_DSN` is omitted the services fall back to in-memory repositories (volatile).
+Both services require an `Authorization` header (placeholder check only) for protected endpoints. When `*_DATABASE_DSN` is omitted the services fall back to in-memory repositories (volatile). IAM user records now use `phone` as the primary identifier (unique) instead of email.
 
 To prepare PostgreSQL tables run the bootstrap migration once:
 

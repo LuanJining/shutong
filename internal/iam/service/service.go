@@ -25,22 +25,23 @@ func New(users repository.UserRepository, roles repository.RoleRepository, space
 }
 
 // CreateUser creates a new user.
-func (s *IAM) CreateUser(name, email string, roles, spaces []string) (iam.User, error) {
-	if strings.TrimSpace(name) == "" {
-		return iam.User{}, errors.New("name is required")
-	}
-	if strings.TrimSpace(email) == "" {
-		return iam.User{}, errors.New("email is required")
-	}
-	now := time.Now().UTC()
-	user := iam.User{
-		ID:        generateID(),
-		Name:      name,
-		Email:     email,
-		Roles:     uniqueStrings(roles),
-		Spaces:    uniqueStrings(spaces),
-		CreatedAt: now,
-		UpdatedAt: now,
+func (s *IAM) CreateUser(name, phone string, roles, spaces []string) (iam.User, error) {
+    if strings.TrimSpace(name) == "" {
+        return iam.User{}, errors.New("name is required")
+    }
+    if strings.TrimSpace(phone) == "" {
+        return iam.User{}, errors.New("phone is required")
+    }
+    phone = normalizePhone(phone)
+    now := time.Now().UTC()
+    user := iam.User{
+        ID:        generateID(),
+        Name:      name,
+        Phone:     phone,
+        Roles:     uniqueStrings(roles),
+        Spaces:    uniqueStrings(spaces),
+        CreatedAt: now,
+        UpdatedAt: now,
 	}
 	if err := s.Users.Save(user); err != nil {
 		return iam.User{}, err
@@ -49,17 +50,17 @@ func (s *IAM) CreateUser(name, email string, roles, spaces []string) (iam.User, 
 }
 
 // UpdateUser updates an existing user.
-func (s *IAM) UpdateUser(id string, name, email string, roles, spaces []string) (iam.User, error) {
-	existing, ok := s.Users.Get(id)
-	if !ok {
-		return iam.User{}, errors.New("user not found")
-	}
-	if name != "" {
-		existing.Name = name
-	}
-	if email != "" {
-		existing.Email = email
-	}
+func (s *IAM) UpdateUser(id string, name, phone string, roles, spaces []string) (iam.User, error) {
+    existing, ok := s.Users.Get(id)
+    if !ok {
+        return iam.User{}, errors.New("user not found")
+    }
+    if name != "" {
+        existing.Name = name
+    }
+    if phone != "" {
+        existing.Phone = normalizePhone(phone)
+    }
 	if roles != nil {
 		existing.Roles = uniqueStrings(roles)
 	}
@@ -178,7 +179,19 @@ func uniqueStrings(values []string) []string {
 }
 
 func generateID() string {
-	b := make([]byte, 16)
-	_, _ = rand.Read(b)
-	return hex.EncodeToString(b)
+    b := make([]byte, 16)
+    _, _ = rand.Read(b)
+    return hex.EncodeToString(b)
+}
+
+func normalizePhone(phone string) string {
+    phone = strings.TrimSpace(phone)
+    phone = strings.ReplaceAll(phone, " ", "")
+    if strings.HasPrefix(phone, "+") {
+        return phone
+    }
+    if strings.HasPrefix(phone, "00") {
+        return "+" + phone[2:]
+    }
+    return phone
 }

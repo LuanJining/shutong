@@ -29,23 +29,23 @@ func NewPostgresRepositories(db *sql.DB) *PostgresRepositories {
 type PostgresUserRepo struct{ db *sql.DB }
 
 func (r *PostgresUserRepo) Get(id string) (iam.User, bool) {
-	const query = `SELECT id, name, email, roles, spaces, created_at, updated_at FROM iam_users WHERE id=$1`
-	var user iam.User
-	var roles pq.StringArray
-	var spaces pq.StringArray
-	if err := r.db.QueryRow(query, id).Scan(&user.ID, &user.Name, &user.Email, &roles, &spaces, &user.CreatedAt, &user.UpdatedAt); err != nil {
-		if err == sql.ErrNoRows {
-			return iam.User{}, false
-		}
-		return iam.User{}, false
-	}
+    const query = `SELECT id, name, phone, roles, spaces, created_at, updated_at FROM iam_users WHERE id=$1`
+    var user iam.User
+    var roles pq.StringArray
+    var spaces pq.StringArray
+    if err := r.db.QueryRow(query, id).Scan(&user.ID, &user.Name, &user.Phone, &roles, &spaces, &user.CreatedAt, &user.UpdatedAt); err != nil {
+        if err == sql.ErrNoRows {
+            return iam.User{}, false
+        }
+        return iam.User{}, false
+    }
 	user.Roles = []string(roles)
 	user.Spaces = []string(spaces)
 	return user, true
 }
 
 func (r *PostgresUserRepo) List() []iam.User {
-	const query = `SELECT id, name, email, roles, spaces, created_at, updated_at FROM iam_users ORDER BY created_at`
+    const query = `SELECT id, name, phone, roles, spaces, created_at, updated_at FROM iam_users ORDER BY created_at`
 	rows, err := r.db.Query(query)
 	if err != nil {
 		return nil
@@ -56,7 +56,7 @@ func (r *PostgresUserRepo) List() []iam.User {
 		var user iam.User
 		var roles pq.StringArray
 		var spaces pq.StringArray
-		if err := rows.Scan(&user.ID, &user.Name, &user.Email, &roles, &spaces, &user.CreatedAt, &user.UpdatedAt); err != nil {
+        if err := rows.Scan(&user.ID, &user.Name, &user.Phone, &roles, &spaces, &user.CreatedAt, &user.UpdatedAt); err != nil {
 			continue
 		}
 		user.Roles = []string(roles)
@@ -67,10 +67,10 @@ func (r *PostgresUserRepo) List() []iam.User {
 }
 
 func (r *PostgresUserRepo) Save(user iam.User) error {
-	const query = `INSERT INTO iam_users (id, name, email, roles, spaces, created_at, updated_at)
+    const query = `INSERT INTO iam_users (id, name, phone, roles, spaces, created_at, updated_at)
                     VALUES ($1,$2,$3,$4,$5,$6,$7)
-                    ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, email=EXCLUDED.email, roles=EXCLUDED.roles, spaces=EXCLUDED.spaces, updated_at=EXCLUDED.updated_at`
-	_, err := r.db.Exec(query, user.ID, user.Name, user.Email, pq.StringArray(user.Roles), pq.StringArray(user.Spaces), user.CreatedAt, user.UpdatedAt)
+                    ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, phone=EXCLUDED.phone, roles=EXCLUDED.roles, spaces=EXCLUDED.spaces, updated_at=EXCLUDED.updated_at`
+    _, err := r.db.Exec(query, user.ID, user.Name, user.Phone, pq.StringArray(user.Roles), pq.StringArray(user.Spaces), user.CreatedAt, user.UpdatedAt)
 	return err
 }
 

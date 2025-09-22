@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS iam_users (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    email TEXT NOT NULL,
+    phone TEXT NOT NULL UNIQUE,
     roles TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
     spaces TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
     created_at TIMESTAMPTZ NOT NULL,
