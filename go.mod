@@ -1,4 +1,4 @@
-module github.com/gideonzy/knowledge-base
+module gitee.com/sichuan-shutong-zhihui-data/k-base
 
 go 1.25.0
 
