@@ -3,11 +3,14 @@ package handler
 import (
 	"net/http"
 
+	"log/slog"
+
 	"github.com/gideonzy/knowledge-base/internal/common/middleware"
 	"github.com/gideonzy/knowledge-base/internal/workflow"
 	"github.com/gideonzy/knowledge-base/internal/workflow/service"
 	"github.com/gin-gonic/gin"
-	"log/slog"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // RegisterFlowRequest captures definition registration payload.
@@ -53,6 +56,7 @@ func New(svc *service.Workflow, validator middleware.TokenValidator, logger *slo
 func (h *Handler) Routes() http.Handler {
 	router := gin.New()
 	router.Use(middleware.GinRequestID(), middleware.GinLogging(h.logger))
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
 
 	router.GET("/healthz", h.HandleHealth)
 

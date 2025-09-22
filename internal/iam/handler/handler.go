@@ -3,12 +3,16 @@ package handler
 import (
 	"net/http"
 
+	"log/slog"
+
 	"github.com/gideonzy/knowledge-base/internal/common/auth"
 	"github.com/gideonzy/knowledge-base/internal/common/middleware"
 	"github.com/gideonzy/knowledge-base/internal/iam"
 	"github.com/gideonzy/knowledge-base/internal/iam/service"
 	"github.com/gin-gonic/gin"
-	"log/slog"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // LoginRequest represents the payload for login.
@@ -83,6 +87,8 @@ func New(svc *service.IAM, tokens *auth.Manager, logger *slog.Logger) *Handler {
 func (h *Handler) Routes() http.Handler {
 	router := gin.New()
 	router.Use(middleware.GinRequestID(), middleware.GinLogging(h.logger))
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
+
 
 	router.GET("/healthz", h.HandleHealth)
 	router.POST("/api/auth/login", h.Login)
