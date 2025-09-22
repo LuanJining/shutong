@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 
-	"github.com/gideonzy/knowledge-base/internal/workflow"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow"
 )
 
 // PostgresDefinitionRepo manages flow definitions in Postgres.
