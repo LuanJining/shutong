@@ -20,6 +20,8 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/gideonzy/knowledge-base/api/openapi"
+
 	"github.com/gideonzy/knowledge-base/internal/common/auth"
 	"github.com/gideonzy/knowledge-base/internal/common/config"
 	commondb "github.com/gideonzy/knowledge-base/internal/common/db"
