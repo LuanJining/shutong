@@ -1,6 +1,6 @@
 package repository
 
-import "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow"
+import "gitee.com/sichuan-shutong-zhihui-data/k-base/platform/internal/workflow"
 
 // DefinitionRepository handles workflow definitions.
 type DefinitionRepository interface {

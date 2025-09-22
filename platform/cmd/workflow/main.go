@@ -20,18 +20,18 @@ import (
 	"syscall"
 	"time"
 
-	_ "gitee.com/sichuan-shutong-zhihui-data/k-base/api/openapi"
+	_ "gitee.com/sichuan-shutong-zhihui-data/k-base/platform/api/openapi"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/auth"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/config"
-	commondb "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/db"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/httpserver"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/logging"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/storage"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow"
-	wfhandler "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/handler"
-	wfrepo "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/repository"
-	wfservice "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/service"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/platform/internal/common/auth"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/platform/internal/common/config"
+	commondb "gitee.com/sichuan-shutong-zhihui-data/k-base/platform/internal/common/db"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/platform/internal/common/httpserver"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/platform/internal/common/logging"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/platform/internal/common/storage"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/platform/internal/workflow"
+	wfhandler "gitee.com/sichuan-shutong-zhihui-data/k-base/platform/internal/workflow/handler"
+	wfrepo "gitee.com/sichuan-shutong-zhihui-data/k-base/platform/internal/workflow/repository"
+	wfservice "gitee.com/sichuan-shutong-zhihui-data/k-base/platform/internal/workflow/service"
 )
 
 func main() {

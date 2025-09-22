@@ -5,9 +5,9 @@ import (
 
 	"log/slog"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/middleware"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/service"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/platform/internal/common/middleware"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/platform/internal/workflow"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/platform/internal/workflow/service"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/auth"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/platform/internal/common/auth"
 	"github.com/gin-gonic/gin"
 )
 

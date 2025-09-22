@@ -1,4 +1,4 @@
-module gitee.com/sichuan-shutong-zhihui-data/k-base
+module gitee.com/sichuan-shutong-zhihui-data/k-base/platform
 
 go 1.25.0
 

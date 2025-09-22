@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/repository"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/platform/internal/workflow"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/platform/internal/workflow/repository"
 )
 
 // Workflow encapsulates workflow orchestration logic.
