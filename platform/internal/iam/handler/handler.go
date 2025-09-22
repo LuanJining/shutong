@@ -157,6 +157,7 @@ func (h *Handler) Login(c *gin.Context) {
 // @Summary List users
 // @Tags Users
 // @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
 // @Produce json
 // @Success 200 {array} iam.User
 // @Router /api/users [get]
@@ -169,6 +170,7 @@ func (h *Handler) ListUsers(c *gin.Context) {
 // @Summary Create user
 // @Tags Users
 // @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
 // @Accept json
 // @Produce json
 // @Param request body CreateUserRequest true "Create user"
@@ -195,6 +197,7 @@ func (h *Handler) CreateUser(c *gin.Context) {
 // @Security BearerAuth
 // @Accept json
 // @Produce json
+// @Param Authorization header string true "Bearer token"
 // @Param id path string true "User ID"
 // @Param request body UpdateUserRequest true "Update payload"
 // @Success 200 {object} iam.User
@@ -220,6 +223,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 // @Summary Delete user
 // @Tags Users
 // @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
 // @Param id path string true "User ID"
 // @Success 204 {string} string "No Content"
 // @Router /api/users/{id} [delete]
@@ -236,6 +240,7 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 // @Summary List roles
 // @Tags Roles
 // @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
 // @Produce json
 // @Success 200 {array} iam.Role
 // @Router /api/roles [get]
@@ -248,6 +253,7 @@ func (h *Handler) ListRoles(c *gin.Context) {
 // @Summary Create role
 // @Tags Roles
 // @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
 // @Accept json
 // @Produce json
 // @Param request body CreateRoleRequest true "Create role"
@@ -272,6 +278,7 @@ func (h *Handler) CreateRole(c *gin.Context) {
 // @Summary Delete role
 // @Tags Roles
 // @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
 // @Param id path string true "Role ID"
 // @Success 204 {string} string "No Content"
 // @Router /api/roles/{id} [delete]
@@ -288,6 +295,7 @@ func (h *Handler) DeleteRole(c *gin.Context) {
 // @Summary List spaces
 // @Tags Spaces
 // @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
 // @Produce json
 // @Success 200 {array} iam.Space
 // @Router /api/spaces [get]
@@ -300,6 +308,7 @@ func (h *Handler) ListSpaces(c *gin.Context) {
 // @Summary Create space
 // @Tags Spaces
 // @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
 // @Accept json
 // @Produce json
 // @Param request body CreateSpaceRequest true "Create space"
@@ -324,6 +333,7 @@ func (h *Handler) CreateSpace(c *gin.Context) {
 // @Summary Delete space
 // @Tags Spaces
 // @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
 // @Param id path string true "Space ID"
 // @Success 204 {string} string "No Content"
 // @Router /api/spaces/{id} [delete]
@@ -340,6 +350,7 @@ func (h *Handler) DeleteSpace(c *gin.Context) {
 // @Summary Create policy
 // @Tags Policies
 // @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
 // @Accept json
 // @Produce json
 // @Param request body CreatePolicyRequest true "Create policy"
@@ -364,6 +375,7 @@ func (h *Handler) CreatePolicy(c *gin.Context) {
 // @Summary List policies for a space
 // @Tags Policies
 // @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
 // @Param spaceId path string true "Space ID"
 // @Success 200 {array} iam.Policy
 // @Router /api/policies/{spaceId} [get]
