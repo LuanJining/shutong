@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Go build/cache artifacts
+.gocache/
+.gomodcache/
+bin/
+*.test
+coverage.out
+
+# IDE/editor configs
+.vscode/
+.idea/
+*.swp
+
+# Docker outputs
+*.tar
+*.tar.gz

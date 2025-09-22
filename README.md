@@ -17,18 +17,24 @@ This repository provides Go-based service skeletons for the account (IAM) and ap
 # build both binaries
 make build
 
-# run IAM service locally
-IAM_SERVER_PORT=8080 go run ./cmd/iam
+# run IAM service locally (requires postgres if IAM_DATABASE_DSN is set)
+IAM_SERVER_PORT=8080 IAM_DATABASE_DSN="postgres://kb:kb@127.0.0.1:5432/kb_platform?sslmode=disable" go run ./cmd/iam
 
 # run Workflow service locally
-WORKFLOW_SERVER_PORT=8090 go run ./cmd/workflow
+WORKFLOW_SERVER_PORT=8090 WORKFLOW_DATABASE_DSN="postgres://kb:kb@127.0.0.1:5432/kb_platform?sslmode=disable" go run ./cmd/workflow
 ```
 
-Both services require an `Authorization` header (placeholder check only) for protected endpoints.
+Both services require an `Authorization` header (placeholder check only) for protected endpoints. When `*_DATABASE_DSN` is omitted the services fall back to in-memory repositories (volatile).
+
+To prepare PostgreSQL tables run the bootstrap migration once:
+
+```bash
+psql "postgres://kb:kb@127.0.0.1:5432/kb_platform?sslmode=disable" -f deploy/migrations/001_init.sql
+```
 
 ## Docker Packaging
 
-1. Build images locally:
+1. Build images locally (ensures Go modules and binaries are baked into the container):
    ```bash
    make docker-iam
    make docker-workflow
@@ -44,6 +50,8 @@ Both services require an `Authorization` header (placeholder check only) for pro
    gunzip -c workflow-service.tar.gz | docker load
    docker compose -f deploy/docker-compose.yml up -d
    ```
+
+   The compose file now provisions PostgreSQL (ports `5432`, credentials `kb/kb`) and wires DSNs for both services. The bootstrap SQL in `deploy/migrations/001_init.sql` is automatically mounted into the container and executed on the first start; repeat runs will be no-ops. For environments without Docker you can run the same SQL manually prior to launching the services.
 
 The compose file exposes IAM on port `8080` and Workflow on `8090` for intra-network access.
 

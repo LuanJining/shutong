@@ -42,6 +42,7 @@ func (s *Workflow) RegisterDefinition(code, name, description string, nodes []wo
 	}
 
 	now := time.Now().UTC()
+	existing, found := s.Definitions.GetByCode(code)
 	def := workflow.FlowDefinition{
 		ID:          generateID(),
 		Code:        code,
@@ -50,6 +51,10 @@ func (s *Workflow) RegisterDefinition(code, name, description string, nodes []wo
 		Nodes:       preparedNodes,
 		CreatedAt:   now,
 		UpdatedAt:   now,
+	}
+	if found {
+		def.ID = existing.ID
+		def.CreatedAt = existing.CreatedAt
 	}
 	if err := s.Definitions.Save(def); err != nil {
 		return workflow.FlowDefinition{}, err

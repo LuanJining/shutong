@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gideonzy/knowledge-base/internal/common/config"
+	commondb "github.com/gideonzy/knowledge-base/internal/common/db"
 	"github.com/gideonzy/knowledge-base/internal/common/httpserver"
 	"github.com/gideonzy/knowledge-base/internal/common/logging"
 	iamhandler "github.com/gideonzy/knowledge-base/internal/iam/handler"
@@ -26,13 +28,40 @@ func main() {
 
 	logger := logging.New(cfg.Env).With(slog.String("service", "iam"))
 
-	repos := iamrepo.NewInMemoryRepositories()
-	svc := iamsvc.New(
-		iamrepo.NewUserRepo(repos.Users),
-		iamrepo.NewRoleRepo(repos.Roles),
-		iamrepo.NewSpaceRepo(repos.Spaces),
-		iamrepo.NewPolicyRepo(repos.Policies),
+	var (
+		userRepo   iamrepo.UserRepository
+		roleRepo   iamrepo.RoleRepository
+		spaceRepo  iamrepo.SpaceRepository
+		policyRepo iamrepo.PolicyRepository
+		sqlDB      *sql.DB
 	)
+
+	if cfg.Database.DSN != "" {
+		sqlDB, err = commondb.ConnectPostgres(cfg.Database.DSN)
+		if err != nil {
+			logger.Error("connect postgres failed", slog.String("error", err.Error()))
+			os.Exit(1)
+		}
+		postgresRepos := iamrepo.NewPostgresRepositories(sqlDB)
+		userRepo = postgresRepos.Users
+		roleRepo = postgresRepos.Roles
+		spaceRepo = postgresRepos.Spaces
+		policyRepo = postgresRepos.Policies
+		logger.Info("using postgres repositories")
+	} else {
+		repos := iamrepo.NewInMemoryRepositories()
+		userRepo = iamrepo.NewUserRepo(repos.Users)
+		roleRepo = iamrepo.NewRoleRepo(repos.Roles)
+		spaceRepo = iamrepo.NewSpaceRepo(repos.Spaces)
+		policyRepo = iamrepo.NewPolicyRepo(repos.Policies)
+		logger.Warn("IAM_DATABASE_DSN not set, using in-memory repositories")
+	}
+
+	if sqlDB != nil {
+		defer sqlDB.Close()
+	}
+
+	svc := iamsvc.New(userRepo, roleRepo, spaceRepo, policyRepo)
 
 	handler := iamhandler.New(svc, logger)
 	server := httpserver.New(cfg.Server.Host, cfg.Server.Port, handler.Routes())

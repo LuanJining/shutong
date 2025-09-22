@@ -4,7 +4,7 @@ GOCACHE := $(ROOT_DIR)/.gocache
 
 export GOCACHE
 
-.PHONY: build test tidy docker-iam docker-workflow docker-compose
+.PHONY: build test tidy migrate docker-iam docker-workflow docker-compose
 
 build:
 	@echo "==> building binaries"
@@ -18,6 +18,10 @@ test:
 
 tidy:
 	@go mod tidy
+
+migrate:
+	@[ -n "$(POSTGRES_DSN)" ] || (echo "POSTGRES_DSN env is required" && exit 1)
+	psql "$(POSTGRES_DSN)" -f deploy/migrations/001_init.sql
 
 docker-iam:
 	docker build -f deploy/docker/Dockerfile.iam -t iam-service:dev .

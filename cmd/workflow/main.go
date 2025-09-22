@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gideonzy/knowledge-base/internal/common/config"
+	commondb "github.com/gideonzy/knowledge-base/internal/common/db"
 	"github.com/gideonzy/knowledge-base/internal/common/httpserver"
 	"github.com/gideonzy/knowledge-base/internal/common/logging"
 	"github.com/gideonzy/knowledge-base/internal/common/storage"
@@ -28,8 +30,30 @@ func main() {
 
 	logger := logging.New(cfg.Env).With(slog.String("service", "workflow"))
 
-	defRepo := wfrepo.NewDefinitionRepo(storage.NewInMemory[workflow.FlowDefinition]())
-	instRepo := wfrepo.NewInstanceRepo(storage.NewInMemory[workflow.FlowInstance]())
+	var (
+		defRepo  wfrepo.DefinitionRepository
+		instRepo wfrepo.InstanceRepository
+		sqlDB    *sql.DB
+	)
+
+	if cfg.Database.DSN != "" {
+		sqlDB, err = commondb.ConnectPostgres(cfg.Database.DSN)
+		if err != nil {
+			logger.Error("connect postgres failed", slog.String("error", err.Error()))
+			os.Exit(1)
+		}
+		defRepo = wfrepo.NewPostgresDefinitionRepo(sqlDB)
+		instRepo = wfrepo.NewPostgresInstanceRepo(sqlDB)
+		logger.Info("using postgres repositories")
+	} else {
+		defRepo = wfrepo.NewDefinitionRepo(storage.NewInMemory[workflow.FlowDefinition]())
+		instRepo = wfrepo.NewInstanceRepo(storage.NewInMemory[workflow.FlowInstance]())
+		logger.Warn("WORKFLOW_DATABASE_DSN not set, using in-memory repositories")
+	}
+
+	if sqlDB != nil {
+		defer sqlDB.Close()
+	}
 
 	svc := wfservice.New(defRepo, instRepo)
 	handler := wfhandler.New(svc, logger)
