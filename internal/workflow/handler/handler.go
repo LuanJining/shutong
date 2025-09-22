@@ -1,14 +1,13 @@
 package handler
 
 import (
-	"encoding/json"
-	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/gideonzy/knowledge-base/internal/common/middleware"
 	"github.com/gideonzy/knowledge-base/internal/workflow"
 	"github.com/gideonzy/knowledge-base/internal/workflow/service"
+	"github.com/gin-gonic/gin"
+	"log/slog"
 )
 
 // RegisterFlowRequest captures definition registration payload.
@@ -52,114 +51,40 @@ func New(svc *service.Workflow, validator middleware.TokenValidator, logger *slo
 
 // Routes registers HTTP routes.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", h.handleHealth)
-	authMiddleware := middleware.RequireAuth(h.logger, h.validator)
-	mux.Handle("/api/flows", authMiddleware(middleware.RequestID(http.HandlerFunc(h.handleDefinitions))))
-	mux.Handle("/api/flows/", authMiddleware(middleware.RequestID(http.HandlerFunc(h.handleDefinitionInstances))))
-	mux.Handle("/api/instances/", authMiddleware(middleware.RequestID(http.HandlerFunc(h.handleInstanceActions))))
-	return middleware.Logging(h.logger)(mux)
+	router := gin.New()
+	router.Use(middleware.GinRequestID(), middleware.GinLogging(h.logger))
+
+	router.GET("/healthz", h.HandleHealth)
+
+	protected := router.Group("/api")
+	protected.Use(middleware.GinRequireAuth(h.logger, h.validator))
+
+	protected.GET("/flows", h.ListDefinitions)
+	protected.POST("/flows", h.CreateDefinition)
+	protected.POST("/flows/:code/instances", h.StartInstance)
+	protected.GET("/instances/:id", h.GetInstance)
+	protected.POST("/instances/:id/actions", h.ActOnInstance)
+
+	return router
 }
 
-func (h *Handler) handleHealth(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+func (h *Handler) HandleHealth(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
-func (h *Handler) handleDefinitions(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		defs := h.service.ListDefinitions()
-		writeJSON(w, http.StatusOK, defs)
-	case http.MethodPost:
-		var payload RegisterFlowRequest
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid json")
-			return
-		}
-		def, err := h.service.RegisterDefinition(payload.Code, payload.Name, payload.Description, payload.Nodes)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		writeJSON(w, http.StatusCreated, def)
-	default:
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-	}
-}
-
-func (h *Handler) handleDefinitionInstances(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
-	// Expect path /api/flows/{code}/instances
-	suffix := strings.TrimPrefix(r.URL.Path, "/api/flows/")
-	parts := strings.Split(suffix, "/")
-	if len(parts) < 2 || parts[1] != "instances" {
-		writeError(w, http.StatusNotFound, "resource not found")
-		return
-	}
-	code := parts[0]
-	var payload StartInstanceRequest
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid json")
-		return
-	}
-	inst, err := h.service.StartInstance(code, payload.BusinessID, payload.SpaceID, payload.CreatedBy)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	writeJSON(w, http.StatusCreated, inst)
-}
-
-func (h *Handler) handleInstanceActions(w http.ResponseWriter, r *http.Request) {
-	suffix := strings.TrimPrefix(r.URL.Path, "/api/instances/")
-	if suffix == "" {
-		writeError(w, http.StatusNotFound, "resource not found")
-		return
-	}
-	parts := strings.Split(suffix, "/")
-	instanceID := parts[0]
-
-	if len(parts) == 1 && r.Method == http.MethodGet {
-		inst, err := h.service.GetInstance(instanceID)
-		if err != nil {
-			writeError(w, http.StatusNotFound, err.Error())
-			return
-		}
-		writeJSON(w, http.StatusOK, inst)
-		return
-	}
-
-	if len(parts) == 2 && parts[1] == "actions" && r.Method == http.MethodPost {
-		var payload InstanceActionRequest
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid json")
-			return
-		}
-		inst, err := h.service.ApplyAction(instanceID, payload.ActorID, payload.Comment, payload.Action)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		writeJSON(w, http.StatusOK, inst)
-		return
-	}
-
-	writeError(w, http.StatusNotFound, "resource not found")
-}
-
-// docListDefinitions godoc
+// ListDefinitions godoc
 // @Summary List workflow definitions
 // @Tags Definitions
 // @Security BearerAuth
 // @Produce json
 // @Success 200 {array} workflow.FlowDefinition
 // @Router /api/flows [get]
-func (h *Handler) docListDefinitions() {}
+func (h *Handler) ListDefinitions(c *gin.Context) {
+	defs := h.service.ListDefinitions()
+	c.JSON(http.StatusOK, defs)
+}
 
-// docCreateDefinition godoc
+// CreateDefinition godoc
 // @Summary Register workflow definition
 // @Tags Definitions
 // @Security BearerAuth
@@ -169,9 +94,21 @@ func (h *Handler) docListDefinitions() {}
 // @Success 201 {object} workflow.FlowDefinition
 // @Failure 400 {object} WFErrorResponse
 // @Router /api/flows [post]
-func (h *Handler) docCreateDefinition() {}
+func (h *Handler) CreateDefinition(c *gin.Context) {
+	var payload RegisterFlowRequest
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		respondWorkflowError(c, http.StatusBadRequest, "invalid json")
+		return
+	}
+	def, err := h.service.RegisterDefinition(payload.Code, payload.Name, payload.Description, payload.Nodes)
+	if err != nil {
+		respondWorkflowError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	c.JSON(http.StatusCreated, def)
+}
 
-// docStartInstance godoc
+// StartInstance godoc
 // @Summary Start workflow instance
 // @Tags Instances
 // @Security BearerAuth
@@ -183,9 +120,22 @@ func (h *Handler) docCreateDefinition() {}
 // @Failure 400 {object} WFErrorResponse
 // @Failure 404 {object} WFErrorResponse
 // @Router /api/flows/{code}/instances [post]
-func (h *Handler) docStartInstance() {}
+func (h *Handler) StartInstance(c *gin.Context) {
+	var payload StartInstanceRequest
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		respondWorkflowError(c, http.StatusBadRequest, "invalid json")
+		return
+	}
+	code := c.Param("code")
+	inst, err := h.service.StartInstance(code, payload.BusinessID, payload.SpaceID, payload.CreatedBy)
+	if err != nil {
+		respondWorkflowError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	c.JSON(http.StatusCreated, inst)
+}
 
-// docGetInstance godoc
+// GetInstance godoc
 // @Summary Get workflow instance
 // @Tags Instances
 // @Security BearerAuth
@@ -194,9 +144,16 @@ func (h *Handler) docStartInstance() {}
 // @Success 200 {object} workflow.FlowInstance
 // @Failure 404 {object} WFErrorResponse
 // @Router /api/instances/{id} [get]
-func (h *Handler) docGetInstance() {}
+func (h *Handler) GetInstance(c *gin.Context) {
+	inst, err := h.service.GetInstance(c.Param("id"))
+	if err != nil {
+		respondWorkflowError(c, http.StatusNotFound, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, inst)
+}
 
-// docActOnInstance godoc
+// ActOnInstance godoc
 // @Summary Submit action on workflow instance
 // @Tags Instances
 // @Security BearerAuth
@@ -208,14 +165,20 @@ func (h *Handler) docGetInstance() {}
 // @Failure 400 {object} WFErrorResponse
 // @Failure 404 {object} WFErrorResponse
 // @Router /api/instances/{id}/actions [post]
-func (h *Handler) docActOnInstance() {}
-
-func writeJSON(w http.ResponseWriter, status int, data any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(data)
+func (h *Handler) ActOnInstance(c *gin.Context) {
+	var payload InstanceActionRequest
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		respondWorkflowError(c, http.StatusBadRequest, "invalid json")
+		return
+	}
+	inst, err := h.service.ApplyAction(c.Param("id"), payload.ActorID, payload.Comment, payload.Action)
+	if err != nil {
+		respondWorkflowError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, inst)
 }
 
-func writeError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, WFErrorResponse{Error: message})
+func respondWorkflowError(c *gin.Context, status int, message string) {
+	c.JSON(status, WFErrorResponse{Error: message})
 }
