@@ -60,14 +60,14 @@ func GinRequireAuth(logger *slog.Logger, validator TokenValidator) gin.HandlerFu
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			return
 		}
-		c.Set(authClaimsKeyGin{}, claims)
+		c.Set(ginAuthClaimsKey, claims)
 		c.Next()
 	}
 }
 
 // ClaimsFromGinContext retrieves JWT claims from Gin context.
 func ClaimsFromGinContext(c *gin.Context) *auth.Claims {
-	if val, exists := c.Get(authClaimsKeyGin{}); exists {
+	if val, exists := c.Get(ginAuthClaimsKey); exists {
 		if claims, ok := val.(*auth.Claims); ok {
 			return claims
 		}
@@ -91,7 +91,7 @@ func generateRequestIDGin(r *http.Request) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-type authClaimsKeyGin struct{}
+const ginAuthClaimsKey = "auth_claims"
 
 func extractBearerToken(header string) string {
 	if header == "" {

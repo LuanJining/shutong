@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"github.com/gideonzy/knowledge-base/internal/iam"
 	"github.com/gin-gonic/gin"
 )
 
