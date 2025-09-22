@@ -5,10 +5,10 @@ import (
 
 	"log/slog"
 
-	"github.com/gideonzy/knowledge-base/internal/common/auth"
-	"github.com/gideonzy/knowledge-base/internal/common/middleware"
-	"github.com/gideonzy/knowledge-base/internal/iam"
-	"github.com/gideonzy/knowledge-base/internal/iam/service"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/auth"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/middleware"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/service"
 	"github.com/gin-gonic/gin"
 
 	swaggerFiles "github.com/swaggo/files"

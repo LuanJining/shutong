@@ -3,7 +3,7 @@ package repository
 import (
 	"database/sql"
 
-	"github.com/gideonzy/knowledge-base/internal/iam"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam"
 	"github.com/lib/pq"
 )
 

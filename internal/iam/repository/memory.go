@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gideonzy/knowledge-base/internal/common/storage"
-	"github.com/gideonzy/knowledge-base/internal/iam"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/storage"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam"
 )
 
 // InMemoryRepositories aggregates memory-backed repos for IAM service.

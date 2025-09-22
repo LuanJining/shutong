@@ -20,15 +20,15 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/gideonzy/knowledge-base/api/openapi"
-	"github.com/gideonzy/knowledge-base/internal/common/auth"
-	"github.com/gideonzy/knowledge-base/internal/common/config"
-	commondb "github.com/gideonzy/knowledge-base/internal/common/db"
-	"github.com/gideonzy/knowledge-base/internal/common/httpserver"
-	"github.com/gideonzy/knowledge-base/internal/common/logging"
-	iamhandler "github.com/gideonzy/knowledge-base/internal/iam/handler"
-	iamrepo "github.com/gideonzy/knowledge-base/internal/iam/repository"
-	iamsvc "github.com/gideonzy/knowledge-base/internal/iam/service"
+	_ "gitee.com/sichuan-shutong-zhihui-data/k-base/api/openapi"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/auth"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/config"
+	commondb "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/db"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/httpserver"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/logging"
+	iamhandler "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/handler"
+	iamrepo "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/repository"
+	iamsvc "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/service"
 )
 
 func main() {

@@ -1,6 +1,6 @@
 package repository
 
-import "github.com/gideonzy/knowledge-base/internal/iam"
+import "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam"
 
 // UserRepository manages users.
 type UserRepository interface {

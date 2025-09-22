@@ -20,18 +20,18 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/gideonzy/knowledge-base/api/openapi"
+	_ "gitee.com/sichuan-shutong-zhihui-data/k-base/api/openapi"
 
-	"github.com/gideonzy/knowledge-base/internal/common/auth"
-	"github.com/gideonzy/knowledge-base/internal/common/config"
-	commondb "github.com/gideonzy/knowledge-base/internal/common/db"
-	"github.com/gideonzy/knowledge-base/internal/common/httpserver"
-	"github.com/gideonzy/knowledge-base/internal/common/logging"
-	"github.com/gideonzy/knowledge-base/internal/common/storage"
-	"github.com/gideonzy/knowledge-base/internal/workflow"
-	wfhandler "github.com/gideonzy/knowledge-base/internal/workflow/handler"
-	wfrepo "github.com/gideonzy/knowledge-base/internal/workflow/repository"
-	wfservice "github.com/gideonzy/knowledge-base/internal/workflow/service"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/auth"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/config"
+	commondb "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/db"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/httpserver"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/logging"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/storage"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow"
+	wfhandler "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/handler"
+	wfrepo "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/repository"
+	wfservice "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/service"
 )
 
 func main() {

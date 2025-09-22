@@ -3,8 +3,8 @@ package repository
 import (
 	"errors"
 
-	"github.com/gideonzy/knowledge-base/internal/common/storage"
-	"github.com/gideonzy/knowledge-base/internal/workflow"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/storage"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow"
 )
 
 // DefinitionRepo is an in-memory FlowDefinition repo.

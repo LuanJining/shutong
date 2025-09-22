@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gideonzy/knowledge-base/internal/common/auth"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/auth"
 )
 
 // RequestIDHeader is the header used to propagate request identifiers.

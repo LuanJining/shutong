@@ -9,8 +9,8 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/gideonzy/knowledge-base/internal/iam"
-	"github.com/gideonzy/knowledge-base/internal/iam/repository"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/repository"
 )
 
 // IAM provides core account management operations.
