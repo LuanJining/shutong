@@ -9,10 +9,17 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/gideonzy/knowledge-base/internal/common/auth"
 )
 
 // RequestIDHeader is the header used to propagate request identifiers.
 const RequestIDHeader = "X-Request-ID"
+
+// TokenValidator validates tokens and returns the embedded claims.
+type TokenValidator interface {
+	Validate(token string) (*auth.Claims, error)
+}
 
 // RequestID ensures each request has an ID for tracing.
 func RequestID(next http.Handler) http.Handler {
@@ -43,24 +50,33 @@ func Logging(logger *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-// RequireAuth is a placeholder middleware that validates the Authorization header is present.
-// Services should replace this with proper JWT validation.
-func RequireAuth(logger *slog.Logger) func(http.Handler) http.Handler {
+// RequireAuth validates JWT tokens from the Authorization header.
+func RequireAuth(logger *slog.Logger, validator TokenValidator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if validator == nil {
+				http.Error(w, "auth validator not configured", http.StatusInternalServerError)
+				return
+			}
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
 				http.Error(w, "missing authorization header", http.StatusUnauthorized)
 				return
 			}
-			// TODO: replace with JWT verification.
 			token := strings.TrimPrefix(authHeader, "Bearer ")
 			if token == "" {
 				http.Error(w, "invalid authorization header", http.StatusUnauthorized)
 				return
 			}
-			ctx := context.WithValue(r.Context(), authTokenKey{}, token)
-			logger.Debug("authorization header accepted", slog.String("request_id", RequestIDFromContext(r.Context())))
+			claims, err := validator.Validate(token)
+			if err != nil {
+				logger.Warn("token validation failed",
+					slog.String("error", err.Error()),
+					slog.String("request_id", RequestIDFromContext(r.Context())))
+				http.Error(w, "invalid token", http.StatusUnauthorized)
+				return
+			}
+			ctx := context.WithValue(r.Context(), authClaimsKey{}, claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -77,15 +93,15 @@ func RequestIDFromContext(ctx context.Context) string {
 	return ""
 }
 
-// AuthTokenFromContext retrieves the raw auth token from context.
-func AuthTokenFromContext(ctx context.Context) string {
+// ClaimsFromContext returns JWT claims stored by the auth middleware.
+func ClaimsFromContext(ctx context.Context) *auth.Claims {
 	if ctx == nil {
-		return ""
+		return nil
 	}
-	if token, ok := ctx.Value(authTokenKey{}).(string); ok {
-		return token
+	if claims, ok := ctx.Value(authClaimsKey{}).(*auth.Claims); ok {
+		return claims
 	}
-	return ""
+	return nil
 }
 
 func generateRequestID(r *http.Request) string {
@@ -95,4 +111,4 @@ func generateRequestID(r *http.Request) string {
 }
 
 type requestIDKey struct{}
-type authTokenKey struct{}
+type authClaimsKey struct{}

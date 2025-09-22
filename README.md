@@ -24,7 +24,7 @@ IAM_SERVER_PORT=8080 IAM_DATABASE_DSN="postgres://kb:kb@127.0.0.1:5432/kb_platfo
 WORKFLOW_SERVER_PORT=8090 WORKFLOW_DATABASE_DSN="postgres://kb:kb@127.0.0.1:5432/kb_platform?sslmode=disable" go run ./cmd/workflow
 ```
 
-Both services require an `Authorization` header (placeholder check only) for protected endpoints. When `*_DATABASE_DSN` is omitted the services fall back to in-memory repositories (volatile). IAM user records now use `phone` + hashed `password` as the login credential pair instead of email, and `/api/auth/login` exchanges valid credentials for a JWT token.
+Both services now require an `Authorization: Bearer <JWT>` header for protected endpoints; tokens are validated against `IAM_AUTH_JWT_SIGNING_KEY` (or the workflow equivalent). When `*_DATABASE_DSN` is omitted the services fall back to in-memory repositories (volatile). IAM user records use `phone` + hashed `password` as credentials, and `/api/auth/login` exchanges valid credentials for a JWT token that the Workflow service also trusts.
 
 To prepare PostgreSQL tables run the bootstrap migration once:
 
@@ -51,7 +51,30 @@ psql "postgres://kb:kb@127.0.0.1:5432/kb_platform?sslmode=disable" -f deploy/mig
    docker compose -f deploy/docker-compose.yml up -d
    ```
 
-   The compose file now provisions PostgreSQL (ports `5432`, credentials `kb/kb`) and wires DSNs for both services. The bootstrap SQL in `deploy/migrations/001_init.sql` is automatically mounted into the container and executed on the first start; repeat runs will be no-ops. For environments without Docker you can run the same SQL manually prior to launching the services.
+The compose file now provisions PostgreSQL (ports `5432`, credentials `kb/kb`) and wires DSNs for both services. The bootstrap SQL in `deploy/migrations/001_init.sql` is automatically mounted into the container and executed on the first start; repeat runs will be no-ops. For environments without Docker you can run the same SQL manually prior to launching the services.
+
+## API Documentation
+
+Swagger definitions are generated via `swag`. Regenerate after handler changes with:
+
+```bash
+(cd cmd/iam && swag init --dir . --generalInfo main.go --output ../docs/swagger/iam --instanceName iam --parseDependency --parseInternal)
+(cd cmd/workflow && swag init --dir . --generalInfo main.go --output ../docs/swagger/workflow --instanceName workflow --parseDependency --parseInternal)
+```
+
+Generated artifacts:
+
+- IAM service spec: `docs/swagger/iam/iam_swagger.yaml`
+- Workflow service spec: `docs/swagger/workflow/workflow_swagger.yaml`
+
+To browse the docs locally via Swagger UI:
+
+```bash
+docker run --rm -p 8088:8080 -e SWAGGER_JSON=/spec/iam.yaml \
+  -v $(pwd)/docs/swagger/iam/iam_swagger.yaml:/spec/iam.yaml swaggerapi/swagger-ui
+```
+
+Import the YAML or JSON into Insomnia/Postman for quick client generation.
 
 The compose file exposes IAM on port `8080` and Workflow on `8090` for intra-network access.
 

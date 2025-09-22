@@ -1,3 +1,12 @@
+// Package main bootstraps the IAM service.
+//
+// @title Knowledge Base IAM Service API
+// @version 0.1.0
+// @description Account and permission management endpoints for the knowledge base.
+// @BasePath /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 package main
 
 import (

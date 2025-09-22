@@ -1,3 +1,12 @@
+// Package main bootstraps the workflow service.
+//
+// @title Knowledge Base Workflow Service API
+// @version 0.1.0
+// @description Workflow orchestration endpoints for the knowledge base.
+// @BasePath /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 package main
 
 import (
@@ -11,6 +20,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gideonzy/knowledge-base/internal/common/auth"
 	"github.com/gideonzy/knowledge-base/internal/common/config"
 	commondb "github.com/gideonzy/knowledge-base/internal/common/db"
 	"github.com/gideonzy/knowledge-base/internal/common/httpserver"
@@ -56,7 +66,8 @@ func main() {
 	}
 
 	svc := wfservice.New(defRepo, instRepo)
-	handler := wfhandler.New(svc, logger)
+	tokenManager := auth.NewManager(cfg.Auth.JWTSigningKey, cfg.Auth.JWTTTLSeconds)
+	handler := wfhandler.New(svc, tokenManager, logger)
 
 	server := httpserver.New(cfg.Server.Host, cfg.Server.Port, handler.Routes())
 

@@ -8,8 +8,65 @@ import (
 
 	"github.com/gideonzy/knowledge-base/internal/common/auth"
 	"github.com/gideonzy/knowledge-base/internal/common/middleware"
+	"github.com/gideonzy/knowledge-base/internal/iam"
 	"github.com/gideonzy/knowledge-base/internal/iam/service"
 )
+
+// LoginRequest represents the payload for login.
+type LoginRequest struct {
+	Phone    string `json:"phone"`
+	Password string `json:"password"`
+}
+
+// LoginResponse wraps login success output.
+type LoginResponse struct {
+	Token string   `json:"token"`
+	User  iam.User `json:"user"`
+}
+
+// CreateUserRequest captures create user payload.
+type CreateUserRequest struct {
+	Name     string   `json:"name"`
+	Phone    string   `json:"phone"`
+	Password string   `json:"password"`
+	Roles    []string `json:"roles"`
+	Spaces   []string `json:"spaces"`
+}
+
+// UpdateUserRequest captures update user payload.
+type UpdateUserRequest struct {
+	Name     string   `json:"name"`
+	Phone    string   `json:"phone"`
+	Password string   `json:"password"`
+	Roles    []string `json:"roles"`
+	Spaces   []string `json:"spaces"`
+}
+
+// CreateRoleRequest defines role creation payload.
+type CreateRoleRequest struct {
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Permissions []string `json:"permissions"`
+}
+
+// CreateSpaceRequest defines space creation payload.
+type CreateSpaceRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// CreatePolicyRequest defines policy creation payload.
+type CreatePolicyRequest struct {
+	SpaceID  string `json:"space_id"`
+	RoleID   string `json:"role_id"`
+	Resource string `json:"resource"`
+	Action   string `json:"action"`
+}
+
+// ErrorResponse represents error output.
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
 
 // Handler exposes IAM HTTP endpoints.
 type Handler struct {
@@ -28,14 +85,15 @@ func (h *Handler) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", h.handleHealth)
 	mux.HandleFunc("/api/auth/login", h.handleLogin)
-	mux.Handle("/api/users", middleware.RequireAuth(h.logger)(middleware.RequestID(http.HandlerFunc(h.handleUsers))))
-	mux.Handle("/api/users/", middleware.RequireAuth(h.logger)(middleware.RequestID(http.HandlerFunc(h.handleUserByID))))
-	mux.Handle("/api/roles", middleware.RequireAuth(h.logger)(middleware.RequestID(http.HandlerFunc(h.handleRoles))))
-	mux.Handle("/api/roles/", middleware.RequireAuth(h.logger)(middleware.RequestID(http.HandlerFunc(h.handleRoleByID))))
-	mux.Handle("/api/spaces", middleware.RequireAuth(h.logger)(middleware.RequestID(http.HandlerFunc(h.handleSpaces))))
-	mux.Handle("/api/spaces/", middleware.RequireAuth(h.logger)(middleware.RequestID(http.HandlerFunc(h.handleSpaceByID))))
-	mux.Handle("/api/policies", middleware.RequireAuth(h.logger)(middleware.RequestID(http.HandlerFunc(h.handlePolicies))))
-	mux.Handle("/api/policies/", middleware.RequireAuth(h.logger)(middleware.RequestID(http.HandlerFunc(h.handlePoliciesBySpace))))
+	authMiddleware := middleware.RequireAuth(h.logger, h.tokens)
+	mux.Handle("/api/users", authMiddleware(middleware.RequestID(http.HandlerFunc(h.handleUsers))))
+	mux.Handle("/api/users/", authMiddleware(middleware.RequestID(http.HandlerFunc(h.handleUserByID))))
+	mux.Handle("/api/roles", authMiddleware(middleware.RequestID(http.HandlerFunc(h.handleRoles))))
+	mux.Handle("/api/roles/", authMiddleware(middleware.RequestID(http.HandlerFunc(h.handleRoleByID))))
+	mux.Handle("/api/spaces", authMiddleware(middleware.RequestID(http.HandlerFunc(h.handleSpaces))))
+	mux.Handle("/api/spaces/", authMiddleware(middleware.RequestID(http.HandlerFunc(h.handleSpaceByID))))
+	mux.Handle("/api/policies", authMiddleware(middleware.RequestID(http.HandlerFunc(h.handlePolicies))))
+	mux.Handle("/api/policies/", authMiddleware(middleware.RequestID(http.HandlerFunc(h.handlePoliciesBySpace))))
 	return middleware.Logging(h.logger)(mux)
 }
 
@@ -43,6 +101,17 @@ func (h *Handler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+// handleLogin godoc
+// @Summary Obtain JWT token
+// @Description Authenticate with phone and password to receive JWT.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body LoginRequest true "Login credentials"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Router /api/auth/login [post]
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -52,10 +121,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, "token manager not configured")
 		return
 	}
-	var payload struct {
-		Phone    string `json:"phone"`
-		Password string `json:"password"`
-	}
+	var payload LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json")
 		return
@@ -70,16 +136,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to generate token")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"token": token,
-		"user": map[string]any{
-			"id":     user.ID,
-			"name":   user.Name,
-			"phone":  user.Phone,
-			"roles":  user.Roles,
-			"spaces": user.Spaces,
-		},
-	})
+	writeJSON(w, http.StatusOK, LoginResponse{Token: token, User: user})
 }
 
 func (h *Handler) handleUsers(w http.ResponseWriter, r *http.Request) {
@@ -88,13 +145,7 @@ func (h *Handler) handleUsers(w http.ResponseWriter, r *http.Request) {
 		users := h.service.ListUsers()
 		writeJSON(w, http.StatusOK, users)
 	case http.MethodPost:
-		var payload struct {
-			Name     string   `json:"name"`
-			Phone    string   `json:"phone"`
-			Password string   `json:"password"`
-			Roles    []string `json:"roles"`
-			Spaces   []string `json:"spaces"`
-		}
+		var payload CreateUserRequest
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid json")
 			return
@@ -118,13 +169,7 @@ func (h *Handler) handleUserByID(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodPatch:
-		var payload struct {
-			Name     string   `json:"name"`
-			Phone    string   `json:"phone"`
-			Password string   `json:"password"`
-			Roles    []string `json:"roles"`
-			Spaces   []string `json:"spaces"`
-		}
+		var payload UpdateUserRequest
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid json")
 			return
@@ -152,11 +197,7 @@ func (h *Handler) handleRoles(w http.ResponseWriter, r *http.Request) {
 		roles := h.service.ListRoles()
 		writeJSON(w, http.StatusOK, roles)
 	case http.MethodPost:
-		var payload struct {
-			Name        string   `json:"name"`
-			Description string   `json:"description"`
-			Permissions []string `json:"permissions"`
-		}
+		var payload CreateRoleRequest
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid json")
 			return
@@ -195,10 +236,7 @@ func (h *Handler) handleSpaces(w http.ResponseWriter, r *http.Request) {
 		spaces := h.service.ListSpaces()
 		writeJSON(w, http.StatusOK, spaces)
 	case http.MethodPost:
-		var payload struct {
-			Name        string `json:"name"`
-			Description string `json:"description"`
-		}
+		var payload CreateSpaceRequest
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid json")
 			return
@@ -236,12 +274,7 @@ func (h *Handler) handlePolicies(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
-	var payload struct {
-		SpaceID  string `json:"space_id"`
-		RoleID   string `json:"role_id"`
-		Resource string `json:"resource"`
-		Action   string `json:"action"`
-	}
+	var payload CreatePolicyRequest
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json")
 		return
@@ -253,6 +286,131 @@ func (h *Handler) handlePolicies(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusCreated, policy)
 }
+
+// docListUsers godoc
+// @Summary List users
+// @Tags Users
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {array} iam.User
+// @Router /api/users [get]
+func (h *Handler) docListUsers() {}
+
+// docCreateUser godoc
+// @Summary Create user
+// @Tags Users
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body CreateUserRequest true "Create user"
+// @Success 201 {object} iam.User
+// @Failure 400 {object} ErrorResponse
+// @Router /api/users [post]
+func (h *Handler) docCreateUser() {}
+
+// docUpdateUser godoc
+// @Summary Update user
+// @Tags Users
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param request body UpdateUserRequest true "Update payload"
+// @Success 200 {object} iam.User
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/users/{id} [patch]
+func (h *Handler) docUpdateUser() {}
+
+// docDeleteUser godoc
+// @Summary Delete user
+// @Tags Users
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Success 204 {string} string "No Content"
+// @Router /api/users/{id} [delete]
+func (h *Handler) docDeleteUser() {}
+
+// docListRoles godoc
+// @Summary List roles
+// @Tags Roles
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {array} iam.Role
+// @Router /api/roles [get]
+func (h *Handler) docListRoles() {}
+
+// docCreateRole godoc
+// @Summary Create role
+// @Tags Roles
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body CreateRoleRequest true "Create role"
+// @Success 201 {object} iam.Role
+// @Failure 400 {object} ErrorResponse
+// @Router /api/roles [post]
+func (h *Handler) docCreateRole() {}
+
+// docDeleteRole godoc
+// @Summary Delete role
+// @Tags Roles
+// @Security BearerAuth
+// @Param id path string true "Role ID"
+// @Success 204 {string} string "No Content"
+// @Router /api/roles/{id} [delete]
+func (h *Handler) docDeleteRole() {}
+
+// docListSpaces godoc
+// @Summary List spaces
+// @Tags Spaces
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {array} iam.Space
+// @Router /api/spaces [get]
+func (h *Handler) docListSpaces() {}
+
+// docCreateSpace godoc
+// @Summary Create space
+// @Tags Spaces
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body CreateSpaceRequest true "Create space"
+// @Success 201 {object} iam.Space
+// @Failure 400 {object} ErrorResponse
+// @Router /api/spaces [post]
+func (h *Handler) docCreateSpace() {}
+
+// docDeleteSpace godoc
+// @Summary Delete space
+// @Tags Spaces
+// @Security BearerAuth
+// @Param id path string true "Space ID"
+// @Success 204 {string} string "No Content"
+// @Router /api/spaces/{id} [delete]
+func (h *Handler) docDeleteSpace() {}
+
+// docCreatePolicy godoc
+// @Summary Create policy
+// @Tags Policies
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body CreatePolicyRequest true "Create policy"
+// @Success 201 {object} iam.Policy
+// @Failure 400 {object} ErrorResponse
+// @Router /api/policies [post]
+func (h *Handler) docCreatePolicy() {}
+
+// docListPolicies godoc
+// @Summary List policies for a space
+// @Tags Policies
+// @Security BearerAuth
+// @Param spaceId path string true "Space ID"
+// @Success 200 {array} iam.Policy
+// @Router /api/policies/{spaceId} [get]
+func (h *Handler) docListPolicies() {}
 
 func (h *Handler) handlePoliciesBySpace(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -275,5 +433,5 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 }
 
 func writeError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]string{"error": message})
+	writeJSON(w, status, ErrorResponse{Error: message})
 }
