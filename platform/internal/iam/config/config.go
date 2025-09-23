@@ -1,77 +1,98 @@
 package config
 
 import (
+	"fmt"
 	"os"
-	"strconv"
+	"strings"
 
-	"github.com/joho/godotenv"
+	"github.com/spf13/viper"
 )
 
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	JWT      JWTConfig
+	Server   ServerConfig `mapstructure:"server"`
+	Database DatabaseConfig `mapstructure:"database"`
+	JWT      JWTConfig `mapstructure:"jwt"`
 }
 
 type ServerConfig struct {
-	Host string
-	Port string
+	Host string `mapstructure:"host"`
+	Port string `mapstructure:"port"`
 }
 
 type DatabaseConfig struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
-	DBName   string
-	SSLMode  string
+	Host     string `mapstructure:"host"`
+	Port     string `mapstructure:"port"`
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
+	DBName   string `mapstructure:"dbname"`
+	SSLMode  string `mapstructure:"sslmode"`
 }
 
 type JWTConfig struct {
-	Secret     string
-	ExpireTime int // 小时
+	Secret     string `mapstructure:"secret"`
+	ExpireTime int    `mapstructure:"expire_time"` // 小时
 }
 
 func Load() (*Config, error) {
-	// 加载 .env 文件
-	if err := godotenv.Load(); err != nil {
-		// .env 文件不存在时忽略错误
+	v := viper.New()
+	
+	// 设置配置文件名称和路径
+	v.SetConfigName("config")
+	v.SetConfigType("yaml")
+	v.AddConfigPath("./internal/iam/config")
+	v.AddConfigPath("./config")
+	v.AddConfigPath(".")
+	
+	// 设置环境变量前缀
+	v.SetEnvPrefix("KBASE")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	
+	// 自动绑定环境变量
+	v.AutomaticEnv()
+	
+	// 根据环境变量选择配置文件
+	env := os.Getenv("KBASE_ENV")
+	if env == "" {
+		env = "localtest" // 默认使用本地测试配置
 	}
-
-	cfg := &Config{
-		Server: ServerConfig{
-			Host: getEnv("SERVER_HOST", "localhost"),
-			Port: getEnv("SERVER_PORT", "8080"),
-		},
-		Database: DatabaseConfig{
-			Host:     getEnv("DB_HOST", "localhost"),
-			Port:     getEnv("DB_PORT", "5432"),
-			User:     getEnv("DB_USER", "postgres"),
-			Password: getEnv("DB_PASSWORD", "password"),
-			DBName:   getEnv("DB_NAME", "kbase"),
-			SSLMode:  getEnv("DB_SSLMODE", "disable"),
-		},
-		JWT: JWTConfig{
-			Secret:     getEnv("JWT_SECRET", "your-secret-key"),
-			ExpireTime: getEnvAsInt("JWT_EXPIRE_TIME", 24),
-		},
-	}
-
-	return cfg, nil
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-func getEnvAsInt(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
-		if intValue, err := strconv.Atoi(value); err == nil {
-			return intValue
+	
+	// 设置配置文件名称
+	v.SetConfigName(env)
+	
+	// 读取配置文件
+	if err := v.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
+		// 配置文件不存在时使用默认值
 	}
-	return defaultValue
+	
+	// 绑定环境变量到配置
+	bindEnvVars(v)
+	
+	// 解析配置到结构体
+	var cfg Config
+	if err := v.Unmarshal(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+	
+	return &cfg, nil
+}
+
+func bindEnvVars(v *viper.Viper) {
+	// 服务器配置
+	v.BindEnv("server.host", "KBASE_SERVER_HOST", "SERVER_HOST")
+	v.BindEnv("server.port", "KBASE_SERVER_PORT", "SERVER_PORT")
+	
+	// 数据库配置
+	v.BindEnv("database.host", "KBASE_DATABASE_HOST", "DB_HOST")
+	v.BindEnv("database.port", "KBASE_DATABASE_PORT", "DB_PORT")
+	v.BindEnv("database.user", "KBASE_DATABASE_USER", "DB_USER")
+	v.BindEnv("database.password", "KBASE_DATABASE_PASSWORD", "DB_PASSWORD")
+	v.BindEnv("database.dbname", "KBASE_DATABASE_DBNAME", "DB_NAME")
+	v.BindEnv("database.sslmode", "KBASE_DATABASE_SSLMODE", "DB_SSLMODE")
+	
+	// JWT配置
+	v.BindEnv("jwt.secret", "KBASE_JWT_SECRET", "JWT_SECRET")
+	v.BindEnv("jwt.expire_time", "KBASE_JWT_EXPIRE_TIME", "JWT_EXPIRE_TIME")
 }

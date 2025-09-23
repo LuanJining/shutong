@@ -44,11 +44,21 @@ cp env.example .env
 
 编辑 `.env` 文件，配置数据库连接信息：
 ```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=your_password
-DB_NAME=kbase
+# 环境配置
+KBASE_ENV=localtest
+
+# 数据库配置
+KBASE_DATABASE_HOST=localhost
+KBASE_DATABASE_PORT=5432
+KBASE_DATABASE_USER=postgres
+KBASE_DATABASE_PASSWORD=your_password
+KBASE_DATABASE_DBNAME=kbase
+```
+
+或者直接使用环境变量：
+```bash
+export KBASE_ENV=localtest
+export KBASE_DATABASE_PASSWORD=your_password
 ```
 
 ### 3. 安装依赖
@@ -71,7 +81,13 @@ make init-db
 ### 5. 启动服务
 
 ```bash
-# 启动IAM服务
+# 启动IAM服务（本地测试环境）
+make run-iam-local
+
+# 启动IAM服务（生产环境）
+make run-iam-prod
+
+# 或者直接运行
 make run-iam
 ```
 
@@ -169,6 +185,34 @@ curl -X PATCH http://localhost:8080/api/v1/auth/change-password \
     "old_password": "oldpassword",
     "new_password": "newpassword123"
   }'
+```
+
+## 配置管理
+
+系统支持多种配置方式，优先级从高到低：
+
+1. **环境变量**：`KBASE_*` 或传统环境变量
+2. **YAML配置文件**：根据 `KBASE_ENV` 环境变量选择
+3. **默认值**：内置默认配置
+
+### 配置文件
+
+- `internal/iam/config/localtest.yaml` - 本地测试环境配置
+- `internal/iam/config/production.yaml` - 生产环境配置
+
+### 环境变量
+
+支持两种环境变量格式：
+
+```bash
+# 新格式（推荐）
+export KBASE_ENV=production
+export KBASE_DATABASE_HOST=localhost
+export KBASE_DATABASE_PASSWORD=secret
+
+# 传统格式（兼容）
+export DB_HOST=localhost
+export DB_PASSWORD=secret
 ```
 
 ## 开发命令

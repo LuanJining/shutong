@@ -34,6 +34,16 @@ clean:
 run-iam:
 	$(GOCMD) run $(MAIN_PATH)
 
+# 运行IAM服务（本地测试环境）
+.PHONY: run-iam-local
+run-iam-local:
+	KBASE_ENV=localtest $(GOCMD) run $(MAIN_PATH)
+
+# 运行IAM服务（生产环境）
+.PHONY: run-iam-prod
+run-iam-prod:
+	KBASE_ENV=production $(GOCMD) run $(MAIN_PATH)
+
 # 初始化数据库
 .PHONY: init-db
 init-db:
@@ -78,6 +88,8 @@ help:
 	@echo "  build-linux - 构建Linux版本"
 	@echo "  clean       - 清理构建文件"
 	@echo "  run-iam     - 运行IAM服务"
+	@echo "  run-iam-local - 运行IAM服务（本地测试环境）"
+	@echo "  run-iam-prod  - 运行IAM服务（生产环境）"
 	@echo "  init-db     - 初始化数据库"
 	@echo "  test        - 运行测试"
 	@echo "  test-api    - 运行API测试"

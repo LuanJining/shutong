@@ -1,0 +1,15 @@
+server:
+  host: localhost
+  port: "8080"
+
+database:
+  host: localhost
+  port: "5432"
+  user: postgres
+  password: password
+  dbname: kbase
+  sslmode: disable
+
+jwt:
+  secret: your-secret-key-change-this-in-production
+  expire_time: 24
