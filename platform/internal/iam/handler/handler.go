@@ -1,97 +1,388 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
 
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/model"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/service"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
+
+// Handler 处理器结构体
+type Handler struct {
+	db          *gorm.DB
+	authService *service.AuthService
+}
+
+// NewHandler 创建新的处理器
+func NewHandler(db *gorm.DB, authService *service.AuthService) *Handler {
+	return &Handler{
+		db:          db,
+		authService: authService,
+	}
+}
 
 // 认证相关处理器
 
-func Login(c *gin.Context) {
-	// TODO: 实现登录逻辑
-	c.JSON(http.StatusOK, gin.H{"message": "Login endpoint"})
+func (h *Handler) Login(c *gin.Context) {
+	var req service.LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	response, err := h.authService.Login(&req)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "登录成功",
+		"data":    response,
+	})
 }
 
-func Logout(c *gin.Context) {
-	// TODO: 实现登出逻辑
-	c.JSON(http.StatusOK, gin.H{"message": "Logout endpoint"})
+
+func (h *Handler) Logout(c *gin.Context) {
+	// JWT是无状态的，登出只需要客户端删除token
+	c.JSON(http.StatusOK, gin.H{"message": "登出成功"})
 }
 
-func RefreshToken(c *gin.Context) {
+func (h *Handler) RefreshToken(c *gin.Context) {
 	// TODO: 实现刷新token逻辑
 	c.JSON(http.StatusOK, gin.H{"message": "Refresh token endpoint"})
 }
 
+func (h *Handler) ChangePassword(c *gin.Context) {
+	// 获取当前用户
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "用户未认证"})
+		return
+	}
+
+	userModel, ok := user.(*model.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "用户信息格式错误"})
+		return
+	}
+
+	var req service.ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.authService.ChangePassword(userModel.ID, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "密码修改成功"})
+}
+
 // 用户管理处理器
 
-func GetUsers(c *gin.Context) {
-	// TODO: 实现获取用户列表逻辑
-	c.JSON(http.StatusOK, gin.H{"message": "Get users endpoint"})
+func (h *Handler) GetUsers(c *gin.Context) {
+	var users []model.User
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+	offset := (page - 1) * pageSize
+
+	if err := h.db.Preload("Roles").Offset(offset).Limit(pageSize).Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var total int64
+	h.db.Model(&model.User{}).Count(&total)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "获取用户列表成功",
+		"data": gin.H{
+			"users": users,
+			"pagination": gin.H{
+				"page":      page,
+				"page_size": pageSize,
+				"total":     total,
+			},
+		},
+	})
 }
 
-func GetUser(c *gin.Context) {
-	// TODO: 实现获取单个用户逻辑
-	id := c.Param("id")
-	c.JSON(http.StatusOK, gin.H{"message": "Get user", "id": id})
+func (h *Handler) GetUser(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	var user model.User
+	if err := h.db.Preload("Roles").First(&user, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "获取用户信息成功",
+		"data":    user,
+	})
 }
 
-func CreateUser(c *gin.Context) {
-	// TODO: 实现创建用户逻辑
-	c.JSON(http.StatusOK, gin.H{"message": "Create user endpoint"})
+func (h *Handler) CreateUser(c *gin.Context) {
+	var req service.RegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := h.authService.Register(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "创建用户成功",
+		"data":    user,
+	})
 }
 
-func UpdateUser(c *gin.Context) {
-	// TODO: 实现更新用户逻辑
-	id := c.Param("id")
-	c.JSON(http.StatusOK, gin.H{"message": "Update user", "id": id})
+func (h *Handler) UpdateUser(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	var user model.User
+	if err := h.db.First(&user, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var updateData struct {
+		Nickname   string `json:"nickname"`
+		Department string `json:"department"`
+		Company    string `json:"company"`
+		Status     int    `json:"status"`
+	}
+
+	if err := c.ShouldBindJSON(&updateData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 更新用户信息
+	user.Nickname = updateData.Nickname
+	user.Department = updateData.Department
+	user.Company = updateData.Company
+	user.Status = updateData.Status
+
+	if err := h.db.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "更新用户成功",
+		"data":    user,
+	})
 }
 
-func DeleteUser(c *gin.Context) {
-	// TODO: 实现删除用户逻辑
-	id := c.Param("id")
-	c.JSON(http.StatusOK, gin.H{"message": "Delete user", "id": id})
+func (h *Handler) DeleteUser(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	if err := h.db.Delete(&model.User{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "删除用户成功"})
 }
 
 // 角色管理处理器
 
-func GetRoles(c *gin.Context) {
-	// TODO: 实现获取角色列表逻辑
-	c.JSON(http.StatusOK, gin.H{"message": "Get roles endpoint"})
+func (h *Handler) GetRoles(c *gin.Context) {
+	var roles []model.Role
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+	offset := (page - 1) * pageSize
+
+	if err := h.db.Preload("Permissions").Offset(offset).Limit(pageSize).Find(&roles).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var total int64
+	h.db.Model(&model.Role{}).Count(&total)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "获取角色列表成功",
+		"data": gin.H{
+			"roles": roles,
+			"pagination": gin.H{
+				"page":      page,
+				"page_size": pageSize,
+				"total":     total,
+			},
+		},
+	})
 }
 
-func GetRole(c *gin.Context) {
-	// TODO: 实现获取单个角色逻辑
-	id := c.Param("id")
-	c.JSON(http.StatusOK, gin.H{"message": "Get role", "id": id})
+func (h *Handler) GetRole(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色ID"})
+		return
+	}
+
+	var role model.Role
+	if err := h.db.Preload("Permissions").First(&role, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "角色不存在"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "获取角色信息成功",
+		"data":    role,
+	})
 }
 
-func CreateRole(c *gin.Context) {
-	// TODO: 实现创建角色逻辑
-	c.JSON(http.StatusOK, gin.H{"message": "Create role endpoint"})
+func (h *Handler) CreateRole(c *gin.Context) {
+	var role model.Role
+	if err := c.ShouldBindJSON(&role); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.db.Create(&role).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "创建角色成功",
+		"data":    role,
+	})
 }
 
-func UpdateRole(c *gin.Context) {
-	// TODO: 实现更新角色逻辑
-	id := c.Param("id")
-	c.JSON(http.StatusOK, gin.H{"message": "Update role", "id": id})
+func (h *Handler) UpdateRole(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色ID"})
+		return
+	}
+
+	var role model.Role
+	if err := h.db.First(&role, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "角色不存在"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := c.ShouldBindJSON(&role); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.db.Save(&role).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "更新角色成功",
+		"data":    role,
+	})
 }
 
-func DeleteRole(c *gin.Context) {
-	// TODO: 实现删除角色逻辑
-	id := c.Param("id")
-	c.JSON(http.StatusOK, gin.H{"message": "Delete role", "id": id})
+func (h *Handler) DeleteRole(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色ID"})
+		return
+	}
+
+	if err := h.db.Delete(&model.Role{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "删除角色成功"})
 }
 
 // 权限管理处理器
 
-func GetPermissions(c *gin.Context) {
-	// TODO: 实现获取权限列表逻辑
-	c.JSON(http.StatusOK, gin.H{"message": "Get permissions endpoint"})
+func (h *Handler) GetPermissions(c *gin.Context) {
+	var permissions []model.Permission
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+	offset := (page - 1) * pageSize
+
+	if err := h.db.Offset(offset).Limit(pageSize).Find(&permissions).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var total int64
+	h.db.Model(&model.Permission{}).Count(&total)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "获取权限列表成功",
+		"data": gin.H{
+			"permissions": permissions,
+			"pagination": gin.H{
+				"page":      page,
+				"page_size": pageSize,
+				"total":     total,
+			},
+		},
+	})
 }
 
-func GetPermission(c *gin.Context) {
-	// TODO: 实现获取单个权限逻辑
-	id := c.Param("id")
-	c.JSON(http.StatusOK, gin.H{"message": "Get permission", "id": id})
+func (h *Handler) GetPermission(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的权限ID"})
+		return
+	}
+
+	var permission model.Permission
+	if err := h.db.First(&permission, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "权限不存在"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "获取权限信息成功",
+		"data":    permission,
+	})
 }
