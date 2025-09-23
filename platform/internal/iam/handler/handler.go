@@ -59,9 +59,35 @@ func (h *Handler) Logout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "登出成功"})
 }
 
+// @Summary 刷新token
+// @Description 使用refresh token获取新的access token
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param refresh_token body map[string]string true "刷新token请求"
+// @Success 200 {object} service.LoginResponse
+// @Failure 400 {object} map[string]string
+// @Router /api/v1/auth/refresh [post]
 func (h *Handler) RefreshToken(c *gin.Context) {
-	// TODO: 实现刷新token逻辑
-	c.JSON(http.StatusOK, gin.H{"message": "Refresh token endpoint"})
+	var req struct {
+		RefreshToken string `json:"refresh_token" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	response, err := h.authService.RefreshToken(req.RefreshToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "token刷新成功",
+		"data":    response,
+	})
 }
 
 // @Summary 修改密码

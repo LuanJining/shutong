@@ -12,7 +12,8 @@ database:
 
 jwt:
   secret: GdQZZu8HGP1BlENVCyPjqv2j7a0fAGUuE99k+Zde+hh4V1BBGGJVduGvAPeeZg55FzcFTr7xhDXNK5Gn66TmaQ==
-  expire_time: 24
+  access_token_expire_time: 24
+  refresh_token_expire_time: 720
 
 log:
   level: info

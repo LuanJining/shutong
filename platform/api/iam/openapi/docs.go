@@ -115,6 +115,52 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/v1/auth/refresh": {
+            "post": {
+                "description": "使用refresh token获取新的access token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "刷新token",
+                "parameters": [
+                    {
+                        "description": "刷新token请求",
+                        "name": "refresh_token",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/service.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -276,10 +322,16 @@ const docTemplate = `{
         "service.LoginResponse": {
             "type": "object",
             "properties": {
-                "expires_at": {
+                "access_token": {
                     "type": "string"
                 },
-                "token": {
+                "access_token_expires_at": {
+                    "type": "string"
+                },
+                "refresh_token": {
+                    "type": "string"
+                },
+                "refresh_token_expires_at": {
                     "type": "string"
                 },
                 "user": {

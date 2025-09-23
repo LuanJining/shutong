@@ -25,15 +25,17 @@ func NewAuthService(db *gorm.DB, cfg *config.JWTConfig) *AuthService {
 
 // LoginRequest 登录请求
 type LoginRequest struct {
-	Login    string `json:"login" binding:"required"`    // 支持用户名、手机号、邮箱登录
+	Login    string `json:"login" binding:"required"` // 支持用户名、手机号、邮箱登录
 	Password string `json:"password" binding:"required"`
 }
 
 // LoginResponse 登录响应
 type LoginResponse struct {
-	Token     string      `json:"token"`
-	User      *model.User `json:"user"`
-	ExpiresAt time.Time  `json:"expires_at"`
+	AccessToken           string      `json:"access_token"`
+	RefreshToken          string      `json:"refresh_token"`
+	User                  *model.User `json:"user"`
+	AccessTokenExpiresAt  time.Time   `json:"access_token_expires_at"`
+	RefreshTokenExpiresAt time.Time   `json:"refresh_token_expires_at"`
 }
 
 // RegisterRequest 注册请求
@@ -56,7 +58,7 @@ type ChangePasswordRequest struct {
 // Login 用户登录
 func (s *AuthService) Login(req *LoginRequest) (*LoginResponse, error) {
 	var user model.User
-	
+
 	// 查找用户（支持用户名、手机号、邮箱登录）
 	if err := s.db.Preload("Roles").Where("username = ? OR phone = ? OR email = ?", req.Login, req.Login, req.Login).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -76,7 +78,7 @@ func (s *AuthService) Login(req *LoginRequest) (*LoginResponse, error) {
 	}
 
 	// 生成JWT token
-	token, expiresAt, err := s.generateToken(&user)
+	accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt, err := s.generateToken(&user)
 	if err != nil {
 		return nil, err
 	}
@@ -87,9 +89,11 @@ func (s *AuthService) Login(req *LoginRequest) (*LoginResponse, error) {
 	s.db.Save(&user)
 
 	return &LoginResponse{
-		Token:     token,
-		User:      &user,
-		ExpiresAt: expiresAt,
+		AccessToken:           accessToken,
+		RefreshToken:          refreshToken,
+		User:                  &user,
+		AccessTokenExpiresAt:  accessTokenExpiresAt,
+		RefreshTokenExpiresAt: refreshTokenExpiresAt,
 	}, nil
 }
 
@@ -161,15 +165,48 @@ func (s *AuthService) ChangePassword(userID uint, req *ChangePasswordRequest) er
 }
 
 // generateToken 生成JWT token
-func (s *AuthService) generateToken(user *model.User) (string, time.Time, error) {
-	expiresAt := time.Now().Add(time.Duration(s.config.ExpireTime) * time.Hour)
-	
+func (s *AuthService) generateToken(user *model.User) (string, string, time.Time, time.Time, error) {
+	accessToken, accessTokenExpiresAt, err := s.generateAccessToken(user)
+	if err != nil {
+		return "", "", time.Time{}, time.Time{}, err
+	}
+	refreshToken, refreshTokenExpiresAt, err := s.generateRefreshToken(user)
+	if err != nil {
+		return "", "", time.Time{}, time.Time{}, err
+	}
+
+	return accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt, nil
+}
+
+func (s *AuthService) generateAccessToken(user *model.User) (string, time.Time, error) {
+	expiresAt := time.Now().Add(time.Duration(s.config.AccessTokenExpireTime) * time.Hour)
+
 	claims := jwt.MapClaims{
 		"user_id":  user.ID,
+		"type":     "access",
 		"username": user.Username,
 		"email":    user.Email,
 		"exp":      expiresAt.Unix(),
 		"iat":      time.Now().Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(s.config.Secret))
+	if err != nil {
+		return "", time.Time{}, err
+	}
+
+	return tokenString, expiresAt, nil
+}
+
+func (s *AuthService) generateRefreshToken(user *model.User) (string, time.Time, error) {
+	expiresAt := time.Now().Add(time.Duration(s.config.RefreshTokenExpireTime) * time.Hour)
+
+	claims := jwt.MapClaims{
+		"user_id": user.ID,
+		"type":    "refresh",
+		"exp":     expiresAt.Unix(),
+		"iat":     time.Now().Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -195,6 +232,12 @@ func (s *AuthService) ValidateToken(tokenString string) (*model.User, error) {
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		// 验证token类型
+		tokenType, ok := claims["type"].(string)
+		if !ok || tokenType != "access" {
+			return nil, errors.New("invalid token type")
+		}
+
 		userID, ok := claims["user_id"].(float64)
 		if !ok {
 			return nil, errors.New("invalid token claims")
@@ -209,4 +252,73 @@ func (s *AuthService) ValidateToken(tokenString string) (*model.User, error) {
 	}
 
 	return nil, errors.New("invalid token")
+}
+
+// ValidateRefreshToken 验证刷新token
+func (s *AuthService) ValidateRefreshToken(tokenString string) (*model.User, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		return []byte(s.config.Secret), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		// 验证token类型
+		tokenType, ok := claims["type"].(string)
+		if !ok || tokenType != "refresh" {
+			return nil, errors.New("invalid refresh token type")
+		}
+
+		userID, ok := claims["user_id"].(float64)
+		if !ok {
+			return nil, errors.New("invalid token claims")
+		}
+
+		var user model.User
+		if err := s.db.Preload("Roles").First(&user, uint(userID)).Error; err != nil {
+			return nil, err
+		}
+
+		return &user, nil
+	}
+
+	return nil, errors.New("invalid refresh token")
+}
+
+// RefreshToken 刷新token
+func (s *AuthService) RefreshToken(refreshToken string) (*LoginResponse, error) {
+	// 验证刷新token
+	user, err := s.ValidateRefreshToken(refreshToken)
+	if err != nil {
+		return nil, err
+	}
+
+	// 检查用户状态
+	if user.Status != 1 {
+		return nil, errors.New("用户已被禁用")
+	}
+
+	// 生成新的token对
+	accessToken, newRefreshToken, accessTokenExpiresAt, refreshTokenExpiresAt, err := s.generateToken(user)
+	if err != nil {
+		return nil, err
+	}
+
+	// 更新最后登录时间
+	now := time.Now()
+	user.LastLogin = &now
+	s.db.Save(user)
+
+	return &LoginResponse{
+		AccessToken:           accessToken,
+		RefreshToken:          newRefreshToken,
+		User:                  user,
+		AccessTokenExpiresAt:  accessTokenExpiresAt,
+		RefreshTokenExpiresAt: refreshTokenExpiresAt,
+	}, nil
 }
