@@ -430,3 +430,58 @@ func (h *Handler) GetPermission(c *gin.Context) {
 		"data":    permission,
 	})
 }
+
+// @Summary 检查用户权限
+// @Description 检查当前用户是否有指定权限
+// @Tags Permissions
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
+// @Param permission_check body map[string]interface{} true "权限检查请求"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Router /api/v1/permissions/check [post]
+func (h *Handler) CheckPermission(c *gin.Context) {
+	// 从上下文获取当前用户
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "用户未认证"})
+		return
+	}
+
+	userModel, ok := user.(*model.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "用户信息格式错误"})
+		return
+	}
+
+	var req struct {
+		SpaceID  uint   `json:"space_id"`
+		Resource string `json:"resource" binding:"required"`
+		Action   string `json:"action" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 检查用户权限
+	hasPermission, err := h.authService.CheckPermission(userModel.ID, req.SpaceID, req.Resource, req.Action)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "权限检查失败"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "权限检查完成",
+		"data": gin.H{
+			"has_permission": hasPermission,
+			"user_id":        userModel.ID,
+			"space_id":       req.SpaceID,
+			"resource":       req.Resource,
+			"action":         req.Action,
+		},
+	})
+}

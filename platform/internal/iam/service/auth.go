@@ -322,3 +322,35 @@ func (s *AuthService) RefreshToken(refreshToken string) (*LoginResponse, error) 
 		RefreshTokenExpiresAt: refreshTokenExpiresAt,
 	}, nil
 }
+
+// CheckPermission 检查用户权限
+func (s *AuthService) CheckPermission(userID uint, spaceID uint, resource string, action string) (bool, error) {
+	var user model.User
+	if err := s.db.Preload("Roles.Permissions").First(&user, userID).Error; err != nil {
+		return false, err
+	}
+
+	// 检查用户状态
+	if user.Status != 1 {
+		return false, errors.New("用户已被禁用")
+	}
+
+	// 如果指定了空间ID，检查用户是否在该空间中
+	if spaceID > 0 {
+		var spaceMember model.SpaceMember
+		if err := s.db.Where("space_id = ? AND user_id = ?", spaceID, userID).First(&spaceMember).Error; err != nil {
+			return false, nil // 用户不在该空间中
+		}
+	}
+
+	// 检查用户角色权限
+	for _, role := range user.Roles {
+		for _, permission := range role.Permissions {
+			if permission.Resource == resource && permission.Action == action {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
+}

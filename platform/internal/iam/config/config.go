@@ -104,7 +104,8 @@ func bindEnvVars(v *viper.Viper) {
 
 	// JWT配置
 	v.BindEnv("jwt.secret", "KBASE_JWT_SECRET", "JWT_SECRET")
-	v.BindEnv("jwt.expire_time", "KBASE_JWT_EXPIRE_TIME", "JWT_EXPIRE_TIME")
+	v.BindEnv("jwt.access_token_expire_time", "KBASE_JWT_ACCESS_TOKEN_EXPIRE_TIME", "JWT_ACCESS_TOKEN_EXPIRE_TIME")
+	v.BindEnv("jwt.refresh_token_expire_time", "KBASE_JWT_REFRESH_TOKEN_EXPIRE_TIME", "JWT_REFRESH_TOKEN_EXPIRE_TIME")
 
 	// 日志配置
 	v.BindEnv("log.level", "KBASE_LOG_LEVEL", "LOG_LEVEL")
@@ -114,7 +115,7 @@ func bindEnvVars(v *viper.Viper) {
 func setDefaults(v *viper.Viper) {
 	// 服务器默认配置
 	v.SetDefault("server.host", "localhost")
-	v.SetDefault("server.port", "8080")
+	v.SetDefault("server.port", "8081")
 
 	// 数据库默认配置
 	v.SetDefault("database.host", "localhost")
@@ -126,7 +127,8 @@ func setDefaults(v *viper.Viper) {
 
 	// JWT默认配置
 	v.SetDefault("jwt.secret", "your-secret-key")
-	v.SetDefault("jwt.expire_time", 24)
+	v.SetDefault("jwt.access_token_expire_time", 24)
+	v.SetDefault("jwt.refresh_token_expire_time", 720)
 
 	// 日志默认配置
 	v.SetDefault("log.level", "info")

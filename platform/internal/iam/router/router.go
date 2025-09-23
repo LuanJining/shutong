@@ -53,7 +53,7 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			users.GET("", h.GetUsers)
 			users.GET("/:id", h.GetUser)
 			users.PUT("/:id", h.UpdateUser)
-			
+
 			// 只有超级管理员才能创建和删除用户
 			users.POST("", middleware.RequireRole([]string{"super_admin"}), h.CreateUser)
 			users.DELETE("/:id", middleware.RequireRole([]string{"super_admin"}), h.DeleteUser)
@@ -76,6 +76,7 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 		{
 			permissions.GET("", h.GetPermissions)
 			permissions.GET("/:id", h.GetPermission)
+			permissions.POST("/check", h.CheckPermission)
 		}
 	}
 
