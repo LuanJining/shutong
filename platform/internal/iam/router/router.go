@@ -57,6 +57,10 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			// 只有超级管理员才能创建和删除用户
 			users.POST("", middleware.RequireRole([]string{"super_admin"}), h.CreateUser)
 			users.DELETE("/:id", middleware.RequireRole([]string{"super_admin"}), h.DeleteUser)
+
+			// 用户角色管理
+			users.POST("/:id/roles", h.AssignUserRole)
+			users.DELETE("/:id/roles/:role_id", h.RemoveUserRole)
 		}
 
 		// 角色管理路由
@@ -68,6 +72,11 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			roles.POST("", h.CreateRole)
 			roles.PUT("/:id", h.UpdateRole)
 			roles.DELETE("/:id", h.DeleteRole)
+
+			// 角色权限管理
+			roles.POST("/:id/permissions", h.AssignRolePermission)
+			roles.DELETE("/:id/permissions/:permission_id", h.RemoveRolePermission)
+			roles.GET("/:id/permissions", h.GetRolePermissions)
 		}
 
 		// 权限管理路由
@@ -77,6 +86,23 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			permissions.GET("", h.GetPermissions)
 			permissions.GET("/:id", h.GetPermission)
 			permissions.POST("/check", h.CheckPermission)
+		}
+
+		// 空间管理路由
+		spaces := api.Group("/spaces")
+		spaces.Use(middleware.AuthRequired(authService))
+		{
+			spaces.GET("", h.GetSpaces)
+			spaces.GET("/:id", h.GetSpace)
+			spaces.POST("", h.CreateSpace)
+			spaces.PUT("/:id", h.UpdateSpace)
+			spaces.DELETE("/:id", h.DeleteSpace)
+
+			// 空间成员管理
+			spaces.GET("/:id/members", h.GetSpaceMembers)
+			spaces.POST("/:id/members", h.AddSpaceMember)
+			spaces.DELETE("/:id/members/:user_id", h.RemoveSpaceMember)
+			spaces.PUT("/:id/members/:user_id", h.UpdateSpaceMemberRole)
 		}
 	}
 

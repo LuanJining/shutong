@@ -335,7 +335,25 @@ func (s *AuthService) CheckPermission(userID uint, spaceID uint, resource string
 		return false, errors.New("用户已被禁用")
 	}
 
-	// 如果指定了空间ID，检查用户是否在该空间中
+	// 检查用户角色权限
+	for _, role := range user.Roles {
+		// 超级管理员拥有万能权限，不受空间限制
+		if role.Name == "super_admin" {
+			return true, nil
+		}
+
+		// 企业管理员拥有跨空间权限，但需要检查具体权限
+		if role.Name == "corp_admin" {
+			for _, permission := range role.Permissions {
+				if permission.Resource == resource && permission.Action == action {
+					return true, nil // 有权限，可以跨空间访问
+				}
+			}
+			// 企业管理员但没有对应权限，继续检查其他角色
+		}
+	}
+
+	// 其他角色需要检查空间权限
 	if spaceID > 0 {
 		var spaceMember model.SpaceMember
 		if err := s.db.Where("space_id = ? AND user_id = ?", spaceID, userID).First(&spaceMember).Error; err != nil {
