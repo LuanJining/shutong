@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iam-deployment
+  namespace: kb-platform
+  labels:
+    app: iam
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: iam
+  template:
+    metadata:
+      labels:
+        app: iam
+    spec:
+      containers:
+      - name: iam
+        image: platform-iam:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        env:
+        - name: KBASE_ENV
+          value: "production"
+        - name: KBASE_DATABASE_HOST
+          value: "postgres-master-service"
+        - name: KBASE_DATABASE_PORT
+          value: "5432"
+        - name: KBASE_DATABASE_USER
+          value: "postgres"
+        - name: KBASE_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: KBASE_DATABASE_DBNAME
+          value: "kb-platform"
+        - name: KBASE_DATABASE_SSLMODE
+          value: "disable"
+        - name: KBASE_JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: iam-secret
+              key: jwt-secret
+        - name: KBASE_JWT_EXPIRE_TIME
+          value: "24"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: config-volume
+          mountPath: /root/config
+          readOnly: true
+      volumes:
+      - name: config-volume
+        configMap:
+          name: iam-config
+      restartPolicy: Always

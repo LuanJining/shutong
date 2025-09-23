@@ -80,6 +80,26 @@ vet:
 test-api:
 	./scripts/test-iam.sh
 
+# Docker部署
+.PHONY: docker-deploy
+docker-deploy:
+	cd deployment/docker && ./deploy.sh
+
+# Docker停止
+.PHONY: docker-stop
+docker-stop:
+	cd deployment/docker && docker-compose down
+
+# Kubernetes部署
+.PHONY: k8s-deploy
+k8s-deploy:
+	cd deployment/k8s && ./deploy.sh
+
+# Kubernetes停止
+.PHONY: k8s-stop
+k8s-stop:
+	kubectl delete namespace kb-platform
+
 # 帮助
 .PHONY: help
 help:
@@ -93,6 +113,10 @@ help:
 	@echo "  init-db     - 初始化数据库"
 	@echo "  test        - 运行测试"
 	@echo "  test-api    - 运行API测试"
+	@echo "  docker-deploy - Docker部署"
+	@echo "  docker-stop   - Docker停止"
+	@echo "  k8s-deploy    - Kubernetes部署"
+	@echo "  k8s-stop      - Kubernetes停止"
 	@echo "  deps        - 下载依赖"
 	@echo "  install     - 安装依赖"
 	@echo "  fmt         - 格式化代码"

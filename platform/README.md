@@ -238,20 +238,87 @@ make clean
 
 ### Docker部署
 
-```bash
-# 构建镜像
-docker build -t kbase-platform .
+使用Docker Compose一键部署所有服务：
 
-# 运行容器
-docker run -p 8080:8080 kbase-platform
+```bash
+# 一键部署
+make docker-deploy
+
+# 或者手动部署
+cd deployment/docker
+./deploy.sh
+```
+
+部署的服务：
+- **PostgreSQL**: 端口5432
+- **IAM服务**: 端口8080
+- **KBService**: 端口8081  
+- **Workflow**: 端口8082
+- **Nginx**: 端口80（反向代理）
+
+管理命令：
+```bash
+# 查看服务状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f
+
+# 停止服务
+make docker-stop
+
+# 重启服务
+docker-compose restart
 ```
 
 ### Kubernetes部署
 
+使用Kubernetes部署到集群：
+
 ```bash
-# 应用Kubernetes配置
-kubectl apply -f deployment/k8s/
+# 一键部署
+make k8s-deploy
+
+# 或者手动部署
+cd deployment/k8s
+./deploy.sh
 ```
+
+部署的资源：
+- **Namespace**: kb-platform
+- **StatefulSet**: PostgreSQL数据库
+- **Deployment**: IAM服务（2个副本）
+- **Service**: 内部服务发现
+- **ConfigMap**: 配置文件
+- **Secret**: 敏感信息
+
+管理命令：
+```bash
+# 查看Pod状态
+kubectl get pods -n kb-platform
+
+# 查看服务
+kubectl get services -n kb-platform
+
+# 查看日志
+kubectl logs -f deployment/iam-deployment -n kb-platform
+
+# 停止部署
+make k8s-stop
+```
+
+### 环境要求
+
+**Docker部署**：
+- Docker 20.10+
+- Docker Compose 2.0+
+- 至少2GB可用内存
+
+**Kubernetes部署**：
+- Kubernetes 1.20+
+- kubectl 1.20+
+- 至少4GB可用内存
+- 支持LoadBalancer或NodePort
 
 ## 安全注意事项
 

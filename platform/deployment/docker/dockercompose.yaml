@@ -1,0 +1,137 @@
+version: '3.8'
+
+services:
+  # PostgreSQL数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: platform-postgres
+    environment:
+      POSTGRES_DB: kb-platform
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db-script/init-database.sql:/docker-entrypoint-initdb.d/init-database.sql
+    networks:
+      - platform-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # IAM服务
+  iam:
+    build:
+      context: ../../
+      dockerfile: deployment/docker/dockerfile/Dockerfile.IAM
+    container_name: platform-iam
+    environment:
+      KBASE_ENV: production
+      KBASE_DATABASE_HOST: postgres
+      KBASE_DATABASE_PORT: "5432"
+      KBASE_DATABASE_USER: postgres
+      KBASE_DATABASE_PASSWORD: postgres123
+      KBASE_DATABASE_DBNAME: kb-platform
+      KBASE_DATABASE_SSLMODE: disable
+      KBASE_JWT_SECRET: your-secret-key-change-this-in-production
+      KBASE_JWT_EXPIRE_TIME: "24"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - platform-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # KBService服务
+  kbservice:
+    build:
+      context: ../../
+      dockerfile: deployment/docker/dockerfile/Dockerfile.kbservice
+    container_name: platform-kbservice
+    environment:
+      KBASE_ENV: production
+      KBASE_DATABASE_HOST: postgres
+      KBASE_DATABASE_PORT: "5432"
+      KBASE_DATABASE_USER: postgres
+      KBASE_DATABASE_PASSWORD: postgres123
+      KBASE_DATABASE_DBNAME: kb-platform
+      KBASE_DATABASE_SSLMODE: disable
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - platform-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Workflow服务
+  workflow:
+    build:
+      context: ../../
+      dockerfile: deployment/docker/dockerfile/Dockerfile.workflow
+    container_name: platform-workflow
+    environment:
+      KBASE_ENV: production
+      KBASE_DATABASE_HOST: postgres
+      KBASE_DATABASE_PORT: "5432"
+      KBASE_DATABASE_USER: postgres
+      KBASE_DATABASE_PASSWORD: postgres123
+      KBASE_DATABASE_DBNAME: kb-platform
+      KBASE_DATABASE_SSLMODE: disable
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - platform-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: platform-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - iam
+      - kbservice
+      - workflow
+    networks:
+      - platform-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  platform-network:
+    driver: bridge
