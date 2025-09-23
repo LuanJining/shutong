@@ -55,8 +55,8 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			users.PUT("/:id", h.UpdateUser)
 			
 			// 只有超级管理员才能创建和删除用户
-			users.POST("", middleware.RequireRole("super_admin"), h.CreateUser)
-			users.DELETE("/:id", middleware.RequireRole("super_admin"), h.DeleteUser)
+			users.POST("", middleware.RequireRole([]string{"super_admin"}), h.CreateUser)
+			users.DELETE("/:id", middleware.RequireRole([]string{"super_admin"}), h.DeleteUser)
 		}
 
 		// 角色管理路由

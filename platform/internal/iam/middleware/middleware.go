@@ -3,6 +3,7 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/model"
@@ -17,7 +18,7 @@ func Logger() gin.HandlerFunc {
 		statusColor := param.StatusCodeColor()
 		methodColor := param.MethodColor()
 		resetColor := param.ResetColor()
-		
+
 		// 根据状态码选择日志级别
 		var level string
 		if param.StatusCode >= 500 {
@@ -27,7 +28,7 @@ func Logger() gin.HandlerFunc {
 		} else {
 			level = "INFO"
 		}
-		
+
 		// 格式化日志输出
 		return fmt.Sprintf("[%s] %s %s %s%s%s %s %s%d%s %s %s\n",
 			level,
@@ -97,7 +98,7 @@ func AuthRequired(authService *service.AuthService) gin.HandlerFunc {
 }
 
 // RequireRole 角色权限检查中间件
-func RequireRole(roleName string) gin.HandlerFunc {
+func RequireRole(roleName []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, exists := c.Get("user")
 		if !exists {
@@ -117,14 +118,14 @@ func RequireRole(roleName string) gin.HandlerFunc {
 		// 检查用户是否具有指定角色
 		hasRole := false
 		for _, role := range userModel.Roles {
-			if role.Name == roleName {
+			if slices.Contains(roleName, role.Name) {
 				hasRole = true
 				break
 			}
 		}
 
 		if !hasRole {
-			c.JSON(http.StatusForbidden, gin.H{"error": "权限不足，需要" + roleName + "角色"})
+			c.JSON(http.StatusForbidden, gin.H{"error": "权限不足，需要" + strings.Join(roleName, ",") + "角色"})
 			c.Abort()
 			return
 		}
