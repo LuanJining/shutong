@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	_ "gitee.com/sichuan-shutong-zhihui-data/k-base/api/iam/openapi"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/config"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/database"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/router"

@@ -26,7 +26,15 @@ func NewHandler(db *gorm.DB, authService *service.AuthService) *Handler {
 }
 
 // 认证相关处理器
-
+// @Summary 登录
+// @Description 登录
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param login_request body service.LoginRequest true "登录请求"
+// @Success 200 {object} service.LoginResponse
+// @Failure 400 {object} map[string]string
+// @Router /api/v1/auth/login [post]
 func (h *Handler) Login(c *gin.Context) {
 	var req service.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -46,7 +54,6 @@ func (h *Handler) Login(c *gin.Context) {
 	})
 }
 
-
 func (h *Handler) Logout(c *gin.Context) {
 	// JWT是无状态的，登出只需要客户端删除token
 	c.JSON(http.StatusOK, gin.H{"message": "登出成功"})
@@ -57,6 +64,17 @@ func (h *Handler) RefreshToken(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Refresh token endpoint"})
 }
 
+// @Summary 修改密码
+// @Description 修改密码
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
+// @Param change_password_request body service.ChangePasswordRequest true "修改密码请求"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Router /api/v1/auth/change-password [patch]
 func (h *Handler) ChangePassword(c *gin.Context) {
 	// 获取当前用户
 	user, exists := c.Get("user")
