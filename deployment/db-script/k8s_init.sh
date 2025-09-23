@@ -18,7 +18,7 @@ kubectl wait --for=condition=ready pod/$POSTGRES_POD -n kb-platform --timeout=60
 
 # 创建数据库
 echo "🗄️ 创建数据库..."
-kubectl exec -it $POSTGRES_POD -n kb-platform -- psql -U postgres -c "CREATE DATABASE kb-platform;"
+kubectl exec -it $POSTGRES_POD -n kb-platform -- psql -U postgres -c "CREATE DATABASE kb_platform;"
 
 # 创建用户
 echo "🗄️ 创建用户..."
@@ -26,11 +26,11 @@ kubectl exec -it $POSTGRES_POD -n kb-platform -- psql -U postgres -c "CREATE USE
 
 # 清理并重新创建数据库结构
 echo "🧹 清理数据库结构..."
-kubectl exec -it $POSTGRES_POD -n kb-platform -- psql -U postgres -d kb-platform -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO postgres; GRANT ALL ON SCHEMA public TO public;"
+kubectl exec -it $POSTGRES_POD -n kb-platform -- psql -U postgres -d kb_platform -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO postgres; GRANT ALL ON SCHEMA public TO public;"
 
 # 执行初始化脚本
 echo "📝 执行数据库初始化脚本..."
-kubectl exec -i $POSTGRES_POD -n kb-platform -- psql -U postgres -d kb-platform < ./init-database.sql
+kubectl exec -i $POSTGRES_POD -n kb-platform -- psql -U postgres -d kb_platform < ./init-database.sql
 
 echo "✅ PostgreSQL master 数据库初始化完成！"
 
