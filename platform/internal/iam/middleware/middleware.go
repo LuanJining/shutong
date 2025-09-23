@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/model"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/service"
@@ -14,16 +13,31 @@ import (
 // Logger 日志中间件
 func Logger() gin.HandlerFunc {
 	return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
-		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",
+		// 状态码颜色
+		statusColor := param.StatusCodeColor()
+		methodColor := param.MethodColor()
+		resetColor := param.ResetColor()
+		
+		// 根据状态码选择日志级别
+		var level string
+		if param.StatusCode >= 500 {
+			level = "ERROR"
+		} else if param.StatusCode >= 400 {
+			level = "WARN"
+		} else {
+			level = "INFO"
+		}
+		
+		// 格式化日志输出
+		return fmt.Sprintf("[%s] %s %s %s%s%s %s %s%d%s %s %s\n",
+			level,
+			param.TimeStamp.Format("2006/01/02 15:04:05"),
 			param.ClientIP,
-			param.TimeStamp.Format(time.RFC1123),
-			param.Method,
+			methodColor, param.Method, resetColor,
 			param.Path,
-			param.Request.Proto,
-			param.StatusCode,
+			statusColor, param.StatusCode, resetColor,
 			param.Latency,
 			param.Request.UserAgent(),
-			param.ErrorMessage,
 		)
 	})
 }

@@ -17,7 +17,7 @@ func main() {
 	}
 
 	// 初始化数据库
-	db, err := database.Init(cfg.Database)
+	db, err := database.Init(cfg.Database, cfg.Log)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}

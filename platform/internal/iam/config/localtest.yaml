@@ -7,9 +7,13 @@ database:
   port: "5432"
   user: postgres
   password: password
-  dbname: kbase
+  dbname: kb_platform
   sslmode: disable
 
 jwt:
-  secret: your-secret-key-change-this-in-production
+  secret: GdQZZu8HGP1BlENVCyPjqv2j7a0fAGUuE99k+Zde+hh4V1BBGGJVduGvAPeeZg55FzcFTr7xhDXNK5Gn66TmaQ==
   expire_time: 24
+
+log:
+  level: info
+  db_log_level: warn

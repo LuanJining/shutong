@@ -12,6 +12,7 @@ type Config struct {
 	Server   ServerConfig `mapstructure:"server"`
 	Database DatabaseConfig `mapstructure:"database"`
 	JWT      JWTConfig `mapstructure:"jwt"`
+	Log      LogConfig `mapstructure:"log"`
 }
 
 type ServerConfig struct {
@@ -31,6 +32,11 @@ type DatabaseConfig struct {
 type JWTConfig struct {
 	Secret     string `mapstructure:"secret"`
 	ExpireTime int    `mapstructure:"expire_time"` // 小时
+}
+
+type LogConfig struct {
+	Level      string `mapstructure:"level"`       // 日志级别: debug, info, warn, error
+	DBLogLevel string `mapstructure:"db_log_level"` // 数据库日志级别: silent, error, warn, info
 }
 
 func Load() (*Config, error) {
@@ -70,6 +76,9 @@ func Load() (*Config, error) {
 	// 绑定环境变量到配置
 	bindEnvVars(v)
 	
+	// 设置默认值
+	setDefaults(v)
+	
 	// 解析配置到结构体
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
@@ -95,4 +104,30 @@ func bindEnvVars(v *viper.Viper) {
 	// JWT配置
 	v.BindEnv("jwt.secret", "KBASE_JWT_SECRET", "JWT_SECRET")
 	v.BindEnv("jwt.expire_time", "KBASE_JWT_EXPIRE_TIME", "JWT_EXPIRE_TIME")
+	
+	// 日志配置
+	v.BindEnv("log.level", "KBASE_LOG_LEVEL", "LOG_LEVEL")
+	v.BindEnv("log.db_log_level", "KBASE_DB_LOG_LEVEL", "DB_LOG_LEVEL")
+}
+
+func setDefaults(v *viper.Viper) {
+	// 服务器默认配置
+	v.SetDefault("server.host", "localhost")
+	v.SetDefault("server.port", "8080")
+	
+	// 数据库默认配置
+	v.SetDefault("database.host", "localhost")
+	v.SetDefault("database.port", "5432")
+	v.SetDefault("database.user", "postgres")
+	v.SetDefault("database.password", "password")
+	v.SetDefault("database.dbname", "kb_platform")
+	v.SetDefault("database.sslmode", "disable")
+	
+	// JWT默认配置
+	v.SetDefault("jwt.secret", "your-secret-key")
+	v.SetDefault("jwt.expire_time", 24)
+	
+	// 日志默认配置
+	v.SetDefault("log.level", "info")
+	v.SetDefault("log.db_log_level", "warn")
 }
