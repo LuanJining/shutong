@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/config"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/database"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/router"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/server"
 )
@@ -16,7 +17,7 @@ func main() {
 	}
 
 	// 初始化数据库
-	db, err := database.InitDB(cfg.Database)
+	db, err := database.Init(cfg.Database, cfg.Log)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
