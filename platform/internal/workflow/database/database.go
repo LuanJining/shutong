@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/config"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -45,5 +46,11 @@ func Init(cfg config.DatabaseConfig, logCfg config.LogConfig) (*gorm.DB, error) 
 
 func autoMigrate(db *gorm.DB) error {
 	// 自动迁移所有模型
-	return db.AutoMigrate()
+	return db.AutoMigrate(
+		&models.WorkflowDefinition{},
+		&models.WorkflowStep{},
+		&models.WorkflowInstance{},
+		&models.WorkflowTask{},
+		&models.WorkflowNotification{},
+	)
 }

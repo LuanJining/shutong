@@ -22,3 +22,18 @@ func CORS() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+// FetchUserIdFromHeader 从请求头中获取用户ID
+func FetchUserIdFromHeader() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := c.GetHeader("X-User-ID")
+		if userID == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "用户未认证"})
+			c.Abort()
+			return
+		}
+
+		c.Set("user_id", userID)
+		c.Next()
+	}
+}
