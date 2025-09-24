@@ -145,6 +145,12 @@ func (h *Handler) GetUsers(c *gin.Context) {
 	var total int64
 	h.db.Model(&model.User{}).Count(&total)
 
+	// 脱敏
+	for i := range users {
+		users[i].Password = ""
+		users[i].Roles = []model.Role{}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "获取用户列表成功",
 		"data": gin.H{
@@ -174,6 +180,10 @@ func (h *Handler) GetUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// 脱敏
+	user.Password = ""
+	user.Roles = []model.Role{}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "获取用户信息成功",
@@ -1098,4 +1108,39 @@ func (h *Handler) RemoveUserRole(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "移除用户角色成功"})
+}
+
+// @Summary 获取空间成员列表
+// @Description 获取空间中的所有成员
+// @Tags Spaces
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
+// @Param id path int true "空间ID"
+// @Param role_id path int true "角色ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /api/v1/spaces/{id}/members/{role_id} [get]
+func (h *Handler) GetSpaceMembersByRole(c *gin.Context) {
+	spaceID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的空间ID"})
+		return
+	}
+
+	roleID, err := strconv.Atoi(c.Param("role_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色ID"})
+		return
+	}
+
+	var members []model.SpaceMember
+	if err := h.db.Where("space_id = ? AND role_id = ?", spaceID, roleID).Find(&members).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "获取空间成员成功", "data": members})
 }

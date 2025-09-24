@@ -13,15 +13,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type Handler struct {
+type IamHandler struct {
 	config *config.IamConfig
 }
 
-func NewHandler(config *config.IamConfig) *Handler {
-	return &Handler{config: config}
+func NewIamHandler(config *config.IamConfig) *IamHandler {
+	return &IamHandler{config: config}
 }
 
-func (h *Handler) ProxyToIamClient(c *gin.Context) {
+func (h *IamHandler) ProxyToIamClient(c *gin.Context) {
 	iamClient := h.config.Url
 	path := c.Request.URL.Path
 

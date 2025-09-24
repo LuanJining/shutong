@@ -153,6 +153,10 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 				middleware.RequireSpaceMemberFromURL(db),
 				middleware.RequireRole([]string{model.RoleSuperAdmin, model.RoleEnterpriseAdmin, model.RoleSpaceAdmin}),
 				h.UpdateSpaceMemberRole)
+			spaces.GET("/:id/members/:role_id",
+				middleware.RequireSpaceMemberFromURL(db),
+				middleware.RequireRole([]string{model.RoleSuperAdmin, model.RoleEnterpriseAdmin, model.RoleSpaceAdmin}),
+				h.GetSpaceMembersByRole)
 		}
 	}
 

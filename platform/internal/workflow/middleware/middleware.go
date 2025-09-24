@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,14 +27,22 @@ func CORS() gin.HandlerFunc {
 // FetchUserIdFromHeader 从请求头中获取用户ID
 func FetchUserIdFromHeader() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("X-User-ID")
-		if userID == "" {
+		userIDStr := c.GetHeader("X-User-ID")
+		if userIDStr == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "用户未认证"})
 			c.Abort()
 			return
 		}
 
-		c.Set("user_id", userID)
+		// 将字符串转换为uint
+		userID, err := strconv.ParseUint(userIDStr, 10, 32)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+			c.Abort()
+			return
+		}
+
+		c.Set("user_id", uint(userID))
 		c.Next()
 	}
 }

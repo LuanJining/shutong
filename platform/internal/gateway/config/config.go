@@ -9,9 +9,11 @@ import (
 )
 
 type Config struct {
-	Server ServerConfig `mapstructure:"server"`
-	Iam    IamConfig    `mapstructure:"iam"`
-	Gin    GinConfig    `mapstructure:"gin"`
+	Server   ServerConfig   `mapstructure:"server"`
+	Iam      IamConfig      `mapstructure:"iam"`
+	Gin      GinConfig      `mapstructure:"gin"`
+	Kb       KbConfig       `mapstructure:"kb"`
+	Workflow WorkflowConfig `mapstructure:"workflow"`
 }
 
 type ServerConfig struct {
@@ -25,6 +27,14 @@ type IamConfig struct {
 
 type GinConfig struct {
 	Mode string `mapstructure:"mode"`
+}
+
+type KbConfig struct {
+	Url string `mapstructure:"url"`
+}
+
+type WorkflowConfig struct {
+	Url string `mapstructure:"url"`
 }
 
 func Load() (*Config, error) {
@@ -84,5 +94,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.host", "0.0.0.0")
 	v.SetDefault("server.port", "8080")
 	v.SetDefault("iam.url", "http://localhost:8081")
+	v.SetDefault("kb.url", "http://localhost:8082")
+	v.SetDefault("workflow.url", "http://localhost:8083")
 	v.SetDefault("gin.mode", "debug")
 }

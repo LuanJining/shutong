@@ -26,24 +26,32 @@ echo -e "\n2. 通过IAM获取认证token..."
 LOGIN_RESPONSE=$(curl -s -X POST "$IAM_URL/auth/login" \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "admin",
+    "login": "admin",
     "password": "admin123"
   }')
 
-TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.data.token')
+TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.data.access_token')
+USER_ID=$(echo "$LOGIN_RESPONSE" | jq -r '.data.user.id')
 if [ "$TOKEN" = "null" ] || [ -z "$TOKEN" ]; then
     echo -e "${RED}❌ 获取token失败，请确保IAM服务已启动${NC}"
     echo "$LOGIN_RESPONSE" | jq .
     exit 1
 fi
 
-echo -e "${GREEN}✅ Token获取成功${NC}"
+if [ "$USER_ID" = "null" ] || [ -z "$USER_ID" ]; then
+    echo -e "${RED}❌ 获取用户ID失败${NC}"
+    echo "$LOGIN_RESPONSE" | jq .
+    exit 1
+fi
+
+echo -e "${GREEN}✅ Token获取成功，用户ID: $USER_ID${NC}"
 
 # 3. 创建审批流程
 echo -e "\n3. 创建审批流程..."
 CREATE_WORKFLOW_RESPONSE=$(curl -s -X POST "$BASE_URL/workflows" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
+  -H "X-User-ID: $USER_ID" \
   -d '{
     "name": "文档发布审批流程",
     "description": "用于文档发布的审批流程",
@@ -94,6 +102,7 @@ echo -e "\n6. 启动流程实例..."
 START_INSTANCE_RESPONSE=$(curl -s -X POST "$BASE_URL/instances" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
+  -H "X-User-ID: $USER_ID" \
   -d '{
     "workflow_id": '$WORKFLOW_ID',
     "title": "测试文档发布申请",
@@ -117,7 +126,8 @@ echo -e "${GREEN}✅ 流程实例启动成功，ID: $INSTANCE_ID${NC}"
 # 7. 获取我的待办任务
 echo -e "\n7. 获取我的待办任务..."
 TASKS_RESPONSE=$(curl -s -X GET "$BASE_URL/tasks?page=1&page_size=10" \
-  -H "Authorization: Bearer $TOKEN")
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-User-ID: $USER_ID")
 
 echo "$TASKS_RESPONSE" | jq .
 
@@ -132,6 +142,7 @@ else
     curl -s -X POST "$BASE_URL/tasks/$TASK_ID/approve" \
       -H "Content-Type: application/json" \
       -H "Authorization: Bearer $TOKEN" \
+      -H "X-User-ID: $USER_ID" \
       -d '{
         "comment": "内容审核通过，可以发布"
       }' | jq .
@@ -142,6 +153,7 @@ fi
 # 9. 再次获取待办任务
 echo -e "\n9. 再次获取待办任务..."
 curl -s -X GET "$BASE_URL/tasks?page=1&page_size=10" \
-  -H "Authorization: Bearer $TOKEN" | jq .
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-User-ID: $USER_ID" | jq .
 
 echo -e "\n${GREEN}=== Workflow服务测试完成 ===${NC}"
