@@ -92,9 +92,42 @@ type Space struct {
 type SpaceMember struct {
 	SpaceID uint   `gorm:"primaryKey"`
 	UserID  uint   `gorm:"primaryKey"`
-	Role    string `json:"role" gorm:"size:50;comment:在空间中的角色:admin,editor,viewer"`
+	Role    string `json:"role" gorm:"size:50;comment:在空间中的角色:space_admin,content_reviewer,content_editor,read_only_user"`
 
 	// 关联关系
 	User  User  `json:"user" gorm:"foreignKey:UserID"`
 	Space Space `json:"space" gorm:"foreignKey:SpaceID"`
 }
+
+// 角色常量定义
+const (
+	RoleSuperAdmin      = "super_admin"
+	RoleEnterpriseAdmin = "enterprise_admin"
+	RoleSpaceAdmin      = "space_admin"
+	RoleContentReviewer = "content_reviewer"
+	RoleContentEditor   = "content_editor"
+	RoleReadOnlyUser    = "read_only_user"
+)
+
+// 权限常量定义
+const (
+	// 内容权限
+	PermissionViewAllContent        = "view_all_content"
+	PermissionCreateDocument        = "create_document"
+	PermissionDeleteDocument        = "delete_document"
+	PermissionMoveDocument          = "move_document"
+	PermissionSetDocumentPermission = "set_document_permission"
+
+	// 空间权限
+	PermissionCreateSpace       = "create_space"
+	PermissionManageSpaceMember = "manage_space_member"
+
+	// 审批流权限
+	PermissionConfigureWorkflow = "configure_workflow"
+
+	// 数据权限
+	PermissionExportData       = "export_data"
+	PermissionExportAllData    = "export_all_data"
+	PermissionViewOperationLog = "view_operation_log"
+	PermissionAddDeleteUser    = "add_delete_user"
+)
