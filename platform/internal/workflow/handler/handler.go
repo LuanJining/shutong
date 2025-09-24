@@ -32,9 +32,9 @@ func NewHandler(db *gorm.DB, workflowService *service.WorkflowService) *Handler 
 // @Produce json
 // @Param X-User-ID header string true "用户ID"
 // @Param request body models.CreateWorkflowRequest true "创建流程请求"
-// @Success 200 {object} models.APIResponse
-// @Failure 400 {object} models.APIResponse
-// @Failure 500 {object} models.APIResponse
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
 // @Router /api/v1/workflow/workflows [post]
 func (h *Handler) CreateWorkflow(c *gin.Context) {
 	var req models.CreateWorkflowRequest
@@ -80,9 +80,9 @@ func (h *Handler) CreateWorkflow(c *gin.Context) {
 // @Param space_id query int false "空间ID"
 // @Param page query int false "页码" default(1)
 // @Param page_size query int false "每页数量" default(10)
-// @Success 200 {object} models.APIResponse
-// @Failure 400 {object} models.APIResponse
-// @Failure 500 {object} models.APIResponse
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
 // @Router /api/v1/workflow/workflows [get]
 func (h *Handler) GetWorkflows(c *gin.Context) {
 	// 获取查询参数
@@ -131,10 +131,10 @@ func (h *Handler) GetWorkflows(c *gin.Context) {
 // @Produce json
 // @Param X-User-ID header string true "用户ID"
 // @Param id path int true "流程ID"
-// @Success 200 {object} models.APIResponse
-// @Failure 400 {object} models.APIResponse
-// @Failure 404 {object} models.APIResponse
-// @Failure 500 {object} models.APIResponse
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
 // @Router /api/v1/workflow/workflows/{id} [get]
 func (h *Handler) GetWorkflow(c *gin.Context) {
 	idStr := c.Param("id")
@@ -178,9 +178,9 @@ func (h *Handler) GetWorkflow(c *gin.Context) {
 // @Produce json
 // @Param X-User-ID header string true "用户ID"
 // @Param request body models.StartWorkflowRequest true "启动流程请求"
-// @Success 200 {object} models.APIResponse
-// @Failure 400 {object} models.APIResponse
-// @Failure 500 {object} models.APIResponse
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
 // @Router /api/v1/workflow/instances [post]
 func (h *Handler) StartWorkflow(c *gin.Context) {
 	var req models.StartWorkflowRequest
@@ -226,9 +226,9 @@ func (h *Handler) StartWorkflow(c *gin.Context) {
 // @Param X-User-ID header string true "用户ID"
 // @Param page query int false "页码" default(1)
 // @Param page_size query int false "每页数量" default(10)
-// @Success 200 {object} models.APIResponse
-// @Failure 400 {object} models.APIResponse
-// @Failure 500 {object} models.APIResponse
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
 // @Router /api/v1/workflow/tasks [get]
 func (h *Handler) GetMyTasks(c *gin.Context) {
 	// 从上下文获取用户ID
@@ -280,9 +280,9 @@ func (h *Handler) GetMyTasks(c *gin.Context) {
 // @Param X-User-ID header string true "用户ID"
 // @Param id path int true "任务ID"
 // @Param request body models.ApproveTaskRequest true "审批请求"
-// @Success 200 {object} models.APIResponse
-// @Failure 400 {object} models.APIResponse
-// @Failure 500 {object} models.APIResponse
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
 // @Router /api/v1/workflow/tasks/{id}/approve [post]
 func (h *Handler) ApproveTask(c *gin.Context) {
 	idStr := c.Param("id")
@@ -338,9 +338,9 @@ func (h *Handler) ApproveTask(c *gin.Context) {
 // @Param X-User-ID header string true "用户ID"
 // @Param id path int true "任务ID"
 // @Param request body models.RejectTaskRequest true "拒绝请求"
-// @Success 200 {object} models.APIResponse
-// @Failure 400 {object} models.APIResponse
-// @Failure 500 {object} models.APIResponse
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
 // @Router /api/v1/workflow/tasks/{id}/reject [post]
 func (h *Handler) RejectTask(c *gin.Context) {
 	idStr := c.Param("id")

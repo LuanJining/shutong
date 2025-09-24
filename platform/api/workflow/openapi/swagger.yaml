@@ -1,0 +1,1206 @@
+definitions:
+  model.Permission:
+    properties:
+      action:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      display_name:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      resource:
+        type: string
+      roles:
+        description: 关联关系
+        items:
+          $ref: '#/definitions/model.Role'
+        type: array
+      updated_at:
+        type: string
+    type: object
+  model.Role:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      display_name:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      permissions:
+        items:
+          $ref: '#/definitions/model.Permission'
+        type: array
+      status:
+        type: integer
+      updated_at:
+        type: string
+      users:
+        description: 关联关系
+        items:
+          $ref: '#/definitions/model.User'
+        type: array
+    type: object
+  model.Space:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: integer
+      creator:
+        allOf:
+        - $ref: '#/definitions/model.User'
+        description: 关联关系
+      description:
+        type: string
+      id:
+        type: integer
+      members:
+        items:
+          $ref: '#/definitions/model.User'
+        type: array
+      name:
+        type: string
+      status:
+        type: integer
+      type:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  model.User:
+    properties:
+      avatar:
+        type: string
+      company:
+        type: string
+      created_at:
+        type: string
+      department:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      last_login:
+        type: string
+      nickname:
+        type: string
+      phone:
+        type: string
+      roles:
+        description: 关联关系
+        items:
+          $ref: '#/definitions/model.Role'
+        type: array
+      status:
+        type: integer
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
+  models.ApproveTaskRequest:
+    properties:
+      comment:
+        type: string
+    type: object
+  models.CreateStepRequest:
+    properties:
+      approver_id:
+        type: integer
+      approver_type:
+        type: string
+      is_required:
+        type: boolean
+      step_name:
+        type: string
+      step_order:
+        type: integer
+      timeout_hours:
+        type: integer
+    required:
+    - approver_type
+    - step_name
+    - step_order
+    type: object
+  models.CreateWorkflowRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      priority:
+        type: integer
+      space_id:
+        type: integer
+      steps:
+        items:
+          $ref: '#/definitions/models.CreateStepRequest'
+        type: array
+    required:
+    - name
+    - space_id
+    - steps
+    type: object
+  models.RejectTaskRequest:
+    properties:
+      comment:
+        type: string
+    required:
+    - comment
+    type: object
+  models.StartWorkflowRequest:
+    properties:
+      description:
+        type: string
+      priority:
+        type: string
+      resource_id:
+        type: integer
+      resource_type:
+        type: string
+      space_id:
+        type: integer
+      title:
+        type: string
+      workflow_id:
+        type: integer
+    required:
+    - resource_id
+    - resource_type
+    - space_id
+    - title
+    - workflow_id
+    type: object
+  service.ChangePasswordRequest:
+    properties:
+      new_password:
+        minLength: 6
+        type: string
+      old_password:
+        type: string
+    required:
+    - new_password
+    - old_password
+    type: object
+  service.LoginRequest:
+    properties:
+      login:
+        description: 支持用户名、手机号、邮箱登录
+        type: string
+      password:
+        type: string
+    required:
+    - login
+    - password
+    type: object
+  service.LoginResponse:
+    properties:
+      access_token:
+        type: string
+      access_token_expires_at:
+        type: string
+      refresh_token:
+        type: string
+      refresh_token_expires_at:
+        type: string
+      user:
+        $ref: '#/definitions/model.User'
+    type: object
+info:
+  contact: {}
+paths:
+  /api/v1/auth/change-password:
+    patch:
+      consumes:
+      - application/json
+      description: 修改密码
+      parameters:
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 修改密码请求
+        in: body
+        name: change_password_request
+        required: true
+        schema:
+          $ref: '#/definitions/service.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 修改密码
+      tags:
+      - Auth
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: 登录
+      parameters:
+      - description: 登录请求
+        in: body
+        name: login_request
+        required: true
+        schema:
+          $ref: '#/definitions/service.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 登录
+      tags:
+      - Auth
+  /api/v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: 使用refresh token获取新的access token
+      parameters:
+      - description: 刷新token请求
+        in: body
+        name: refresh_token
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 刷新token
+      tags:
+      - Auth
+  /api/v1/permissions/check:
+    post:
+      consumes:
+      - application/json
+      description: 检查当前用户是否有指定权限
+      parameters:
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 权限检查请求
+        in: body
+        name: permission_check
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 检查用户权限
+      tags:
+      - Permissions
+  /api/v1/roles/{id}/permissions:
+    get:
+      consumes:
+      - application/json
+      description: 获取角色的所有权限
+      parameters:
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 角色ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 获取角色权限列表
+      tags:
+      - Roles
+    post:
+      consumes:
+      - application/json
+      description: 为角色分配权限
+      parameters:
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 角色ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 权限信息
+        in: body
+        name: permission
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 分配角色权限
+      tags:
+      - Roles
+  /api/v1/roles/{id}/permissions/{permission_id}:
+    delete:
+      consumes:
+      - application/json
+      description: 从角色中移除权限
+      parameters:
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 角色ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 权限ID
+        in: path
+        name: permission_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 移除角色权限
+      tags:
+      - Roles
+  /api/v1/spaces:
+    get:
+      consumes:
+      - application/json
+      description: 分页获取空间列表
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 获取空间列表
+      tags:
+      - Spaces
+    post:
+      consumes:
+      - application/json
+      description: 创建新的知识空间
+      parameters:
+      - description: 空间信息
+        in: body
+        name: space
+        required: true
+        schema:
+          $ref: '#/definitions/model.Space'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 创建空间
+      tags:
+      - Spaces
+  /api/v1/spaces/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除指定空间
+      parameters:
+      - description: 空间ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 删除空间
+      tags:
+      - Spaces
+    get:
+      consumes:
+      - application/json
+      description: 获取指定空间的详细信息
+      parameters:
+      - description: 空间ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 获取空间详情
+      tags:
+      - Spaces
+    put:
+      consumes:
+      - application/json
+      description: 更新空间信息
+      parameters:
+      - description: 空间ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 空间信息
+        in: body
+        name: space
+        required: true
+        schema:
+          $ref: '#/definitions/model.Space'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 更新空间
+      tags:
+      - Spaces
+  /api/v1/spaces/{id}/members:
+    get:
+      consumes:
+      - application/json
+      description: 获取指定空间的所有成员
+      parameters:
+      - description: 空间ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 获取空间成员列表
+      tags:
+      - Spaces
+    post:
+      consumes:
+      - application/json
+      description: 将用户添加到指定空间
+      parameters:
+      - description: 空间ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 成员信息
+        in: body
+        name: member
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 添加空间成员
+      tags:
+      - Spaces
+  /api/v1/spaces/{id}/members/{user_id}:
+    delete:
+      consumes:
+      - application/json
+      description: 从指定空间中移除用户
+      parameters:
+      - description: 空间ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 用户ID
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 移除空间成员
+      tags:
+      - Spaces
+    put:
+      consumes:
+      - application/json
+      description: 更新用户在空间中的角色
+      parameters:
+      - description: 空间ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 用户ID
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - description: 新角色
+        in: body
+        name: role
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 更新空间成员角色
+      tags:
+      - Spaces
+  /api/v1/users/{id}/roles:
+    post:
+      consumes:
+      - application/json
+      description: 为用户分配角色
+      parameters:
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 用户ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 角色信息
+        in: body
+        name: role
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 分配用户角色
+      tags:
+      - Users
+  /api/v1/users/{id}/roles/{role_id}:
+    delete:
+      consumes:
+      - application/json
+      description: 从用户中移除角色
+      parameters:
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 用户ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 角色ID
+        in: path
+        name: role_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 移除用户角色
+      tags:
+      - Users
+  /api/v1/workflow/instances:
+    post:
+      consumes:
+      - application/json
+      description: 启动审批流程实例
+      parameters:
+      - description: 用户ID
+        in: header
+        name: X-User-ID
+        required: true
+        type: string
+      - description: 启动流程请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.StartWorkflowRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 启动流程实例
+      tags:
+      - workflow
+  /api/v1/workflow/tasks:
+    get:
+      description: 获取当前用户的待办审批任务
+      parameters:
+      - description: 用户ID
+        in: header
+        name: X-User-ID
+        required: true
+        type: string
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 获取我的待办任务
+      tags:
+      - workflow
+  /api/v1/workflow/tasks/{id}/approve:
+    post:
+      consumes:
+      - application/json
+      description: 审批通过任务
+      parameters:
+      - description: 用户ID
+        in: header
+        name: X-User-ID
+        required: true
+        type: string
+      - description: 任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 审批请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ApproveTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 审批通过
+      tags:
+      - workflow
+  /api/v1/workflow/tasks/{id}/reject:
+    post:
+      consumes:
+      - application/json
+      description: 审批拒绝任务
+      parameters:
+      - description: 用户ID
+        in: header
+        name: X-User-ID
+        required: true
+        type: string
+      - description: 任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 拒绝请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.RejectTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 审批拒绝
+      tags:
+      - workflow
+  /api/v1/workflow/workflows:
+    get:
+      description: 获取审批流程列表，支持分页
+      parameters:
+      - description: 空间ID
+        in: query
+        name: space_id
+        type: integer
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 获取流程列表
+      tags:
+      - workflow
+    post:
+      consumes:
+      - application/json
+      description: 创建新的审批流程定义
+      parameters:
+      - description: 用户ID
+        in: header
+        name: X-User-ID
+        required: true
+        type: string
+      - description: 创建流程请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateWorkflowRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 创建审批流程
+      tags:
+      - workflow
+  /api/v1/workflow/workflows/{id}:
+    get:
+      description: 根据ID获取审批流程详情
+      parameters:
+      - description: 用户ID
+        in: header
+        name: X-User-ID
+        required: true
+        type: string
+      - description: 流程ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 获取流程详情
+      tags:
+      - workflow
+swagger: "2.0"

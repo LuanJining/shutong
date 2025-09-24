@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	_ "gitee.com/sichuan-shutong-zhihui-data/k-base/api/workflow/openapi"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/config"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/database"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/router"
