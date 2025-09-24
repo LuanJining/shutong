@@ -21,17 +21,18 @@ type WorkflowDefinition struct {
 
 // WorkflowStep 审批流程步骤
 type WorkflowStep struct {
-	ID           uint               `json:"id" gorm:"primaryKey"`
-	WorkflowID   uint               `json:"workflow_id" gorm:"not null"`           // 流程ID
-	Workflow     WorkflowDefinition `json:"workflow" gorm:"foreignKey:WorkflowID"` // 流程关联
-	StepName     string             `json:"step_name" gorm:"size:100;not null"`    // 步骤名称
-	StepOrder    int                `json:"step_order" gorm:"not null"`            // 步骤顺序
-	ApproverType string             `json:"approver_type" gorm:"size:50;not null"` // 审批人类型: user, role, space_admin
-	ApproverID   uint               `json:"approver_id"`                           // 审批人ID（用户ID或角色ID）
-	IsRequired   bool               `json:"is_required" gorm:"default:true"`       // 是否必须
-	TimeoutHours int                `json:"timeout_hours" gorm:"default:72"`       // 超时时间（小时）
-	CreatedAt    time.Time          `json:"created_at"`
-	UpdatedAt    time.Time          `json:"updated_at"`
+	ID               uint               `json:"id" gorm:"primaryKey"`
+	WorkflowID       uint               `json:"workflow_id" gorm:"not null"`                    // 流程ID
+	Workflow         WorkflowDefinition `json:"workflow" gorm:"foreignKey:WorkflowID"`          // 流程关联
+	StepName         string             `json:"step_name" gorm:"size:100;not null"`             // 步骤名称
+	StepOrder        int                `json:"step_order" gorm:"not null"`                     // 步骤顺序
+	ApproverType     string             `json:"approver_type" gorm:"size:50;not null"`          // 审批人类型: user, role, space_admin
+	ApproverID       uint               `json:"approver_id"`                                    // 审批人ID（用户ID或角色ID）
+	IsRequired       bool               `json:"is_required" gorm:"default:true"`                // 是否必须
+	TimeoutHours     int                `json:"timeout_hours" gorm:"default:72"`                // 超时时间（小时）
+	ApprovalStrategy string             `json:"approval_strategy" gorm:"size:20;default:'any'"` // 审批策略: any, all, majority
+	CreatedAt        time.Time          `json:"created_at"`
+	UpdatedAt        time.Time          `json:"updated_at"`
 }
 
 // WorkflowInstance 审批流程实例
@@ -108,6 +109,13 @@ const (
 	ApproverTypeSpaceAdmin = "space_admin" // 空间管理员
 )
 
+// 审批策略常量
+const (
+	ApprovalStrategyAny      = "any"      // 任意一人同意即可通过
+	ApprovalStrategyAll      = "all"      // 所有人都必须同意
+	ApprovalStrategyMajority = "majority" // 多数人同意即可通过
+)
+
 // 资源类型常量
 const (
 	ResourceTypeDocument = "document" // 文档
@@ -136,12 +144,13 @@ type CreateWorkflowRequest struct {
 
 // CreateStepRequest 创建步骤请求
 type CreateStepRequest struct {
-	StepName     string `json:"step_name" binding:"required"`
-	StepOrder    int    `json:"step_order" binding:"required"`
-	ApproverType string `json:"approver_type" binding:"required"`
-	ApproverID   uint   `json:"approver_id"`
-	IsRequired   bool   `json:"is_required"`
-	TimeoutHours int    `json:"timeout_hours"`
+	StepName         string `json:"step_name" binding:"required"`
+	StepOrder        int    `json:"step_order" binding:"required"`
+	ApproverType     string `json:"approver_type" binding:"required"`
+	ApproverID       uint   `json:"approver_id"`
+	IsRequired       bool   `json:"is_required"`
+	TimeoutHours     int    `json:"timeout_hours"`
+	ApprovalStrategy string `json:"approval_strategy"` // 审批策略: any, all, majority
 }
 
 // StartWorkflowRequest 启动流程请求
