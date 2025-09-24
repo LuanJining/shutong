@@ -57,3 +57,6 @@ temp/
 # Coverage reports
 coverage.txt
 coverage.html
+
+# PID files
+*.pid
