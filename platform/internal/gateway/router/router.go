@@ -83,11 +83,32 @@ func Setup(cfg *config.Config) *gin.Engine {
 
 		workflow := api.Group("/workflow")
 		{
+			// 工作流定义管理
 			workflow.GET("", workflowHandler.ProxyToWorkflowClient)
 			workflow.GET("/:id", workflowHandler.ProxyToWorkflowClient)
 			workflow.POST("", workflowHandler.ProxyToWorkflowClient)
 			workflow.PUT("/:id", workflowHandler.ProxyToWorkflowClient)
 			workflow.DELETE("/:id", workflowHandler.ProxyToWorkflowClient)
+
+			// 工作流步骤管理
+			workflow.POST("/:id/steps", workflowHandler.ProxyToWorkflowClient)
+			workflow.PUT("/:id/steps/:step_id", workflowHandler.ProxyToWorkflowClient)
+			workflow.DELETE("/:id/steps/:step_id", workflowHandler.ProxyToWorkflowClient)
+
+			// 工作流实例管理
+			workflow.POST("/:id/instances", workflowHandler.ProxyToWorkflowClient)
+			workflow.GET("/instances", workflowHandler.ProxyToWorkflowClient)
+			workflow.GET("/instances/:instance_id", workflowHandler.ProxyToWorkflowClient)
+			workflow.PUT("/instances/:instance_id/cancel", workflowHandler.ProxyToWorkflowClient)
+
+			// 任务管理
+			workflow.GET("/tasks", workflowHandler.ProxyToWorkflowClient)
+			workflow.PUT("/tasks/:task_id/approve", workflowHandler.ProxyToWorkflowClient)
+			workflow.PUT("/tasks/:task_id/reject", workflowHandler.ProxyToWorkflowClient)
+			workflow.PUT("/tasks/:task_id/transfer", workflowHandler.ProxyToWorkflowClient)
+
+			// 状态查询
+			workflow.GET("/instances/:instance_id/status", workflowHandler.ProxyToWorkflowClient)
 		}
 
 		kb := api.Group("/kb")

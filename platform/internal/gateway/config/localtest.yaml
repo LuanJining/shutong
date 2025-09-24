@@ -5,5 +5,8 @@ server:
 iam:
   url: http://localhost:8081
 
+workflow:
+  url: http://localhost:8082
+  
 gin:
   mode: debug

@@ -115,6 +115,9 @@ definitions:
     type: object
   models.CreateStepRequest:
     properties:
+      approval_strategy:
+        description: '审批策略: any, all, majority'
+        type: string
       approver_id:
         type: integer
       approver_type:
@@ -180,6 +183,15 @@ definitions:
     - space_id
     - title
     - workflow_id
+    type: object
+  models.TransferTaskRequest:
+    properties:
+      comment:
+        type: string
+      to_user_id:
+        type: integer
+    required:
+    - to_user_id
     type: object
   service.ChangePasswordRequest:
     properties:
@@ -737,6 +749,52 @@ paths:
       summary: 添加空间成员
       tags:
       - Spaces
+  /api/v1/spaces/{id}/members/{role_id}:
+    get:
+      consumes:
+      - application/json
+      description: 获取空间中的所有成员
+      parameters:
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 空间ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 角色ID
+        in: path
+        name: role_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 获取空间成员列表
+      tags:
+      - Spaces
   /api/v1/spaces/{id}/members/{user_id}:
     delete:
       consumes:
@@ -924,6 +982,52 @@ paths:
       tags:
       - Users
   /api/v1/workflow/instances:
+    get:
+      description: 获取流程实例列表，支持分页和筛选
+      parameters:
+      - description: 流程ID
+        in: query
+        name: workflow_id
+        type: integer
+      - description: 空间ID
+        in: query
+        name: space_id
+        type: integer
+      - description: 状态
+        in: query
+        name: status
+        type: string
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 获取流程实例列表
+      tags:
+      - workflow
     post:
       consumes:
       - application/json
@@ -959,6 +1063,81 @@ paths:
             additionalProperties: true
             type: object
       summary: 启动流程实例
+      tags:
+      - workflow
+  /api/v1/workflow/instances/{id}:
+    get:
+      description: 根据ID获取流程实例详情
+      parameters:
+      - description: 实例ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 获取流程实例详情
+      tags:
+      - workflow
+  /api/v1/workflow/instances/{id}/cancel:
+    put:
+      description: 取消流程实例
+      parameters:
+      - description: 用户ID
+        in: header
+        name: X-User-ID
+        required: true
+        type: string
+      - description: 实例ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 取消流程实例
       tags:
       - workflow
   /api/v1/workflow/tasks:
@@ -1087,6 +1266,49 @@ paths:
       summary: 审批拒绝
       tags:
       - workflow
+  /api/v1/workflow/tasks/{id}/transfer:
+    post:
+      consumes:
+      - application/json
+      description: 转交审批任务给其他用户
+      parameters:
+      - description: 用户ID
+        in: header
+        name: X-User-ID
+        required: true
+        type: string
+      - description: 任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 转交请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.TransferTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 转交任务
+      tags:
+      - workflow
   /api/v1/workflow/workflows:
     get:
       description: 获取审批流程列表，支持分页
@@ -1164,6 +1386,45 @@ paths:
       tags:
       - workflow
   /api/v1/workflow/workflows/{id}:
+    delete:
+      description: 删除审批流程定义
+      parameters:
+      - description: 用户ID
+        in: header
+        name: X-User-ID
+        required: true
+        type: string
+      - description: 流程ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 删除审批流程
+      tags:
+      - workflow
     get:
       description: 根据ID获取审批流程详情
       parameters:
@@ -1201,6 +1462,53 @@ paths:
             additionalProperties: true
             type: object
       summary: 获取流程详情
+      tags:
+      - workflow
+    put:
+      consumes:
+      - application/json
+      description: 更新审批流程定义
+      parameters:
+      - description: 用户ID
+        in: header
+        name: X-User-ID
+        required: true
+        type: string
+      - description: 流程ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 更新流程请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateWorkflowRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 更新审批流程
       tags:
       - workflow
 swagger: "2.0"
