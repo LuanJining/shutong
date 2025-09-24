@@ -13,6 +13,7 @@ type Config struct {
 	Database DatabaseConfig `mapstructure:"database"`
 	JWT      JWTConfig      `mapstructure:"jwt"`
 	Log      LogConfig      `mapstructure:"log"`
+	Gin      GinConfig      `mapstructure:"gin"`
 }
 
 type ServerConfig struct {
@@ -38,6 +39,10 @@ type JWTConfig struct {
 type LogConfig struct {
 	Level      string `mapstructure:"level"`        // 日志级别: debug, info, warn, error
 	DBLogLevel string `mapstructure:"db_log_level"` // 数据库日志级别: silent, error, warn, info
+}
+
+type GinConfig struct {
+	Mode string `mapstructure:"mode"`
 }
 
 func Load() (*Config, error) {
@@ -133,4 +138,7 @@ func setDefaults(v *viper.Viper) {
 	// 日志默认配置
 	v.SetDefault("log.level", "info")
 	v.SetDefault("log.db_log_level", "warn")
+
+	// Gin默认配置
+	v.SetDefault("gin.mode", "debug")
 }

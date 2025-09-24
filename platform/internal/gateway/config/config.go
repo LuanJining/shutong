@@ -11,6 +11,7 @@ import (
 type Config struct {
 	Server ServerConfig `mapstructure:"server"`
 	Iam    IamConfig    `mapstructure:"iam"`
+	Gin    GinConfig    `mapstructure:"gin"`
 }
 
 type ServerConfig struct {
@@ -20,6 +21,10 @@ type ServerConfig struct {
 
 type IamConfig struct {
 	Url string `mapstructure:"url"`
+}
+
+type GinConfig struct {
+	Mode string `mapstructure:"mode"`
 }
 
 func Load() (*Config, error) {
@@ -79,4 +84,5 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.host", "0.0.0.0")
 	v.SetDefault("server.port", "8080")
 	v.SetDefault("iam.url", "http://localhost:8081")
+	v.SetDefault("gin.mode", "debug")
 }

@@ -18,3 +18,6 @@ jwt:
 log:
   level: info
   db_log_level: warn
+
+gin:
+  mode: debug

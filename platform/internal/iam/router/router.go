@@ -14,7 +14,7 @@ import (
 
 func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 	// 设置Gin模式
-	gin.SetMode(gin.ReleaseMode)
+	gin.SetMode(cfg.Gin.Mode)
 
 	r := gin.New()
 

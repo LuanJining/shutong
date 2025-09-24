@@ -10,7 +10,7 @@ import (
 )
 
 func Setup(cfg *config.Config) *gin.Engine {
-	gin.SetMode(gin.ReleaseMode)
+	gin.SetMode(cfg.Gin.Mode)
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())

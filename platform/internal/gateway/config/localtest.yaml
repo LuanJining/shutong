@@ -4,3 +4,6 @@ server:
 
 iam:
   url: http://localhost:8081
+
+gin:
+  mode: debug
