@@ -597,40 +597,47 @@ func (s *WorkflowService) processTask(taskID uint, userID uint, status string, c
 func (s *WorkflowService) determineAssigneeID(step *models.WorkflowStep, spaceID uint, tx *gorm.DB) uint {
 	switch step.ApproverType {
 	case models.ApproverTypeUser:
-		// 检查指定用户是否在当前空间中
+		// 检查指定用户是否在当前空间中，超级管理员和企业管理员可以跨空间
 		var userID uint
 		err := tx.Raw(`
 			SELECT u.id FROM users u 
-			JOIN space_members sm ON u.id = sm.user_id 
-			WHERE u.id = ? AND sm.space_id = ? AND u.status = 1 
+			LEFT JOIN space_members sm ON u.id = sm.user_id AND sm.space_id = ?
+			JOIN user_roles ur ON u.id = ur.user_id 
+			JOIN roles r ON ur.role_id = r.id 
+			WHERE u.id = ? AND u.status = 1 
+			AND (sm.user_id IS NOT NULL OR r.name IN ('super_admin', 'enterprise_admin'))
 			LIMIT 1
-		`, step.ApproverID, spaceID).Scan(&userID).Error
+		`, spaceID, step.ApproverID).Scan(&userID).Error
 		if err != nil || userID == 0 {
 			return 0
 		}
 		return userID
 	case models.ApproverTypeRole:
-		// 查询角色对应的用户，但限制在当前空间中
+		// 查询角色对应的用户，超级管理员和企业管理员可以跨空间
 		var userID uint
 		err := tx.Raw(`
 			SELECT u.id FROM users u 
 			JOIN user_roles ur ON u.id = ur.user_id 
 			JOIN roles r ON ur.role_id = r.id 
-			JOIN space_members sm ON u.id = sm.user_id 
-			WHERE r.name = ? AND sm.space_id = ? AND u.status = 1 
+			LEFT JOIN space_members sm ON u.id = sm.user_id AND sm.space_id = ?
+			WHERE r.name = ? AND u.status = 1 
+			AND (sm.user_id IS NOT NULL OR r.name IN ('super_admin', 'enterprise_admin'))
 			LIMIT 1
-		`, step.ApproverID, spaceID).Scan(&userID).Error
+		`, spaceID, step.ApproverID).Scan(&userID).Error
 		if err != nil || userID == 0 {
 			return 0
 		}
 		return userID
 	case models.ApproverTypeSpaceAdmin:
-		// 查询空间管理员
+		// 查询空间管理员，超级管理员和企业管理员也可以作为空间管理员
 		var userID uint
 		err := tx.Raw(`
 			SELECT u.id FROM users u 
-			JOIN space_members sm ON u.id = sm.user_id 
-			WHERE sm.space_id = ? AND sm.role = 'space_admin' AND u.status = 1 
+			LEFT JOIN space_members sm ON u.id = sm.user_id AND sm.space_id = ? AND sm.role = 'space_admin'
+			JOIN user_roles ur ON u.id = ur.user_id 
+			JOIN roles r ON ur.role_id = r.id 
+			WHERE u.status = 1 
+			AND (sm.user_id IS NOT NULL OR r.name IN ('super_admin', 'enterprise_admin'))
 			LIMIT 1
 		`, spaceID).Scan(&userID).Error
 		if err != nil || userID == 0 {
