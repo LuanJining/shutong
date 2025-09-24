@@ -20,7 +20,7 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
 
-	workflowService := service.NewWorkflowService(db, &cfg.Workflow)
+	workflowService := service.NewWorkflowService(db)
 	handler := handler.NewHandler(db, workflowService)
 
 	api := r.Group("/api/v1")

@@ -11,7 +11,6 @@ import (
 type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	Gin      GinConfig      `mapstructure:"gin"`
-	Workflow WorkflowConfig `mapstructure:"workflow"`
 	Database DatabaseConfig `mapstructure:"database"`
 	Log      LogConfig      `mapstructure:"log"`
 }
@@ -22,10 +21,6 @@ type ServerConfig struct {
 }
 type GinConfig struct {
 	Mode string `mapstructure:"mode"`
-}
-
-type WorkflowConfig struct {
-	Url string `mapstructure:"url"`
 }
 
 type DatabaseConfig struct {
@@ -99,4 +94,12 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.host", "0.0.0.0")
 	v.SetDefault("server.port", "8082")
 	v.SetDefault("gin.mode", "debug")
+	v.SetDefault("database.host", "localhost")
+	v.SetDefault("database.port", "5432")
+	v.SetDefault("database.user", "postgres")
+	v.SetDefault("database.password", "password")
+	v.SetDefault("database.dbname", "workflow")
+	v.SetDefault("database.sslmode", "disable")
+	v.SetDefault("log.level", "info")
+	v.SetDefault("log.db_log_level", "warn")
 }
