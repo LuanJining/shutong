@@ -100,18 +100,27 @@ if [ "$TOKEN" != "null" ] && [ "$TOKEN" != "" ]; then
     fi
 
     echo -e "\n14. 测试角色权限分配..."
+    # 先显示所有角色，然后获取第一个角色ID
+    echo "14.1 获取所有角色列表..."
+    ROLES_RESPONSE=$(curl -s -X GET "$BASE_URL/roles" \
+      -H "Authorization: Bearer $TOKEN")
+    echo "$ROLES_RESPONSE" | jq .
+    
     # 获取第一个角色ID
-    ROLE_ID=$(curl -s -X GET "$BASE_URL/roles" \
-      -H "Authorization: Bearer $TOKEN" | jq -r '.data.roles[0].id')
+    ROLE_ID=$(echo "$ROLES_RESPONSE" | jq -r '.data.roles[0].id')
+    echo "14.2 选择的角色ID: $ROLE_ID"
     
     # 获取第一个权限ID
     PERMISSION_ID=$(curl -s -X GET "$BASE_URL/permissions" \
       -H "Authorization: Bearer $TOKEN" | jq -r '.data.permissions[0].id')
+    echo "14.3 选择的权限ID: $PERMISSION_ID"
 
-    if [ "$ROLE_ID" != "null" ] && [ "$PERMISSION_ID" != "null" ]; then
+    if [ "$ROLE_ID" != "null" ] && [ "$ROLE_ID" != "" ] && [ "$PERMISSION_ID" != "null" ] && [ "$PERMISSION_ID" != "" ]; then
         echo -e "\n15. 获取角色权限列表..."
         curl -s -X GET "$BASE_URL/roles/$ROLE_ID/permissions" \
           -H "Authorization: Bearer $TOKEN" | jq .
+    else
+        echo "无法获取有效的角色ID或权限ID，跳过权限测试"
     fi
 
 else
