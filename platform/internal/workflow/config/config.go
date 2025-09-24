@@ -98,7 +98,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("database.port", "5432")
 	v.SetDefault("database.user", "postgres")
 	v.SetDefault("database.password", "password")
-	v.SetDefault("database.dbname", "workflow")
+	v.SetDefault("database.dbname", "kb_platform")
 	v.SetDefault("database.sslmode", "disable")
 	v.SetDefault("log.level", "info")
 	v.SetDefault("log.db_log_level", "warn")

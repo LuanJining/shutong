@@ -9,6 +9,12 @@ import (
 	"gorm.io/gorm"
 )
 
+// User 用户模型（简化版，用于workflow服务）
+type User struct {
+	ID     uint `gorm:"primaryKey"`
+	Status int  `gorm:"default:1"`
+}
+
 type WorkflowService struct {
 	db *gorm.DB
 }
@@ -122,6 +128,127 @@ func (s *WorkflowService) GetWorkflow(id uint) (*models.WorkflowDefinition, erro
 	return &workflow, nil
 }
 
+// UpdateWorkflow 更新审批流程
+func (s *WorkflowService) UpdateWorkflow(id uint, req *models.CreateWorkflowRequest, updatedBy uint) (*models.WorkflowDefinition, error) {
+	// 开始事务
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 检查流程是否存在
+	var workflow models.WorkflowDefinition
+	if err := tx.First(&workflow, id).Error; err != nil {
+		tx.Rollback()
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("workflow not found")
+		}
+		return nil, fmt.Errorf("failed to get workflow: %w", err)
+	}
+
+	// 更新流程基本信息
+	workflow.Name = req.Name
+	workflow.Description = req.Description
+	workflow.SpaceID = req.SpaceID
+	workflow.Priority = req.Priority
+	workflow.UpdatedBy = &updatedBy
+
+	if err := tx.Save(&workflow).Error; err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to update workflow: %w", err)
+	}
+
+	// 删除原有步骤
+	if err := tx.Where("workflow_id = ?", id).Delete(&models.WorkflowStep{}).Error; err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to delete old steps: %w", err)
+	}
+
+	// 创建新步骤
+	for _, stepReq := range req.Steps {
+		step := &models.WorkflowStep{
+			WorkflowID:   workflow.ID,
+			StepName:     stepReq.StepName,
+			StepOrder:    stepReq.StepOrder,
+			ApproverType: stepReq.ApproverType,
+			ApproverID:   stepReq.ApproverID,
+			IsRequired:   stepReq.IsRequired,
+			TimeoutHours: stepReq.TimeoutHours,
+		}
+
+		if err := tx.Create(step).Error; err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("failed to create workflow step: %w", err)
+		}
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	// 重新查询包含步骤的完整数据
+	var result models.WorkflowDefinition
+	if err := s.db.Preload("Steps").First(&result, workflow.ID).Error; err != nil {
+		return nil, fmt.Errorf("failed to load workflow with steps: %w", err)
+	}
+
+	return &result, nil
+}
+
+// DeleteWorkflow 删除审批流程
+func (s *WorkflowService) DeleteWorkflow(id uint) error {
+	// 开始事务
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 检查流程是否存在
+	var workflow models.WorkflowDefinition
+	if err := tx.First(&workflow, id).Error; err != nil {
+		tx.Rollback()
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("workflow not found")
+		}
+		return fmt.Errorf("failed to get workflow: %w", err)
+	}
+
+	// 检查是否有正在进行的实例
+	var count int64
+	if err := tx.Model(&models.WorkflowInstance{}).Where("workflow_id = ? AND status IN (?)", id, []string{models.StatusPending, models.StatusInProgress}).Count(&count).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to check workflow instances: %w", err)
+	}
+
+	if count > 0 {
+		tx.Rollback()
+		return fmt.Errorf("cannot delete workflow with active instances")
+	}
+
+	// 删除相关数据
+	if err := tx.Where("workflow_id = ?", id).Delete(&models.WorkflowStep{}).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to delete workflow steps: %w", err)
+	}
+
+	if err := tx.Delete(&workflow).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to delete workflow: %w", err)
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
 // StartWorkflow 启动流程实例
 func (s *WorkflowService) StartWorkflow(req *models.StartWorkflowRequest, createdBy uint) (*models.WorkflowInstance, error) {
 	// 开始事务
@@ -195,6 +322,125 @@ func (s *WorkflowService) StartWorkflow(req *models.StartWorkflowRequest, create
 	}
 
 	return &result, nil
+}
+
+// GetInstances 获取流程实例列表
+func (s *WorkflowService) GetInstances(workflowID uint, spaceID uint, status string, page, pageSize int) (*models.PaginationResponse, error) {
+	var instances []models.WorkflowInstance
+	var total int64
+
+	query := s.db.Model(&models.WorkflowInstance{})
+	if workflowID > 0 {
+		query = query.Where("workflow_id = ?", workflowID)
+	}
+	if spaceID > 0 {
+		query = query.Where("space_id = ?", spaceID)
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	// 获取总数
+	if err := query.Count(&total).Error; err != nil {
+		return nil, fmt.Errorf("failed to count instances: %w", err)
+	}
+
+	// 分页查询
+	offset := (page - 1) * pageSize
+	if err := query.Preload("Workflow").
+		Preload("Tasks").
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(pageSize).
+		Find(&instances).Error; err != nil {
+		return nil, fmt.Errorf("failed to get instances: %w", err)
+	}
+
+	totalPages := int((total + int64(pageSize) - 1) / int64(pageSize))
+
+	return &models.PaginationResponse{
+		Items:      instances,
+		Total:      total,
+		Page:       page,
+		PageSize:   pageSize,
+		TotalPages: totalPages,
+	}, nil
+}
+
+// GetInstance 获取流程实例详情
+func (s *WorkflowService) GetInstance(id uint) (*models.WorkflowInstance, error) {
+	var instance models.WorkflowInstance
+	if err := s.db.Preload("Workflow").
+		Preload("Tasks").
+		Preload("Tasks.Step").
+		First(&instance, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("instance not found")
+		}
+		return nil, fmt.Errorf("failed to get instance: %w", err)
+	}
+	return &instance, nil
+}
+
+// CancelInstance 取消流程实例
+func (s *WorkflowService) CancelInstance(id uint, userID uint) error {
+	// 开始事务
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 获取实例
+	var instance models.WorkflowInstance
+	if err := tx.First(&instance, id).Error; err != nil {
+		tx.Rollback()
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("instance not found")
+		}
+		return fmt.Errorf("failed to get instance: %w", err)
+	}
+
+	// 检查权限（只有创建者可以取消）
+	if instance.CreatedBy != userID {
+		tx.Rollback()
+		return fmt.Errorf("unauthorized to cancel this instance")
+	}
+
+	// 检查状态
+	if instance.Status != models.StatusPending && instance.Status != models.StatusInProgress {
+		tx.Rollback()
+		return fmt.Errorf("instance cannot be cancelled in current status")
+	}
+
+	// 更新实例状态
+	now := time.Now()
+	if err := tx.Model(&instance).Updates(map[string]interface{}{
+		"status":       models.StatusCancelled,
+		"completed_at": &now,
+	}).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to update instance: %w", err)
+	}
+
+	// 取消所有待处理的任务
+	if err := tx.Model(&models.WorkflowTask{}).
+		Where("instance_id = ? AND status = ?", id, models.StatusPending).
+		Updates(map[string]interface{}{
+			"status":       models.StatusCancelled,
+			"completed_at": &now,
+		}).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to cancel tasks: %w", err)
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }
 
 // GetMyTasks 获取我的待办任务
@@ -351,17 +597,110 @@ func (s *WorkflowService) processTask(taskID uint, userID uint, status string, c
 func (s *WorkflowService) determineAssigneeID(step *models.WorkflowStep, spaceID uint, tx *gorm.DB) uint {
 	switch step.ApproverType {
 	case models.ApproverTypeUser:
-		return step.ApproverID
+		// 检查指定用户是否在当前空间中
+		var userID uint
+		err := tx.Raw(`
+			SELECT u.id FROM users u 
+			JOIN space_members sm ON u.id = sm.user_id 
+			WHERE u.id = ? AND sm.space_id = ? AND u.status = 1 
+			LIMIT 1
+		`, step.ApproverID, spaceID).Scan(&userID).Error
+		if err != nil || userID == 0 {
+			return 0
+		}
+		return userID
 	case models.ApproverTypeRole:
-		// 这里需要查询角色对应的用户，暂时返回步骤中配置的ID
-		// 实际实现中需要根据角色查找对应的用户
-		return step.ApproverID
+		// 查询角色对应的用户，但限制在当前空间中
+		var userID uint
+		err := tx.Raw(`
+			SELECT u.id FROM users u 
+			JOIN user_roles ur ON u.id = ur.user_id 
+			JOIN roles r ON ur.role_id = r.id 
+			JOIN space_members sm ON u.id = sm.user_id 
+			WHERE r.name = ? AND sm.space_id = ? AND u.status = 1 
+			LIMIT 1
+		`, step.ApproverID, spaceID).Scan(&userID).Error
+		if err != nil || userID == 0 {
+			return 0
+		}
+		return userID
 	case models.ApproverTypeSpaceAdmin:
 		// 查询空间管理员
-		// 这里需要查询空间管理员，暂时返回0
-		// 实际实现中需要根据空间ID查找管理员
-		return 0
+		var userID uint
+		err := tx.Raw(`
+			SELECT u.id FROM users u 
+			JOIN space_members sm ON u.id = sm.user_id 
+			WHERE sm.space_id = ? AND sm.role = 'space_admin' AND u.status = 1 
+			LIMIT 1
+		`, spaceID).Scan(&userID).Error
+		if err != nil || userID == 0 {
+			return 0
+		}
+		return userID
 	default:
 		return 0
 	}
+}
+
+// TransferTask 转交任务
+func (s *WorkflowService) TransferTask(taskID uint, fromUserID uint, toUserID uint, comment string) error {
+	// 开始事务
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 获取任务
+	var task models.WorkflowTask
+	if err := tx.Preload("Instance").First(&task, taskID).Error; err != nil {
+		tx.Rollback()
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("task not found")
+		}
+		return fmt.Errorf("failed to get task: %w", err)
+	}
+
+	// 检查权限
+	if task.AssigneeID != fromUserID {
+		tx.Rollback()
+		return fmt.Errorf("unauthorized to transfer this task")
+	}
+
+	// 检查状态
+	if task.Status != models.StatusPending {
+		tx.Rollback()
+		return fmt.Errorf("task is not pending")
+	}
+
+	// 检查目标用户是否存在
+	var userCount int64
+	if err := tx.Model(&User{}).Where("id = ? AND status = 1", toUserID).Count(&userCount).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to check target user: %w", err)
+	}
+	if userCount == 0 {
+		tx.Rollback()
+		return fmt.Errorf("target user not found or inactive")
+	}
+
+	// 更新任务
+	now := time.Now()
+	task.AssigneeID = toUserID
+	task.Comment = comment
+	task.TransferredAt = &now
+	task.TransferredBy = &fromUserID
+
+	if err := tx.Save(&task).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to update task: %w", err)
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }

@@ -13,6 +13,7 @@ type WorkflowDefinition struct {
 	IsActive    bool           `json:"is_active" gorm:"default:true"` // 是否启用
 	Priority    int            `json:"priority" gorm:"default:0"`     // 优先级
 	CreatedBy   uint           `json:"created_by" gorm:"not null"`    // 创建人
+	UpdatedBy   *uint          `json:"updated_by"`                    // 更新人
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	Steps       []WorkflowStep `json:"steps" gorm:"foreignKey:WorkflowID"` // 流程步骤
@@ -54,18 +55,20 @@ type WorkflowInstance struct {
 
 // WorkflowTask 审批任务
 type WorkflowTask struct {
-	ID          uint             `json:"id" gorm:"primaryKey"`
-	InstanceID  uint             `json:"instance_id" gorm:"not null"`             // 流程实例ID
-	Instance    WorkflowInstance `json:"instance" gorm:"foreignKey:InstanceID"`   // 流程实例关联
-	StepID      uint             `json:"step_id" gorm:"not null"`                 // 流程步骤ID
-	Step        WorkflowStep     `json:"step" gorm:"foreignKey:StepID"`           // 流程步骤关联
-	AssigneeID  uint             `json:"assignee_id" gorm:"not null"`             // 审批人ID
-	Status      string           `json:"status" gorm:"size:20;default:'pending'"` // 状态: pending, approved, rejected, transferred
-	Comment     string           `json:"comment" gorm:"size:1000"`                // 审批意见
-	AssignedAt  time.Time        `json:"assigned_at"`                             // 分配时间
-	CompletedAt *time.Time       `json:"completed_at"`                            // 完成时间
-	CreatedAt   time.Time        `json:"created_at"`
-	UpdatedAt   time.Time        `json:"updated_at"`
+	ID            uint             `json:"id" gorm:"primaryKey"`
+	InstanceID    uint             `json:"instance_id" gorm:"not null"`             // 流程实例ID
+	Instance      WorkflowInstance `json:"instance" gorm:"foreignKey:InstanceID"`   // 流程实例关联
+	StepID        uint             `json:"step_id" gorm:"not null"`                 // 流程步骤ID
+	Step          WorkflowStep     `json:"step" gorm:"foreignKey:StepID"`           // 流程步骤关联
+	AssigneeID    uint             `json:"assignee_id" gorm:"not null"`             // 审批人ID
+	Status        string           `json:"status" gorm:"size:20;default:'pending'"` // 状态: pending, approved, rejected, transferred
+	Comment       string           `json:"comment" gorm:"size:1000"`                // 审批意见
+	AssignedAt    time.Time        `json:"assigned_at"`                             // 分配时间
+	CompletedAt   *time.Time       `json:"completed_at"`                            // 完成时间
+	TransferredAt *time.Time       `json:"transferred_at"`                          // 转交时间
+	TransferredBy *uint            `json:"transferred_by"`                          // 转交人
+	CreatedAt     time.Time        `json:"created_at"`
+	UpdatedAt     time.Time        `json:"updated_at"`
 }
 
 // WorkflowNotification 审批通知
@@ -84,11 +87,12 @@ type WorkflowNotification struct {
 
 // 审批状态常量
 const (
-	StatusPending   = "pending"   // 待审批
-	StatusApproved  = "approved"  // 已通过
-	StatusRejected  = "rejected"  // 已拒绝
-	StatusCancelled = "cancelled" // 已取消
-	StatusTimeout   = "timeout"   // 已超时
+	StatusPending    = "pending"     // 待审批
+	StatusInProgress = "in_progress" // 进行中
+	StatusApproved   = "approved"    // 已通过
+	StatusRejected   = "rejected"    // 已拒绝
+	StatusCancelled  = "cancelled"   // 已取消
+	StatusTimeout    = "timeout"     // 已超时
 )
 
 // 优先级常量
@@ -163,8 +167,8 @@ type RejectTaskRequest struct {
 
 // TransferTaskRequest 转交任务请求
 type TransferTaskRequest struct {
-	NewAssigneeID uint   `json:"new_assignee_id" binding:"required"`
-	Comment       string `json:"comment"`
+	ToUserID uint   `json:"to_user_id" binding:"required"`
+	Comment  string `json:"comment"`
 }
 
 // API响应结构体
