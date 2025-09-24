@@ -30,7 +30,7 @@ INSERT INTO roles (name, display_name, description) VALUES
 ('space_admin', '空间管理员', '在特定知识空间内拥有完全控制权'),
 ('content_reviewer', '内容审核员', '负责审阅和发布重要文档'),
 ('content_editor', '内容编辑者', '可创建、编辑、删除本空间内的文档内容'),
-('content_viewer', '只读用户', '仅能查看、应用知识内容，不能修改')
+('read_only_user', '只读用户', '仅能查看、应用知识内容，不能修改')
 ON CONFLICT (name) DO UPDATE SET
 display_name = EXCLUDED.display_name,
 description = EXCLUDED.description;
@@ -94,26 +94,3 @@ SELECT u.id, r.id
 FROM users u, roles r
 WHERE u.username = 'admin' AND r.name = 'super_admin'
 ON CONFLICT (user_id, role_id) DO NOTHING;
-
--- 创建示例知识空间
-INSERT INTO spaces (name, description, type, created_by) VALUES
-('技术文档空间', '存放技术相关文档', 'department', (SELECT id FROM users WHERE username = 'admin')),
-('项目文档空间', '存放项目相关文档', 'project', (SELECT id FROM users WHERE username = 'admin')),
-('团队协作空间', '团队协作相关文档', 'team', (SELECT id FROM users WHERE username = 'admin'))
-ON CONFLICT (name) DO UPDATE SET
-description = EXCLUDED.description,
-type = EXCLUDED.type;
-
--- 将超级管理员添加到所有空间
-INSERT INTO space_members (space_id, user_id, role)
-SELECT s.id, u.id, 'admin'
-FROM spaces s, users u
-WHERE u.username = 'admin'
-ON CONFLICT (space_id, user_id) DO UPDATE SET role = 'admin';
-
--- 显示初始化结果
-SELECT 'Database initialization completed successfully!' as message;
-SELECT COUNT(*) as user_count FROM users;
-SELECT COUNT(*) as role_count FROM roles;
-SELECT COUNT(*) as permission_count FROM permissions;
-SELECT COUNT(*) as space_count FROM spaces;

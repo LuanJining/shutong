@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/model"
@@ -210,5 +211,22 @@ func RequirePermission(permissionName string) gin.HandlerFunc {
 		}
 
 		c.Next()
+	}
+}
+
+// RequireSpaceMemberFromURL 从URL参数获取spaceID并检查空间成员权限
+func RequireSpaceMemberFromURL(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 从URL参数获取spaceID
+		spaceIDStr := c.Param("id")
+		spaceID, err := strconv.ParseUint(spaceIDStr, 10, 32)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的空间ID"})
+			c.Abort()
+			return
+		}
+
+		// 调用原有的空间成员检查逻辑
+		RequireSpaceMember(db, uint(spaceID))(c)
 	}
 }
