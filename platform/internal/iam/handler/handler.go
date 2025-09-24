@@ -864,6 +864,7 @@ func (h *Handler) UpdateSpaceMemberRole(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
 // @Param id path int true "角色ID"
 // @Param permission body map[string]interface{} true "权限信息"
 // @Success 200 {object} map[string]string
@@ -928,6 +929,7 @@ func (h *Handler) AssignRolePermission(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
 // @Param id path int true "角色ID"
 // @Param permission_id path int true "权限ID"
 // @Success 200 {object} map[string]string
@@ -961,6 +963,7 @@ func (h *Handler) RemoveRolePermission(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
 // @Param id path int true "角色ID"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
@@ -997,6 +1000,7 @@ func (h *Handler) GetRolePermissions(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
 // @Param id path int true "用户ID"
 // @Param role body map[string]interface{} true "角色信息"
 // @Success 200 {object} map[string]string
@@ -1068,6 +1072,7 @@ func (h *Handler) AssignUserRole(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param Authorization header string true "Bearer token"
 // @Param id path int true "用户ID"
 // @Param role_id path int true "角色ID"
 // @Success 200 {object} map[string]string

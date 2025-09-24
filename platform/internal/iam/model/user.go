@@ -84,13 +84,17 @@ type Space struct {
 	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// 关联关系
-	Creator User `json:"creator" gorm:"foreignKey:CreatedBy"`
+	Creator User   `json:"creator" gorm:"foreignKey:CreatedBy"`
 	Members []User `json:"members" gorm:"many2many:space_members;"`
 }
 
 // SpaceMember 空间成员关联表
 type SpaceMember struct {
-	SpaceID uint `gorm:"primaryKey"`
-	UserID  uint `gorm:"primaryKey"`
+	SpaceID uint   `gorm:"primaryKey"`
+	UserID  uint   `gorm:"primaryKey"`
 	Role    string `json:"role" gorm:"size:50;comment:在空间中的角色:admin,editor,viewer"`
+
+	// 关联关系
+	User  User  `json:"user" gorm:"foreignKey:UserID"`
+	Space Space `json:"space" gorm:"foreignKey:SpaceID"`
 }
