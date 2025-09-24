@@ -1,9 +1,9 @@
 package models
 
 type APIResponse struct {
-	Success bool        `json:"success"`
-	Error   *APIError   `json:"error,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
+	Success bool      `json:"success"`
+	Error   *APIError `json:"error,omitempty"`
+	Data    any       `json:"data,omitempty"`
 }
 
 type APIError struct {
