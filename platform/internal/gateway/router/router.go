@@ -3,11 +3,20 @@ package router
 import (
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/config"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/handler"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/middleware"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func Setup(cfg *config.Config) *gin.Engine {
-	r := gin.Default()
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(gin.Logger())
+	r.Use(gin.Recovery())
+	r.Use(middleware.CORS())
+
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
 
 	handler := handler.NewHandler(&cfg.Iam)
 	api := r.Group("/api/v1")
