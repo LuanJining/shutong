@@ -15,8 +15,14 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
+	// 初始化数据库
+	db, err := database.InitDB(cfg.Database)
+	if err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+
 	// 初始化路由
-	r := router.Setup(cfg)
+	r := router.Setup(cfg, db)
 
 	// 启动服务器
 	srv := server.New(&cfg.Server, r)

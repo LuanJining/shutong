@@ -4,12 +4,14 @@ import (
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/config"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/handler"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/middleware"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/service"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"gorm.io/gorm"
 )
 
-func Setup(cfg *config.Config) *gin.Engine {
+func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 	gin.SetMode(cfg.Gin.Mode)
 	r := gin.New()
 	r.Use(gin.Logger())
@@ -18,7 +20,9 @@ func Setup(cfg *config.Config) *gin.Engine {
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
 
-	handler := handler.NewHandler(&cfg.Iam)
+	workflowService := service.NewWorkflowService(db, &cfg.Workflow)
+	handler := handler.NewHandler(db, workflowService)
+
 	api := r.Group("/api/v1")
 	{
 		api.GET("/health", func(c *gin.Context) {
@@ -26,6 +30,9 @@ func Setup(cfg *config.Config) *gin.Engine {
 		})
 
 		workflow := api.Group("/workflow")
+		{
+			workflow.GET("/", handler.GetWorkflow)
+		}
 	}
 
 	return r
