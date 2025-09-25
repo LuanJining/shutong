@@ -1,0 +1,691 @@
+/* 浏览器默认样式初始化 */
+html,
+body,
+div,
+span,
+applet,
+object,
+iframe,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+blockquote,
+pre,
+a,
+abbr,
+acronym,
+address,
+big,
+cite,
+code,
+del,
+dfn,
+em,
+font,
+img,
+ins,
+kbd,
+q,
+s,
+samp,
+small,
+strike,
+strong,
+sub,
+sup,
+tt,
+var,
+b,
+u,
+i,
+center,
+dl,
+dt,
+dd,
+ol,
+ul,
+li,
+fieldset,
+form,
+label,
+legend,
+table,
+caption,
+tbody,
+tfoot,
+thead,
+tr,
+th,
+td,
+textarea,
+input {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+body {
+  font-size: 16px;
+  line-height: 1.5;
+  font-family: "Microsoft Yahei", "simsun", "arial", "tahoma";
+  color: #333;
+}
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+th {
+  font-size: 100%;
+  font-weight: normal;
+}
+button,
+input,
+select,
+textarea {
+  font-size: 100%;
+}
+a,
+a:active,
+a:focus,
+a:hover,
+a:visited {
+  text-decoration: none;
+}
+ul,
+ol {
+  list-style: none;
+}
+
+/* 自定义样式声明 */
+.flex {
+  display: flex;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.al-space-between {
+  align-content: space-between;
+}
+
+.flex-row {
+  flex-direction: row;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.flex-row-reverse {
+  flex-direction: row-reverse;
+}
+
+.flex-col-reverse {
+  flex-direction: column-reverse;
+}
+
+.al-center {
+  align-items: center;
+}
+
+.al-start {
+  align-items: flex-start;
+}
+
+.al-end {
+  align-items: flex-end;
+}
+
+.jf-center {
+  justify-content: center;
+}
+
+.jf-start {
+  justify-content: flex-start;
+}
+
+.jf-end {
+  justify-content: flex-end;
+}
+
+.space-between {
+  justify-content: space-between;
+}
+
+.space-around {
+  justify-content: space-around;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.flex-nowrap {
+  flex-wrap: nowrap;
+}
+
+.flex-wrap-reverse {
+  flex-wrap: wrap-reverse;
+}
+.flex0 {
+  flex: 0;
+}
+
+.flex1 {
+  flex: 1;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.float-left {
+  float: left;
+}
+
+.float-right {
+  float: right;
+}
+
+.p-relative {
+  position: relative;
+}
+
+.p-absolute {
+  position: absolute;
+}
+
+.p-fixed {
+  position: fixed;
+}
+
+.elli {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  line-clamp: 1;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
+.white-nowrap {
+  white-space: nowrap;
+}
+
+.block {
+  display: block;
+}
+
+.in-block {
+  display: inline-block;
+}
+
+.inline {
+  display: inline;
+}
+
+.display-none {
+  display: none;
+}
+
+.visibility {
+  visibility: hidden;
+}
+
+.visible {
+  visibility: visible;
+}
+
+.of-hidden {
+  overflow: hidden;
+}
+
+.mg12 {
+  margin: 12px;
+}
+
+.mg14 {
+  margin: 14px;
+}
+
+.mg16 {
+  margin: 16px;
+}
+
+.mg18 {
+  margin: 18px;
+}
+
+.mg20 {
+  margin: 20px;
+}
+
+.mg22 {
+  margin: 22px;
+}
+
+.mg24 {
+  margin: 24px;
+}
+
+.mgT6 {
+  margin-top: 6px;
+}
+
+.mgT12 {
+  margin-top: 12px;
+}
+
+.mgT14 {
+  margin-top: 14px;
+}
+
+.mgT16 {
+  margin-top: 16px;
+}
+
+.mgT18 {
+  margin-top: 18px;
+}
+
+.mgT20 {
+  margin-top: 20px;
+}
+
+.mgT22 {
+  margin-top: 22px;
+}
+
+.mgT24 {
+  margin-top: 24px;
+}
+
+.mgT28 {
+  margin-top: 28px;
+}
+
+.mgT30 {
+  margin-top: 30px;
+}
+.mgT32 {
+  margin-top: 32px;
+}
+.mgL6 {
+  margin-left: 6px;
+}
+.mgL12 {
+  margin-left: 12px;
+}
+
+.mgL14 {
+  margin-left: 14px;
+}
+
+.mgL16 {
+  margin-left: 16px;
+}
+
+.mgL18 {
+  margin-left: 18px;
+}
+
+.mgL20 {
+  margin-left: 20px;
+}
+
+.mgL22 {
+  margin-left: 22px;
+}
+
+.mgL24 {
+  margin-left: 24px;
+}
+
+.mgL30 {
+  margin-left: 30px;
+}
+.mgR6 {
+  margin-right: 6px;
+}
+.mgR12 {
+  margin-right: 12px;
+}
+
+.mgR14 {
+  margin-right: 14px;
+}
+
+.mgR16 {
+  margin-right: 16px;
+}
+
+.mgR18 {
+  margin-right: 18px;
+}
+
+.mgR20 {
+  margin-right: 20px;
+}
+
+.mgR22 {
+  margin-right: 22px;
+}
+
+.mgR24 {
+  margin-right: 24px;
+}
+
+.mgR26 {
+  margin-right: 26px;
+}
+
+.mgR32 {
+  margin-right: 32px;
+}
+.mgR36 {
+  margin-right: 36px;
+}
+
+.mgB6 {
+  margin-bottom: 6px;
+}
+
+.mgB12 {
+  margin-bottom: 12px;
+}
+
+.mgB14 {
+  margin-bottom: 14px;
+}
+
+.mgB16 {
+  margin-bottom: 16px;
+}
+
+.mgB18 {
+  margin-bottom: 18px;
+}
+
+.mgB20 {
+  margin-bottom: 20px;
+}
+
+.mgB22 {
+  margin-bottom: 22px;
+}
+
+.mgB24 {
+  margin-bottom: 24px;
+}
+.mgB28 {
+  margin-bottom: 28px;
+}
+.mgB32 {
+  margin-bottom: 32px;
+}
+
+.pd12 {
+  padding: 12px;
+}
+
+.pd14 {
+  padding: 14px;
+}
+
+.pd16 {
+  padding: 16px;
+}
+
+.pd18 {
+  padding: 18px;
+}
+
+.pd20 {
+  padding: 20px;
+}
+
+.pd22 {
+  padding: 22px;
+}
+
+.pd24 {
+  padding: 24px;
+}
+
+.pdT12 {
+  padding-top: 12px;
+}
+
+.pdT14 {
+  padding-top: 14px;
+}
+
+.pdT16 {
+  padding-top: 16px;
+}
+
+.pdT18 {
+  padding-top: 18px;
+}
+
+.pdT20 {
+  padding-top: 20px;
+}
+
+.pdT22 {
+  padding-top: 22px;
+}
+
+.pdT24 {
+  padding-top: 24px;
+}
+
+.pdL12 {
+  padding-left: 12px;
+}
+
+.pdL14 {
+  padding-left: 14px;
+}
+
+.pdL16 {
+  padding-left: 16px;
+}
+
+.pdL18 {
+  padding-left: 18px;
+}
+
+.pdL20 {
+  padding-left: 20px;
+}
+
+.pdL22 {
+  padding-left: 22px;
+}
+
+.pdL24 {
+  padding-left: 24px;
+}
+
+.pdR12 {
+  padding-right: 12px;
+}
+
+.pdR14 {
+  padding-right: 14px;
+}
+
+.pdR16 {
+  padding-right: 16px;
+}
+
+.pdR18 {
+  padding-right: 18px;
+}
+
+.pdR20 {
+  padding-right: 20px;
+}
+
+.pdR22 {
+  padding-right: 22px;
+}
+
+.pdR24 {
+  padding-right: 24px;
+}
+
+.pdB12 {
+  padding-bottom: 12px;
+}
+
+.pdB14 {
+  padding-bottom: 14px;
+}
+
+.pdB16 {
+  padding-bottom: 16px;
+}
+
+.pdB18 {
+  padding-bottom: 18px;
+}
+
+.pdB20 {
+  padding-bottom: 20px;
+}
+
+.pdB22 {
+  padding-bottom: 22px;
+}
+
+.pdB24 {
+  padding-bottom: 24px;
+}
+
+.fs12 {
+  font-size: 12px;
+}
+
+.fs13 {
+  font-size: 13px;
+}
+
+.fs14 {
+  font-size: 14px;
+}
+
+.fs16 {
+  font-size: 16px;
+}
+
+.fs18 {
+  font-size: 18px;
+}
+
+.fs20 {
+  font-size: 20px;
+}
+
+.fs22 {
+  font-size: 22px;
+}
+
+.fs24 {
+  font-size: 24px;
+}
+
+.fs26 {
+  font-size: 26px;
+}
+
+.fs28 {
+  font-size: 28px;
+}
+
+.fs30 {
+  font-size: 30px;
+}
+
+.fs32 {
+  font-size: 32px;
+}
+
+.fs34 {
+  font-size: 34px;
+}
+
+.fs36 {
+  font-size: 36px;
+}
+
+.fs38 {
+  font-size: 38px;
+}
+
+.fs40 {
+  font-size: 40px;
+}
+
+.fs42 {
+  font-size: 42px;
+}
+
+.fw-bold {
+  font-weight: bold;
+}
+
+.fw-normal {
+  font-weight: normal;
+}
+
+.va-middle {
+  vertical-align: middle;
+}
+
+.color-white {
+  color: #fff;
+}
+
+.color-black {
+  color: #000;
+}
+
+.w-100p {
+  width: 100%;
+}
+
+.h-100p {
+  height: 100%;
+}
+
+.w-100vw {
+  width: 100vw;
+}
+
+.h-100vh {
+  height: 100vh;
+}
+.pointer {
+  cursor: pointer;
+}

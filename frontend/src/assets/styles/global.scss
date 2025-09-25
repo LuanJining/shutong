@@ -1,0 +1,54 @@
+:root {
+  --primary-blue: #126bc9;
+  --primary-green: #22afc1;
+  --primary-border-color: #c7c7c7;
+  --primary-gray: #8c8c8c;
+  --base-fs: 14px;
+
+  @media (min-width: 1281px) and (max-width: 1919px) {
+    --base-fs: 16px;
+  }
+
+  @media (min-width: 1920px) {
+    --base-fs: 18px;
+  }
+
+  @media (min-width: 2048px) {
+    --base-fs: 20px;
+  }
+}
+
+html,
+body,
+#root,
+.app {
+  width: 100%;
+  height: 100%;
+  font-size: var(--base-fs);
+}
+
+.mn-fs {
+  font-size: calc(var(--base-fs) - 4px);
+}
+.sm-fs {
+  font-size: calc(var(--base-fs) - 2px);
+}
+.nm-fs {
+  font-size: var(--base-fs);
+}
+.lg-fs {
+  font-size: calc(var(--base-fs) + 2px);
+}
+.hg-fs {
+  font-size: calc(var(--base-fs) + 4px);
+}
+
+.primary-blue {
+  color: #5a8dff;
+}
+.primary-border-color {
+  color: #010000;
+}
+.primary-gray {
+  color: #888;
+}

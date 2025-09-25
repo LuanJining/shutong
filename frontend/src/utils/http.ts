@@ -1,0 +1,119 @@
+import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
+import { getViteUrl } from "./tools";
+import { message } from "antd";
+import storage from "./storage";
+import cache from "@/config/cache";
+import utils from ".";
+
+// 创建一个axios实例
+const instance = axios.create({
+    baseURL: getViteUrl('VITE_API_URL'),
+    timeout: 120000, // 请求超时时间（毫秒）
+});
+// 请求拦截器
+instance.interceptors.request.use(
+    (config) => {
+       
+        return config;
+    },
+    (err) => {
+        return Promise.reject(err);
+    }
+);
+// 响应拦截器
+instance.interceptors.response.use(
+    (res) => {
+        return res;
+    },
+    (err) => {
+        console.log(err)
+        return Promise.reject(err);
+    },
+);
+// 定义一个通用的请求函数
+async function request<T>(
+    config: AxiosRequestConfig
+): Promise<AxiosResponse<T>> {
+    try {
+        const response = await instance.request<T>(config);
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+// 封装GET请求
+export async function get<T>(
+    url: string,
+    params?: Record<string, any>,
+    headers?: any,
+    config?: any
+): Promise<T> {
+    try {
+        const response = await request<T>({
+            method: "get",
+            url,
+            params,
+            headers,
+            ...config
+        });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+}
+// 封装POST请求
+export async function post<T>(
+    url: string,
+    data?: any,
+    headers?: any,
+    config?: any
+): Promise<T> {
+    try {
+        const response = await request<T>({
+            method: "post",
+            url,
+            data,
+            headers,
+            ...config
+        });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+}
+// 封装PUT请求
+export async function put<T>(
+    url: string,
+    data?: any,
+    headers?: any
+): Promise<T> {
+    try {
+        const response = await request<T>({
+            method: "put",
+            url,
+            data,
+            headers,
+        });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+}
+// 封装DELETE请求
+export async function del<T>(
+    url: string,
+    params?: Record<string, any>,
+    headers?: any
+): Promise<T> {
+    try {
+        const response = await request<T>({
+            method: "delete",
+            url,
+            params,
+            headers,
+        });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+}

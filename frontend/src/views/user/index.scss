@@ -1,0 +1,58 @@
+.page-login {
+  background-image: url("@/assets/image/login/login_bg.jpg");
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-position: center center;
+  min-width: 1200px;
+  height: 100%;
+  .form-login {
+    &::placeholder {
+      color: #aaaaaa;
+    }
+    .ant-form-item.input {
+      border-bottom: 1px solid #dcdcdc !important;
+    }
+  }
+  .left {
+    width: 70%;
+    img {
+      width: 269px;
+      height: 94px;
+    }
+    span {
+      margin-top: 30px;
+      color: rgba(255, 255, 255, 1);
+      font-size: 72px;
+      text-align: left;
+      font-family: PingFangSC-bold;
+    }
+  }
+  .right {
+    width: 50%;
+    background-color: #fff;
+    .title {
+      color: rgb(16, 16, 16);
+      font-size: 24px;
+      text-align: center;
+      font-family: SourceHanSansSC-bold;
+      padding-bottom: 6px;
+    }
+    .line {
+      height: 2px;
+      background-color: #3a62d7;
+      width: 96px;
+    }
+    .submit-btn {
+      width: 284px;
+      height: 45px;
+      border-radius: 30px;
+      color: rgba(255, 255, 255, 1);
+      font-size: 16px;
+      font-family: Roboto;
+      border: 1px solid rgba(58, 98, 215, 1);
+      letter-spacing: 4px;
+      cursor: pointer;
+    }
+  }
+}
