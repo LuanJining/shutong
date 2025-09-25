@@ -17,7 +17,7 @@ export default function RouterBeforeEach() {
 
     useEffect(() => {
         const isRouteInWhitelist = whitelist.includes(location.pathname);
-        if (!isRouteInWhitelist && isLogin) {
+        if (!isRouteInWhitelist && !isLogin) {
             return navigate("/login");
         }
         if (pathname === "/login") {

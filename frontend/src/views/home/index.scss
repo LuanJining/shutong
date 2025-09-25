@@ -1,1 +1,104 @@
-.app-home {}
+.app-home {
+  .banner-box {
+    position: relative;
+    height: 248px;
+    overflow: hidden;
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .text-box {
+      position: absolute;
+      left: 85px;
+      top: 25px;
+
+      .logo-img {
+        img {
+          width: 65px;
+          height: 65px;
+          object-fit: cover;
+          white-space: nowrap;
+        }
+      }
+      .text-title {
+        font-size: 42px;
+        font-weight: bold;
+        color: #fff;
+        margin-left: 28px;
+      }
+    }
+
+    .search-box {
+      position: absolute;
+      left: 50%;
+      bottom: 36px;
+      transform: translateX(-50%);
+      width: 768px;
+      height: 56px;
+      padding: 0 24px;
+      box-sizing: border-box;
+      border-radius: 6px;
+      background-color: rgba(255, 255, 255, 1);
+      border: 1px solid rgba(187, 187, 187, 1);
+    }
+  }
+
+  .count-box {
+    border-radius: 5px;
+    padding: 38px 104px;
+    background-color: #fff;
+    .count-img {
+      margin-right: 20px;
+      img {
+        width: 50px;
+        height: 50px;
+        object-fit: cover;
+        white-space: nowrap;
+      }
+    }
+  }
+
+  .bolck-content {
+    padding: 24px 44px 32px;
+
+    .block-item {
+      padding: 28px 50px;
+      background-color: #fff;
+      margin-bottom: 24px;
+
+      .block-title {
+        font-family: PingFangSC-bold;
+        line-height: 28px;
+        color: #010101;
+      }
+
+      .block-txt {
+        line-height: 24px;
+        color: #010101;
+      }
+
+      .news-title {
+        width: 75%;
+      }
+    }
+
+    .opera-box {
+      padding: 30px 24px 30px 46px;
+      background-color: #fff;
+    }
+
+    .label-cloud {
+      background-color: #fff;
+      padding: 28px 26px 0;
+    }
+
+    .tag-item {
+      border-radius: 5px;
+      color: var(--primary-gray);
+      background-color: #e4e4e4;
+      padding: 8px 36px;
+    }
+  }
+}

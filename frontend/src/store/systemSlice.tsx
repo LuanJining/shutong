@@ -1,21 +1,13 @@
-// 系统配置初始化
-// export const getSystemInfo = createAsyncThunk("getSystemInfo", async (_payload, thunkApi) => {
-//     const r: any[] = await Promise.all([
-//         store.dispatch(updateLabels()),
-//         store.dispatch(initIndustrys()),
-//     ])
-//     const isReady: boolean = !r.some((v: any) => v.meta.requestStatus === 'rejected')
-//     thunkApi.dispatch(setIsReady({ isReady: isReady ? 'ready' : 'error' }))
-// })
-
+import _cache from "@/config/_cache";
+import storage from "@/utils/storage";
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState: {
     isLogin: boolean,
-    isReady: 'prepare' | 'ready' | 'error',
+    userInfo: any,
 } = {
-    isReady: 'prepare',
-    isLogin: false
+    isLogin: storage.get(_cache.AUTH_INFO).access_token,
+    userInfo: null
 };
 
 export const systemSlice = createSlice({
@@ -24,12 +16,15 @@ export const systemSlice = createSlice({
     initialState,
     reducers: {
         //可执行的reducer
-        // setIsReady(state, { payload }) {
-        //     state.isReady = payload.isReady;
-        // },
+        setUserInfo(state, { payload }) {
+            state.userInfo = payload.userInfo;
+        },
+        setIsLogin(state, { payload }) {
+            state.isLogin = payload.isLogin;
+        },
     },
 });
 
-export const {  } = systemSlice.actions;
+export const { setUserInfo, setIsLogin } = systemSlice.actions;
 
 export default systemSlice.reducer; 

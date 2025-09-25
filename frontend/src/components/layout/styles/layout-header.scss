@@ -8,4 +8,11 @@
   background-color: #fbfbfb;
   z-index: 9;
   padding: 0 34px;
+
+  img.user-img {
+    width: 25px;
+    height: 25px;
+    margin-right: 24px;
+    object-fit: cover;
+  }
 }

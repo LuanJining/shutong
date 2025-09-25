@@ -2,4 +2,19 @@
   width: 108px;
   min-height: 100%;
   background-color: #fbfbfb;
+  .nav-item {
+    margin-bottom: 48px;
+    cursor: pointer;
+    &:last-child {
+      margin-bottom: 0;
+    }
+    .nav-icon {
+      img {
+        width: 25px;
+        height: 25px;
+        object-fit: cover;
+        white-space: nowrap;
+      }
+    }
+  }
 }

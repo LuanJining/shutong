@@ -1,0 +1,42 @@
+.add-knowledge {
+  .left-content {
+    height: 100%;
+    display: flex;
+    box-sizing: border-box;
+    flex-direction: column;
+    padding: 32px 24px;
+    width: 490px;
+    background-color: #efefef;
+    .top-box {
+      padding-bottom: 16px;
+      color: #333;
+    }
+
+    .btn-confirm {
+      background-color: var(--primary-blue);
+      color: #fff;
+      border-radius: 5px;
+      padding: 3px 16px;
+      cursor: pointer;
+    }
+
+    .form-box {
+      flex: 1;
+      padding: 24px;
+      background-color: #fff;
+    }
+  }
+
+  .right-content {
+    padding: 40px 100px 40px 40px;
+    background-color: #fff;
+
+    .icon-img {
+        img {
+            width: 35px;
+            height: 35px;
+            object-fit: cover;
+        }
+    }
+  }
+}

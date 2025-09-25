@@ -1,9 +1,6 @@
 import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
 import { getViteUrl } from "./tools";
 import { message } from "antd";
-import storage from "./storage";
-import cache from "@/config/cache";
-import utils from ".";
 
 // 创建一个axios实例
 const instance = axios.create({
@@ -13,7 +10,6 @@ const instance = axios.create({
 // 请求拦截器
 instance.interceptors.request.use(
     (config) => {
-       
         return config;
     },
     (err) => {
@@ -27,6 +23,7 @@ instance.interceptors.response.use(
     },
     (err) => {
         console.log(err)
+        message.error(err?.response?.data?.error)
         return Promise.reject(err);
     },
 );

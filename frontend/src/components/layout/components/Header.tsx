@@ -1,5 +1,6 @@
 import "../styles/layout-header.scss";
 import storage from "@/utils/storage";
+import IconUser from "@/assets/icons/icon-user.png"
 import { Layout, } from "antd";
 import { useNavigate } from "react-router-dom";
 import { LogoutOutlined, UserOutlined } from "@ant-design/icons";
@@ -15,10 +16,10 @@ export default function LayoutHeader() {
     }
 
     return (
-        <Header className="layout-header jf-end">
-            <UserOutlined
-                className="pointer lg-fs mgR24"
-            />
+        <Header className="layout-header al-center jf-end">
+
+            <img className="user-img" src={IconUser} alt="" />
+
             <LogoutOutlined
                 title="登出"
                 onClick={logout}

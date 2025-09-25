@@ -1,13 +1,13 @@
 import { Suspense, lazy } from "react";
 
-import { Navigate } from "react-router-dom";
 import { Spin } from "antd";
+import { Navigate } from "react-router-dom";
 import { ROUTESELF_TYPE } from "@/types/common";
 import subRoutes from "./subRoutes";
 
 const Layout = lazy(() => import("@/components/layout/Index"));
 const NotFound = lazy(() => import("@/views/not-found/Index"));
-const Login = lazy(() => import("@/views/user/Index"));
+const Login = lazy(() => import("@/views/login/Index"));
 
 /* 懒加载需要添加loading组件 */
 const withLoadingComponent = (comp: JSX.Element) => (
@@ -41,7 +41,6 @@ const routes: ROUTESELF_TYPE[] = [
     },
     {
         element: withLoadingComponent(<Layout />),
-        path: 'home',
         children: subRoutes,
     },
 ];

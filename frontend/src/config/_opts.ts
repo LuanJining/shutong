@@ -1,4 +1,4 @@
-import optsEnum from "./optsEnum";
+import optsEnum from "./_optsEnum";
 
 // 定义 enumS 的类型
 type EnumS = typeof optsEnum;

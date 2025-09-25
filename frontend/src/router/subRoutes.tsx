@@ -1,6 +1,16 @@
+import { ROUTESELF_TYPE } from "@/types/common";
 import { Spin } from "antd";
 import { Suspense, lazy } from "react"
+
+import IconPen from '@/assets/icons/icon-pen.png'
+import IconMask from '@/assets/icons/icon-mask.png'
+import IconAns from '@/assets/icons/icon-ans.png'
+import IconBook from '@/assets/icons/icon-book.png'
+import IconSearch from '@/assets/icons/icon-search.png'
+
+
 const Home = lazy(() => import("@/views/home/Index"));
+const AddKnowledge = lazy(() => import("@/views/knowledge/AddKnowledge"));
 
 
 /* 懒加载需要添加loading组件 */
@@ -15,14 +25,73 @@ const withLoadingComponent = (comp: JSX.Element) => (
         {comp}
     </Suspense>
 );
-export default [
+
+const routes: ROUTESELF_TYPE[] = [
     {
         path: "home",
         element: withLoadingComponent(<Home />),
         meta: {
             title: "首页",
+            show: false
         },
     },
+    {
+        path: "write",
+        // element: withLoadingComponent(<Home />),
+        meta: {
+            title: "写作",
+            icon: <img src={IconPen} />,
+            show: true
+        },
+    },
+    {
+        path: "approve",
+        // element: withLoadingComponent(<Home />),
+        meta: {
+            title: "审核",
+            icon: <img src={IconMask} />,
+            show: true
+        },
+    },
+    {
+        path: "answer",
+        // element: withLoadingComponent(<Home />),
+        meta: {
+            title: "问答",
+            icon: <img src={IconAns} />,
+            show: true
+        },
+    },
+    {
+        path: "proofread",
+        // element: withLoadingComponent(<Home />),
+        meta: {
+            title: "校对",
+            icon: <img src={IconSearch} />,
+            show: true
+        },
+    },
+
+    {
+        path: "knowledge",
+        // element: withLoadingComponent(<Home />),
+        meta: {
+            title: "知识库",
+            icon: <img src={IconBook} />,
+            show: true
+        },
+    },
+
+    {
+        path: "add/knowledge",
+        element: withLoadingComponent(<AddKnowledge />),
+        meta: {
+            title: "新增文档知识",
+            show: false
+        },
+    },
+
+
     // {
     //     meta: { title: "账户管理", },
     //     children: [
@@ -67,4 +136,6 @@ export default [
     // },
 
 ]
+
+export default routes
 
