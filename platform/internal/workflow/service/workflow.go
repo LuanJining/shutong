@@ -441,7 +441,7 @@ func (s *WorkflowService) CancelInstance(id uint, userID uint) error {
 
 	// 更新实例状态
 	now := time.Now()
-	if err := tx.Model(&instance).Updates(map[string]interface{}{
+	if err := tx.Model(&instance).Updates(map[string]any{
 		"status":       models.StatusCancelled,
 		"completed_at": &now,
 	}).Error; err != nil {
@@ -452,7 +452,7 @@ func (s *WorkflowService) CancelInstance(id uint, userID uint) error {
 	// 取消所有待处理的任务
 	if err := tx.Model(&models.WorkflowTask{}).
 		Where("instance_id = ? AND status = ?", id, models.StatusPending).
-		Updates(map[string]interface{}{
+		Updates(map[string]any{
 			"status":       models.StatusCancelled,
 			"completed_at": &now,
 		}).Error; err != nil {
@@ -474,7 +474,7 @@ func (s *WorkflowService) GetMyTasks(userID uint, page, pageSize int) (*models.P
 	var total int64
 
 	query := s.db.Model(&models.WorkflowTask{}).
-		Where("assignee_id = ? AND status = ?", userID, models.StatusPending).
+		Where("assignee_id = ? AND workflow_tasks.status = ?", userID, models.StatusPending).
 		Joins("JOIN workflow_instances ON workflow_tasks.instance_id = workflow_instances.id").
 		Where("workflow_instances.status = ?", models.StatusPending)
 
@@ -563,7 +563,7 @@ func (s *WorkflowService) processTask(taskID uint, userID uint, status string, c
 		// 拒绝则整个流程结束，取消同步骤的其他待处理任务
 		if err := tx.Model(&models.WorkflowTask{}).
 			Where("instance_id = ? AND step_id = ? AND status = ?", task.InstanceID, task.StepID, models.StatusPending).
-			Updates(map[string]interface{}{
+			Updates(map[string]any{
 				"status":       models.StatusCancelled,
 				"completed_at": &now,
 			}).Error; err != nil {
@@ -572,7 +572,7 @@ func (s *WorkflowService) processTask(taskID uint, userID uint, status string, c
 		}
 
 		// 更新流程实例状态为拒绝
-		if err := tx.Model(&task.Instance).Updates(map[string]interface{}{
+		if err := tx.Model(&task.Instance).Updates(map[string]any{
 			"status":       models.StatusRejected,
 			"completed_at": &now,
 		}).Error; err != nil {
@@ -595,7 +595,7 @@ func (s *WorkflowService) processTask(taskID uint, userID uint, status string, c
 				First(&nextStep).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					// 没有后续步骤，流程完成
-					if err := tx.Model(&task.Instance).Updates(map[string]interface{}{
+					if err := tx.Model(&task.Instance).Updates(map[string]any{
 						"status":       models.StatusApproved,
 						"completed_at": &now,
 					}).Error; err != nil {
@@ -695,7 +695,7 @@ func (s *WorkflowService) ProcessTimeoutTasks() error {
 
 	for _, task := range timeoutTasks {
 		// 更新任务状态为超时
-		if err := s.db.Model(&task).Updates(map[string]interface{}{
+		if err := s.db.Model(&task).Updates(map[string]any{
 			"status":       models.StatusTimeout,
 			"completed_at": time.Now(),
 		}).Error; err != nil {
@@ -705,7 +705,7 @@ func (s *WorkflowService) ProcessTimeoutTasks() error {
 		// 更新流程实例状态为超时
 		if err := s.db.Model(&models.WorkflowInstance{}).
 			Where("id = ?", task.InstanceID).
-			Updates(map[string]interface{}{
+			Updates(map[string]any{
 				"status":       models.StatusTimeout,
 				"completed_at": time.Now(),
 			}).Error; err != nil {

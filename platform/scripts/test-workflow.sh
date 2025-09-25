@@ -65,14 +65,6 @@ CREATE_WORKFLOW_RESPONSE=$(curl -s -X POST "$BASE_URL/workflows" \
         "approver_id": 0,
         "is_required": true,
         "timeout_hours": 24
-      },
-      {
-        "step_name": "最终审批",
-        "step_order": 2,
-        "approver_type": "user",
-        "approver_id": 1,
-        "is_required": true,
-        "timeout_hours": 48
       }
     ]
   }')
