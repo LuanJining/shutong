@@ -3,14 +3,10 @@ package middleware
 import (
 	"fmt"
 	"net/http"
-	"slices"
-	"strconv"
 	"strings"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/model"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/service"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 // Logger 日志中间件
@@ -96,137 +92,5 @@ func AuthRequired(authService *service.AuthService) gin.HandlerFunc {
 		// 将用户信息存储到上下文中
 		c.Set("user", user)
 		c.Next()
-	}
-}
-
-// RequireRole 角色权限检查中间件
-func RequireRole(roleName []string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		user, exists := c.Get("user")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "用户未认证"})
-			c.Abort()
-			return
-		}
-
-		// 类型断言获取用户信息
-		userModel, ok := user.(*model.User)
-		if !ok {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "用户信息格式错误"})
-			c.Abort()
-			return
-		}
-
-		// 检查用户是否具有指定角色
-		hasRole := false
-		for _, role := range userModel.Roles {
-			if slices.Contains(roleName, role.Name) {
-				hasRole = true
-				break
-			}
-		}
-
-		if !hasRole {
-			c.JSON(http.StatusForbidden, gin.H{"error": "权限不足，需要" + strings.Join(roleName, ",") + "角色"})
-			c.Abort()
-			return
-		}
-
-		c.Next()
-	}
-}
-
-// RequireSpaceMember 空间成员权限检查中间件
-func RequireSpaceMember(db *gorm.DB, spaceID uint) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		user, exists := c.Get("user")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "用户未认证"})
-			c.Abort()
-			return
-		}
-
-		userModel, ok := user.(*model.User)
-		if !ok {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "用户信息格式错误"})
-			c.Abort()
-			return
-		}
-
-		// 如果用户是超级管理员或者企业管理员，则直接跳过
-		for _, role := range userModel.Roles {
-			if role.Name == model.RoleSuperAdmin || role.Name == model.RoleEnterpriseAdmin {
-				c.Next()
-				return
-			}
-		}
-
-		// 检查用户是否为空间成员
-		var spaceMember model.SpaceMember
-		if err := db.Where("space_id = ? AND user_id = ?", spaceID, userModel.ID).First(&spaceMember).Error; err != nil {
-			c.JSON(http.StatusForbidden, gin.H{"error": "权限不足，需要空间成员"})
-			c.Abort()
-			return
-		}
-
-		c.Next()
-	}
-}
-
-// RequirePermission 权限检查中间件
-func RequirePermission(permissionName string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		user, exists := c.Get("user")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "用户未认证"})
-			c.Abort()
-			return
-		}
-
-		userModel, ok := user.(*model.User)
-		if !ok {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "用户信息格式错误"})
-			c.Abort()
-			return
-		}
-
-		// 检查用户是否具有指定权限
-		hasPermission := false
-		for _, role := range userModel.Roles {
-			for _, permission := range role.Permissions {
-				if permission.Name == permissionName {
-					hasPermission = true
-					break
-				}
-			}
-			if hasPermission {
-				break // 找到权限后立即退出外层循环
-			}
-		}
-
-		if !hasPermission {
-			c.JSON(http.StatusForbidden, gin.H{"error": "权限不足，需要" + permissionName + "权限"})
-			c.Abort()
-			return
-		}
-
-		c.Next()
-	}
-}
-
-// RequireSpaceMemberFromURL 从URL参数获取spaceID并检查空间成员权限
-func RequireSpaceMemberFromURL(db *gorm.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// 从URL参数获取spaceID
-		spaceIDStr := c.Param("id")
-		spaceID, err := strconv.ParseUint(spaceIDStr, 10, 32)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的空间ID"})
-			c.Abort()
-			return
-		}
-
-		// 调用原有的空间成员检查逻辑
-		RequireSpaceMember(db, uint(spaceID))(c)
 	}
 }

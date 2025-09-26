@@ -1,6 +1,6 @@
 server:
-  # host: 192.168.0.56
-  host: localhost
+  host: 192.168.0.56
+  # host: localhost
   port: "8080"
 
 iam:

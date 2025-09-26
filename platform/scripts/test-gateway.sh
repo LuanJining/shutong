@@ -2,7 +2,7 @@
 
 # Gateway服务测试脚本 - 通过Gateway访问IAM服务
 
-GATEWAY_URL="http://localhost:8080/api/v1"
+GATEWAY_URL="http://192.168.0.56:8080/api/v1"
 IAM_URL="http://localhost:8081/api/v1"
 
 echo "=== Gateway服务测试 ==="
