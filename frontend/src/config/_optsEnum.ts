@@ -10,9 +10,9 @@ const ROLES: ENUM_TYPE = {
 }
 
 const SPACE_TYPE: ENUM_TYPE = {
-    department: '部门',
-    project: '项目',
-    team: '团队',
+    project: '项目知识库',
+    department: '部门知识库',
+    team: '团队知识库',
 }
 
 const optsEnum = {

@@ -1,14 +1,12 @@
-import { Checkbox, DatePicker, DatePickerProps, Form, GetProps, Input, Radio, Select } from "antd"
+import { Checkbox, DatePicker, DatePickerProps, Form, GetProps, Input, message, Radio, Select, Upload } from "antd"
 import "./styles/add-knowledge.scss"
 import Dragger from "antd/es/upload/Dragger"
 import IconPdf from '@/assets/icons/icon-pdf.png'
 import { CheckCircleFilled, CloudUploadOutlined, DeleteOutlined, EyeFilled } from "@ant-design/icons"
 import CateSelect from "./CateSelect"
 import { useState } from "react"
+import utils from "@/utils"
 type RangePickerProps = GetProps<typeof DatePicker.RangePicker>;
-
-const { RangePicker } = DatePicker;
-
 
 export default function AddKnowledge() {
     const [cateOpen, setCopen] = useState<boolean>(false)
@@ -18,9 +16,42 @@ export default function AddKnowledge() {
         console.log('onOk: ', value);
     };
 
+    const beforeUpload = (file: any) => {
+        console.log(file)
+        const whiteArr = [
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/pdf',
+        ]
+        if (!whiteArr.includes(file.type)) {
+            message.error("doc/docx/pdf", 1)
+        }
+        return whiteArr.includes(file.type) ? true : Upload.LIST_IGNORE
+    }
+
+    const customRequest = async (options: any) => {
+        try {
+            utils.setLoading(true)
+            const formatData = utils.getFormData('file', options.file)
+            // await api_upload.dataFlowUpload(formatData, curFlowerId)
+            message.success("上传成功", 1)
+            options.onSuccess()
+            utils.setLoading(false)
+        } catch {
+            options.onError()
+        }
+    }
+
     const BaseInfo = () => (<div className="form-box">
-        <Form.Item>
-            <Dragger>
+        <Form.Item
+            valuePropName="fileList"
+            getValueFromEvent={utils.normFile}
+            name='bigFile'
+        >
+            <Dragger
+                customRequest={customRequest}
+                beforeUpload={beforeUpload}
+            >
                 <p className="ant-upload-drag-icon">
                     <CloudUploadOutlined />
                 </p>
@@ -149,7 +180,7 @@ export default function AddKnowledge() {
                     {isBase ? <BaseInfo /> : <Approve />}
                 </div>
 
-                <div className="right-content flex1">
+                <div className="right-content flex1 flex flex-col">
                     <div className="file-info flex al-center space-between">
                         <div className="flex al-center">
                             <div className="icon-img">
@@ -172,13 +203,29 @@ export default function AddKnowledge() {
                         </div>
                     </div>
 
-                    <Form.Item className="mgT24" labelCol={{ span: 2 }} label='名称' name='name' rules={[{ required: true }]}>
+                    <Form.Item className="mgT24" labelCol={{ span: 1 }} label='名称' name='name' rules={[{ required: true }]}>
                         <Input />
                     </Form.Item>
 
-                    <Form.Item labelCol={{ span: 2 }} label='摘要'>
+                    <Form.Item labelCol={{ span: 1 }} label='摘要'>
                         <Input.TextArea rows={4} style={{ resize: 'none' }} />
                     </Form.Item>
+
+                    <Form.Item className="h-100p" wrapperCol={{ offset: 1 }}>
+                        <div className="pdf-container">
+                            <object
+                                type="application/pdf"
+                                data={''}
+                                width="100%"
+                                height='100%'
+                            >
+                                <div className="p-center flex-center">
+                                    <a href={''}>您的浏览器不支持 PDF 文件，请下载后查看。</a>
+                                </div>
+                            </object>
+                        </div>
+                    </Form.Item>
+
                 </div>
             </Form>
 

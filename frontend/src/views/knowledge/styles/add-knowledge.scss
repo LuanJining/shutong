@@ -1,12 +1,13 @@
 .add-knowledge {
+  background-color: #efefef;
   .left-content {
     height: 100%;
     display: flex;
     box-sizing: border-box;
     flex-direction: column;
-    padding: 32px 24px;
+    padding: 32px 24px 16px;
     width: 490px;
-    background-color: #efefef;
+
     .top-box {
       position: relative;
       padding-bottom: 8px;
@@ -49,6 +50,8 @@
 
   .right-content {
     padding: 40px 100px 40px 40px;
+    margin-bottom: 16px;
+    box-sizing: border-box;
     background-color: #fff;
 
     .icon-img {
@@ -57,6 +60,12 @@
         height: 35px;
         object-fit: cover;
       }
+    }
+
+    .pdf-container {
+      flex: 1;
+      background-color: #fff;
+      box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.4);
     }
   }
 }

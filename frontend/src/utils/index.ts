@@ -35,8 +35,27 @@ function setLoading(isLoading: boolean) {
     store.dispatch(setIsLoading({ isLoading }));
 }
 
+function normFile(e: any) {
+    if (Array.isArray(e)) {
+        return e;
+    }
+    return e?.fileList;
+};
+
+/**
+ * binary 文件封装
+ * @param key:string
+ * @param value:File
+ * @returns formData
+ */
+export function getFormData(key: string, value: File) {
+    const formData: any = new FormData();
+    formData.append(key, value);
+    return formData;
+}
+
 export default {
-    setLoading, isFalseValue,
+    setLoading, isFalseValue, normFile,getFormData
 }
 
 
