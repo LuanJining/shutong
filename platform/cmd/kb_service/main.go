@@ -27,9 +27,11 @@ func main() {
 	minioClient := client.NewS3Client(&cfg.Minio)
 	// 初始化qdrantClient
 	qdrantClient := client.NewQdrantClient(&cfg.Qdrant)
+	// 初始化ocrClient
+	ocrClient := client.NewOCRClient(&cfg.OCR)
 
 	// 初始化路由
-	r := router.Setup(cfg, db, minioClient, qdrantClient)
+	r := router.Setup(cfg, db, minioClient, qdrantClient, ocrClient)
 
 	// 启动服务器
 	srv := server.New(&cfg.Server, r)

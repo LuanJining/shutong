@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"regexp"
 	"sync"
+	"time"
 
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/config"
 
@@ -60,12 +62,58 @@ func (c *S3Client) validateConfig() error {
 	if c.config.SecretKey == "" {
 		return fmt.Errorf("MinIO secret key is required")
 	}
+	if c.config.Bucket == "" {
+		return fmt.Errorf("MinIO bucket name is required")
+	}
+	if err := c.validateBucketName(c.config.Bucket); err != nil {
+		return fmt.Errorf("invalid bucket name: %w", err)
+	}
+	return nil
+}
+
+// validateBucketName 验证MinIO bucket名称是否符合规范
+func (c *S3Client) validateBucketName(bucketName string) error {
+	// MinIO bucket名称规则：
+	// 1. 长度3-63字符
+	// 2. 只能包含小写字母、数字、点、连字符
+	// 3. 不能以点或连字符开头或结尾
+	// 4. 不能包含连续的点
+	// 5. 不能是IP地址格式
+
+	if len(bucketName) < 3 || len(bucketName) > 63 {
+		return fmt.Errorf("bucket name must be 3-63 characters long")
+	}
+
+	// 检查是否以点或连字符开头或结尾
+	if bucketName[0] == '.' || bucketName[0] == '-' ||
+		bucketName[len(bucketName)-1] == '.' || bucketName[len(bucketName)-1] == '-' {
+		return fmt.Errorf("bucket name cannot start or end with dot or hyphen")
+	}
+
+	// 检查是否包含连续的点
+	if regexp.MustCompile(`\.\.`).MatchString(bucketName) {
+		return fmt.Errorf("bucket name cannot contain consecutive dots")
+	}
+
+	// 检查是否只包含允许的字符
+	validPattern := regexp.MustCompile(`^[a-z0-9.-]+$`)
+	if !validPattern.MatchString(bucketName) {
+		return fmt.Errorf("bucket name can only contain lowercase letters, numbers, dots, and hyphens")
+	}
+
+	// 检查是否是IP地址格式
+	ipPattern := regexp.MustCompile(`^(\d{1,3}\.){3}\d{1,3}$`)
+	if ipPattern.MatchString(bucketName) {
+		return fmt.Errorf("bucket name cannot be an IP address")
+	}
+
 	return nil
 }
 
 // isSecureEndpoint 判断是否使用HTTPS
 func (c *S3Client) isSecureEndpoint() bool {
-	return c.config.Endpoint[:8] == "https://"
+	// 对于外部MinIO服务，默认使用HTTPS
+	return true
 }
 
 // UploadFile 上传文件到MinIO
@@ -92,18 +140,32 @@ func (c *S3Client) UploadFile(ctx context.Context, objectName string, reader io.
 }
 
 // DownloadFile 从MinIO下载文件
-func (c *S3Client) DownloadFile(ctx context.Context, objectName string) (io.Reader, error) {
+func (c *S3Client) DownloadFile(ctx context.Context, objectName string) (io.ReadCloser, error) {
 	client, err := c.GetClient()
 	if err != nil {
 		return nil, err
 	}
 
-	object, err := client.GetObject(ctx, c.config.Bucket, objectName, minio.GetObjectOptions{})
+	// 添加超时控制 - 增加超时时间用于大文件
+	timeoutCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+
+	object, err := client.GetObject(timeoutCtx, c.config.Bucket, objectName, minio.GetObjectOptions{})
 	if err != nil {
+		cancel()
 		return nil, fmt.Errorf("failed to download file: %w", err)
 	}
 
-	return object, nil
+	return &objectWithCancel{ReadCloser: object, cancel: cancel}, nil
+}
+
+type objectWithCancel struct {
+	io.ReadCloser
+	cancel context.CancelFunc
+}
+
+func (o *objectWithCancel) Close() error {
+	defer o.cancel()
+	return o.ReadCloser.Close()
 }
 
 // DeleteFile 从MinIO删除文件
@@ -162,7 +224,9 @@ func (c *S3Client) createBucket(ctx context.Context, client *minio.Client) error
 
 	err = client.SetBucketLifecycle(ctx, c.config.Bucket, lifecycleConfig)
 	if err != nil {
-		return err
+		// 如果生命周期配置失败，记录错误但不影响bucket创建
+		// 这可能是由于MinIO版本或配置问题
+		fmt.Printf("Warning: failed to set bucket lifecycle: %v\n", err)
 	}
 
 	return nil

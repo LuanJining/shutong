@@ -24,8 +24,19 @@ log:
   db_log_level: warn
 
 minio:
-  endpoint: https://api.kunxiangtech.com:9000
+  endpoint: api.kunxiangtech.com:9000
   access_key: tIib6uMMDCUgujlicB3B
   secret_key: 38lmILFSwAZUR9Rl155VYVlCgKNbZe7jIfY9EmoF
-  bucket: kb_platform
+  bucket: kb-platform
   region: us-east-1
+
+qdrant:
+  host: localhost
+  port: "6333"
+  user: qdrant
+  password: qdrant
+  dbname: kb_platform
+  sslmode: disable
+
+ocr:
+  url: http://localhost:8084

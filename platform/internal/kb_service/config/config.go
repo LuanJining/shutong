@@ -15,6 +15,7 @@ type Config struct {
 	Database DatabaseConfig `mapstructure:"database"`
 	Minio    MinioConfig    `mapstructure:"minio"`
 	Qdrant   QdrantConfig   `mapstructure:"qdrant"`
+	OCR      OCRConfig      `mapstructure:"ocr"`
 	Gin      GinConfig      `mapstructure:"gin"`
 	Log      LogConfig      `mapstructure:"log"`
 }
@@ -60,6 +61,10 @@ type QdrantConfig struct {
 	Password string `mapstructure:"password"`
 	DBName   string `mapstructure:"dbname"`
 	SSLMode  string `mapstructure:"sslmode"`
+}
+
+type OCRConfig struct {
+	Url string `mapstructure:"url"`
 }
 
 type LogConfig struct {
@@ -135,7 +140,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("minio.endpoint", "localhost:9000")
 	v.SetDefault("minio.access_key", "minioadmin")
 	v.SetDefault("minio.secret_key", "minioadmin")
-	v.SetDefault("minio.bucket", "kb_platform")
+	v.SetDefault("minio.bucket", "kb-platform")
 	v.SetDefault("minio.region", "us-east-1")
 	v.SetDefault("qdrant.host", "localhost")
 	v.SetDefault("qdrant.port", "6333")
@@ -143,6 +148,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("qdrant.password", "qdrant")
 	v.SetDefault("qdrant.dbname", "kb_platform")
 	v.SetDefault("qdrant.sslmode", "disable")
+	v.SetDefault("ocr.url", "http://localhost:8084")
 	v.SetDefault("log.level", "info")
 	v.SetDefault("log.db_log_level", "warn")
 }

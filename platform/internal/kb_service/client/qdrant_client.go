@@ -105,7 +105,7 @@ func (c *QdrantClient) CollectionExists(ctx context.Context, collectionName stri
 }
 
 // UpsertPoints 插入或更新向量点
-func (c *QdrantClient) UpsertPoints(ctx context.Context, collectionName string, points interface{}) error {
+func (c *QdrantClient) UpsertPoints(ctx context.Context, collectionName string, points any) error {
 	client, err := c.GetClient()
 	if err != nil {
 		return err
@@ -138,7 +138,7 @@ func (c *QdrantClient) UpsertPoints(ctx context.Context, collectionName string, 
 }
 
 // SearchPoints 搜索向量点
-func (c *QdrantClient) SearchPoints(ctx context.Context, collectionName string, vector []float32, limit uint64, scoreThreshold float32) ([]interface{}, error) {
+func (c *QdrantClient) SearchPoints(ctx context.Context, collectionName string, vector []float32, limit uint64, scoreThreshold float32) ([]any, error) {
 	client, err := c.GetClient()
 	if err != nil {
 		return nil, err
@@ -168,7 +168,7 @@ func (c *QdrantClient) SearchPoints(ctx context.Context, collectionName string, 
 	}
 
 	result := resp.GetResult()
-	points := make([]interface{}, len(result))
+	points := make([]any, len(result))
 	for i, p := range result {
 		points[i] = p
 	}
@@ -218,7 +218,7 @@ func (c *QdrantClient) DeletePoints(ctx context.Context, collectionName string, 
 }
 
 // GetCollectionInfo 获取集合信息
-func (c *QdrantClient) GetCollectionInfo(ctx context.Context, collectionName string) (interface{}, error) {
+func (c *QdrantClient) GetCollectionInfo(ctx context.Context, collectionName string) (any, error) {
 	client, err := c.GetClient()
 	if err != nil {
 		return nil, err
@@ -265,7 +265,7 @@ func (c *QdrantClient) ListCollections(ctx context.Context) ([]string, error) {
 }
 
 // normalizePointStructs 规范化点结构体
-func normalizePointStructs(points interface{}) ([]*qdrant.PointStruct, error) {
+func normalizePointStructs(points any) ([]*qdrant.PointStruct, error) {
 	switch v := points.(type) {
 	case nil:
 		return nil, fmt.Errorf("points cannot be nil")
