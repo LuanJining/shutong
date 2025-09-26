@@ -7,7 +7,7 @@ const initialState: {
     userInfo: any,
 } = {
     isLogin: storage.get(_cache.AUTH_INFO)?.access_token,
-    userInfo: null
+    userInfo: storage.get(_cache.AUTH_INFO)?.user,
 };
 
 export const systemSlice = createSlice({

@@ -30,7 +30,9 @@ export default function LayoutHeader() {
                 navigate('/notification')
             }} className="hg-fs mgR24 pointer" />
 
-            <img className="user-img" src={IconUser} alt="" />
+            <img onClick={() => {
+                navigate('/personal')
+            }} className="user-img pointer" src={IconUser} alt="" />
 
             <LogoutOutlined
                 title="登出"

@@ -13,7 +13,8 @@ const Qa = lazy(() => import("@/views/q&a/Index"));
 const Home = lazy(() => import("@/views/home/Index"));
 const AddKnowledge = lazy(() => import("@/views/knowledge/AddKnowledge"));
 const Notification = lazy(() => import("@/views/notification/Index"));
-
+const Personal = lazy(() => import("@/views/personal/Index"));
+const Knowledge = lazy(() => import("@/views/knowledge/Index"));
 
 /* 懒加载需要添加loading组件 */
 const withLoadingComponent = (comp: JSX.Element) => (
@@ -76,7 +77,7 @@ const routes: ROUTESELF_TYPE[] = [
 
     {
         path: "knowledge",
-        // element: withLoadingComponent(<Home />),
+        element: withLoadingComponent(<Knowledge />),
         meta: {
             title: "知识库",
             icon: <img src={IconBook} />,
@@ -98,6 +99,15 @@ const routes: ROUTESELF_TYPE[] = [
         element: withLoadingComponent(<Notification />),
         meta: {
             title: "消息通知",
+            show: false
+        },
+    },
+
+     {
+        path: "personal",
+        element: withLoadingComponent(<Personal />),
+        meta: {
+            title: "个人中心",
             show: false
         },
     },

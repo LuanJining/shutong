@@ -1,6 +1,7 @@
-.app-notification {
+.app-personal {
   height: 100%;
   background-color: #fff;
+
   .notification-nav {
     width: 283px;
     height: 100%;
@@ -21,6 +22,21 @@
   }
   .app-common-deal {
     padding: 24px;
-    background-color: #fff;
+
+    .personal-item {
+      display: flex;
+      align-items: center;
+      padding-left: 120px;
+      margin-bottom: 36px;
+
+      &:first-child {
+        margin-top: 6%;
+      }
+      .personal-title {
+        font-size: var(--base-size);
+        width: 150px;
+        font-weight: bold;
+      }
+    }
   }
 }

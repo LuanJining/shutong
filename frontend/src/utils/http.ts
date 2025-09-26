@@ -1,6 +1,8 @@
 import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
 import { getViteUrl } from "./tools";
 import { message } from "antd";
+import storage from "./storage";
+import _caches from "@/config/_caches";
 
 // 创建一个axios实例
 const instance = axios.create({
@@ -10,6 +12,10 @@ const instance = axios.create({
 // 请求拦截器
 instance.interceptors.request.use(
     (config) => {
+        const token = storage.get(_caches.AUTH_INFO)?.access_token
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
         return config;
     },
     (err) => {
@@ -19,6 +25,7 @@ instance.interceptors.request.use(
 // 响应拦截器
 instance.interceptors.response.use(
     (res) => {
+
         return res;
     },
     (err) => {
