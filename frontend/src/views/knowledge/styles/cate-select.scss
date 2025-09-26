@@ -1,0 +1,27 @@
+.cate-modal {
+  .cate-content {
+    .cate-box {
+      padding: 24px;
+      height: 415px;
+      overflow-y: auto;
+      width: 33%;
+      border: 1px solid var(--primary-border-color);
+      .cate-inner {
+        .cate-item {
+          display: flex;
+          align-items: center;
+          height: 40px;
+          width: 200px;
+          padding-left: 12px;
+          box-sizing: border-box;
+          border-radius: 5px;
+          color: #333;
+          cursor: pointer;
+          &:hover {
+            background-color: #cfe3ff;
+          }
+        }
+      }
+    }
+  }
+}

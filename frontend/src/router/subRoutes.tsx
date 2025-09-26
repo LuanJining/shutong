@@ -9,8 +9,10 @@ import IconBook from '@/assets/icons/icon-book.png'
 import IconSearch from '@/assets/icons/icon-search.png'
 
 
+const Qa = lazy(() => import("@/views/q&a/Index"));
 const Home = lazy(() => import("@/views/home/Index"));
 const AddKnowledge = lazy(() => import("@/views/knowledge/AddKnowledge"));
+const Notification = lazy(() => import("@/views/notification/Index"));
 
 
 /* 懒加载需要添加loading组件 */
@@ -54,8 +56,8 @@ const routes: ROUTESELF_TYPE[] = [
         },
     },
     {
-        path: "answer",
-        // element: withLoadingComponent(<Home />),
+        path: "q&a",
+        element: withLoadingComponent(<Qa />),
         meta: {
             title: "问答",
             icon: <img src={IconAns} />,
@@ -83,13 +85,23 @@ const routes: ROUTESELF_TYPE[] = [
     },
 
     {
-        path: "add/knowledge",
+        path: "knowledge/add",
         element: withLoadingComponent(<AddKnowledge />),
         meta: {
             title: "新增文档知识",
             show: false
         },
     },
+
+    {
+        path: "notification",
+        element: withLoadingComponent(<Notification />),
+        meta: {
+            title: "消息通知",
+            show: false
+        },
+    },
+
 
 
     // {

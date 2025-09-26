@@ -1,0 +1,26 @@
+.app-notification {
+  height: 100%;
+  .notification-nav {
+    width: 283px;
+    height: 100%;
+    background-color: #efefef;
+
+    .ant-menu-item,
+    .ant-menu.ant-menu-sub.ant-menu-inline {
+      padding: 0;
+      background-color: transparent;
+      border-radius: 0;
+      margin: 4px 0;
+    }
+
+    .ant-menu-item.ant-menu-item-selected {
+      background-color: #c7e2f1;
+      color: #000;
+    }
+  }
+  .app-common-deal {
+    height: 100%;
+    padding: 24px;
+    background-color: #fff;
+  }
+}

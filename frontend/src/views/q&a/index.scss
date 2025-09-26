@@ -1,0 +1,37 @@
+.app-qa {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 24px 56px;
+  box-sizing: border-box;
+  background-color: #fff;
+  .chat-content {
+    .chat-container {
+      width: 60%;
+      margin: -50px auto 0;
+      .chat-desc {
+        img {
+          width: 200px;
+          height: 200px;
+          object-fit: cover;
+        }
+
+        .ai-chart {
+          font-size: 36px;
+          letter-spacing: 4px;
+          margin: 6px 0; 
+        }
+      }
+    }
+
+    .send-box {
+      width: 60%;
+      margin: 0 auto;
+      padding: 12px;
+      box-sizing: border-box;
+      border-radius: 10px;
+      background-color: rgba(255, 255, 255, 1);
+      border: 2px dashed rgba(187, 187, 187, 1);
+    }
+  }
+}

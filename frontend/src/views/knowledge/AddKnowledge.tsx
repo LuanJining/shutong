@@ -1,11 +1,22 @@
-import { Checkbox, Form, Input, Select } from "antd"
+import { Checkbox, DatePicker, DatePickerProps, Form, GetProps, Input, Radio, Select } from "antd"
 import "./styles/add-knowledge.scss"
 import Dragger from "antd/es/upload/Dragger"
 import IconPdf from '@/assets/icons/icon-pdf.png'
 import { CheckCircleFilled, CloudUploadOutlined, DeleteOutlined, EyeFilled } from "@ant-design/icons"
+import CateSelect from "./CateSelect"
+import { useState } from "react"
+type RangePickerProps = GetProps<typeof DatePicker.RangePicker>;
+
+const { RangePicker } = DatePicker;
+
 
 export default function AddKnowledge() {
+    const [cateOpen, setCopen] = useState<boolean>(false)
+    const [isBase, setIsBase] = useState<boolean>(true)
 
+    const onOk = (value: DatePickerProps['value'] | RangePickerProps['value']) => {
+        console.log('onOk: ', value);
+    };
 
     const BaseInfo = () => (<div className="form-box">
         <Form.Item>
@@ -34,15 +45,49 @@ export default function AddKnowledge() {
         </Form.Item>
 
         <Form.Item label='下架时间'>
-            <Input />
+            <DatePicker
+                style={{ width: '100%' }}
+                showTime
+                onChange={(value, dateString) => {
+                    console.log('Selected Time: ', value);
+                    console.log('Formatted Selected Time: ', dateString);
+                }}
+                onOk={onOk}
+            />
         </Form.Item>
 
-        <Form.Item label='权限'>
-            <Input />
+        <Form.Item name='role' label='权限'>
+            <Radio.Group
+                value={1}
+                options={[
+                    { value: 1, label: '可查看' },
+                    { value: 2, label: '可应用' },
+                ]}
+            />
         </Form.Item>
 
-        <Form.Item label='审批'>
-            <Input />
+        <Form.Item style={{ marginTop: -24 }} wrapperCol={{ offset: 5 }} >
+            <Select options={[]} />
+        </Form.Item>
+
+        <Form.Item name='approve' label='审批'>
+            <Radio.Group
+                value={1}
+                options={[
+                    { value: 1, label: '审批' },
+                    { value: 2, label: '无需审批' },
+                ]}
+            />
+        </Form.Item>
+        <Form.Item noStyle shouldUpdate={(pre: any, cur: any) => pre.approve !== cur.approve}>
+            {
+                ({ getFieldValue }) => {
+                    const isApprove: boolean = getFieldValue('approve') === 1
+                    return isApprove ? <Form.Item style={{ marginTop: -24 }} wrapperCol={{ offset: 5 }} >
+                        <Select options={[]} />
+                    </Form.Item> : <></>
+                }
+            }
         </Form.Item>
 
         <Form.Item label='版本'>
@@ -86,19 +131,22 @@ export default function AddKnowledge() {
 
     return (
         <div className='add-knowledge h-100p'>
-            <Form className="h-100p flex" labelAlign="left" colon={false} labelCol={{ span: 5 }}>
+            <Form className="h-100p flex al-stretch" labelAlign="left" colon={false} labelCol={{ span: isBase ? 5 : 7 }}>
 
                 <div className="left-content">
                     <div className="top-box flex al-center space-between">
-                        <div className="flex al-center">
-                            <div>基本信息</div>
+                        <div className="flex al-center chose">
+                            <div onClick={() => { setIsBase(true) }} className="chose-txt">基本信息</div>
                             <div className="mgL16 mgR16">|</div>
-                            <div>流程审批</div>
+                            <div onClick={() => { setIsBase(false) }} className="chose-txt">流程审批</div>
+                            <div
+                                style={{ left: `${isBase ? 0 : 92}px` }}
+                                className="active-line"></div>
                         </div>
 
                         <div className="btn-confirm">提交</div>
                     </div>
-                    <BaseInfo />
+                    {isBase ? <BaseInfo /> : <Approve />}
                 </div>
 
                 <div className="right-content flex1">
@@ -107,12 +155,12 @@ export default function AddKnowledge() {
                             <div className="icon-img">
                                 <img src={IconPdf} alt="" />
                             </div>
-                            <div className="primary-gray sm-fs">关于印发《安全生产文明施工“党政同责”暂行规定》的通知（核西南建[2016]41号）.pdf</div>
+                            <div className="primary-gray sm-fs elli">关于印发《安全生产文明施工“党政同责”暂行规定》的通知（核西南建[2016]41号）.pdf</div>
                         </div>
 
                         <div className="flex al-center">
 
-                            <div className="flex al-center" style={{ marginRight: 100 }}>
+                            <div className="flex al-center white-nowrap" style={{ marginRight: 100 }}>
                                 <CheckCircleFilled style={{ color: '#52CC6F' }} />
                                 <span className="mgL12">处理完成</span>
                             </div>
@@ -131,11 +179,10 @@ export default function AddKnowledge() {
                     <Form.Item labelCol={{ span: 2 }} label='摘要'>
                         <Input.TextArea rows={4} style={{ resize: 'none' }} />
                     </Form.Item>
-
                 </div>
-
             </Form>
 
+            <CateSelect open={cateOpen} setOpen={setCopen} />
         </div>
     )
 }

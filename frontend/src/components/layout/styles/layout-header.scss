@@ -5,10 +5,12 @@
   right: 0;
   display: flex;
   height: 65px;
-  background-color: #fbfbfb;
   z-index: 9;
   padding: 0 34px;
-
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  background-color: #fbfbfbfb;
   img.user-img {
     width: 25px;
     height: 25px;

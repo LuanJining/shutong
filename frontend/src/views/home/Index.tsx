@@ -12,6 +12,7 @@ import IconRight from "@/assets/icons/icon-right.png"
 
 import { SearchOutlined } from "@ant-design/icons"
 import { Col, Input, Row } from "antd"
+import { useNavigate } from "react-router-dom"
 
 const countArray: any[] = [
     { label: '制度汇总', desc: '公司各部门制定指引', icon: <img src={IconFile} />, },
@@ -22,6 +23,8 @@ const countArray: any[] = [
 ]
 
 export default function Index() {
+    const navigate = useNavigate()
+
     return (
         <div className="app-home">
             <div className="banner-box">
@@ -83,15 +86,19 @@ export default function Index() {
                     </Col>
 
                     <Col span={12}>
-                        <div style={{height:'calc(100% - 24px)'}} className="flex flex-col">
+                        <div style={{ height: 'calc(100% - 24px)' }} className="flex flex-col">
                             <Row gutter={22}>
                                 <Col span={12}>
-                                    <div className="opera-box flex al-center space-between">
-                                        <div className="flex al-center">
+                                    <div
+                                        className="opera-box flex al-center space-between">
+                                        <div
+                                            className="flex al-center">
                                             <img src={IconFileAdd} alt="" />
                                             <span className="nm-fs fw-bold">新增文档知识</span>
                                         </div>
-                                        <img className="pointer" src={IconRight} alt="" />
+                                        <img
+                                            onClick={() => { navigate('/knowledge/add') }}
+                                            className="pointer" src={IconRight} alt="" />
                                     </div>
                                 </Col>
 
@@ -107,7 +114,7 @@ export default function Index() {
                             </Row>
 
                             <div className="flex1 label-cloud mgT24">
-                                <div style={{color:'#010101'}} className="mgB16 nm-fs fw-bold">标签云</div>
+                                <div style={{ color: '#010101' }} className="mgB16 nm-fs fw-bold">标签云</div>
                                 <div className="tag-box flex flex-wrap">
                                     {
                                         ['合同', '招标方案', '建筑法', '合同', '招标方案', '建筑法', '合同', '招标方案', '建筑法',]

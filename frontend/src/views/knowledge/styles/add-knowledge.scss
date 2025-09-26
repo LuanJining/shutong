@@ -8,8 +8,24 @@
     width: 490px;
     background-color: #efefef;
     .top-box {
-      padding-bottom: 16px;
+      position: relative;
+      padding-bottom: 8px;
       color: #333;
+      .chose {
+        .chose-txt {
+          cursor: pointer;
+          width: 64px;
+        }
+
+        .active-line {
+          transition: all 0.5s;
+          position: absolute;
+          background-color: var(--primary-blue);
+          bottom: 0;
+          width: 64px;
+          height: 2px;
+        }
+      }
     }
 
     .btn-confirm {
@@ -24,6 +40,10 @@
       flex: 1;
       padding: 24px;
       background-color: #fff;
+
+      .ant-form-item {
+        margin-bottom: 32px;
+      }
     }
   }
 
@@ -32,11 +52,11 @@
     background-color: #fff;
 
     .icon-img {
-        img {
-            width: 35px;
-            height: 35px;
-            object-fit: cover;
-        }
+      img {
+        width: 35px;
+        height: 35px;
+        object-fit: cover;
+      }
     }
   }
 }
