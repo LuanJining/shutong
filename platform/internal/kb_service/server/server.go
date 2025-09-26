@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/config"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/config"
 	"github.com/gin-gonic/gin"
 )
 

@@ -1,0 +1,34 @@
+{
+    // 暂停保存动作，先止血
+    "editor.formatOnSave": false,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "always"
+    },  
+    // gopls 只索引你需要的目录，避免扫整个仓库
+    "gopls": {
+      "usePlaceholders": true, //完成函数时添加参数占位符
+      "completeUnimported": true, // 自动完成未导入的包
+      "deepCompletion": true, // 启用深度完成
+      "build.directoryFilters": [
+            "-./.git"
+      ],
+      "ui.completion.experimentalPostfixCompletions": false,
+      "formatting.gofumpt": true
+    },
+
+  
+    // 降低保存链路复杂度：先用最朴素 formatter
+    "go.formatTool": "gofmt",
+    "go.lintOnSave": "off",
+  
+    // 大仓常用：减少文件监听压力（按需增减）
+    "files.watcherExclude": {
+      "**/.git/**": true,
+      "**/node_modules/**": true,
+      "**/vendor/**": true,
+      "**/dist/**": true,
+      "**/build/**": true,
+      "**/.cache/**": true
+    }
+    
+  }

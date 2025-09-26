@@ -1,0 +1,31 @@
+server:
+  host: localhost
+  port: "8083"
+
+iam:
+  url: http://localhost:8081
+
+workflow:
+  url: http://localhost:8082
+
+gin:
+  mode: debug
+
+database:
+  host: localhost
+  port: "5432"
+  user: postgres
+  password: password
+  dbname: kb_platform
+  sslmode: disable
+
+log:
+  level: info
+  db_log_level: warn
+
+minio:
+  endpoint: https://api.kunxiangtech.com:9000
+  access_key: tIib6uMMDCUgujlicB3B
+  secret_key: 38lmILFSwAZUR9Rl155VYVlCgKNbZe7jIfY9EmoF
+  bucket: kb_platform
+  region: us-east-1

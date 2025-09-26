@@ -23,29 +23,29 @@ echo "$LOGIN_RESPONSE" | jq .
 TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.data.access_token')
 
 
-#创建一个user
-curl -s -X POST "$GATEWAY_URL/iam/users" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "Gateway测试用户",
-    "phone": "13800138001",
-    "email": "zygideon@gmail.com",
-    "password": "admin123",
-    "nickname": "Gateway测试用户",
-    "department": "Gateway测试部门",
-    "company": "Gateway测试公司"
-  }' 
+# #创建一个user
+# curl -s -X POST "$GATEWAY_URL/iam/users" \
+#   -H "Authorization: Bearer $TOKEN" \
+#   -H "Content-Type: application/json" \
+#   -d '{
+#     "username": "Gateway测试用户",
+#     "phone": "13800138001",
+#     "email": "zygideon@gmail.com",
+#     "password": "admin123",
+#     "nickname": "Gateway测试用户",
+#     "department": "Gateway测试部门",
+#     "company": "Gateway测试公司"
+#   }' 
 
-#分配一个角色
-curl -s -X POST "$GATEWAY_URL/iam/users/5/roles" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "role_id": 2
-  }'
+# #分配一个角色
+# curl -s -X POST "$GATEWAY_URL/iam/users/5/roles" \
+#   -H "Authorization: Bearer $TOKEN" \
+#   -H "Content-Type: application/json" \
+#   -d '{
+#     "role_id": 2
+#   }'
   
 
-#删除一个user
-curl -s -X DELETE "$GATEWAY_URL/iam/users/2" \
-  -H "Authorization: Bearer $TOKEN"
+# #删除一个user
+# curl -s -X DELETE "$GATEWAY_URL/iam/users/2" \
+#   -H "Authorization: Bearer $TOKEN"

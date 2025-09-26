@@ -37,6 +37,9 @@ Thumbs.db
 # Build output directory
 bin/
 
+# Go build cache
+.cache/
+
 # Logs
 *.log
 logs/
@@ -53,6 +56,9 @@ temp/
 # Build artifacts (specific binaries)
 /dist/
 
+# Java build artifacts
+target/
+*.class
 
 # Coverage reports
 coverage.txt
