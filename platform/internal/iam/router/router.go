@@ -4,7 +4,7 @@ import (
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/config"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/handler"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/middleware"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/model"
+
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/service"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -56,24 +56,15 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			users.GET("/:id", h.GetUser)
 
 			// 更新用户 - 先检查角色，再检查权限
-			users.PUT("/:id",
-				middleware.RequireRole([]string{model.RoleSuperAdmin, model.RoleEnterpriseAdmin}),
-				middleware.RequirePermission(model.PermissionAddDeleteUser),
-				h.UpdateUser)
+			users.PUT("/:id", h.UpdateUser)
 
 			// 添加/删除用户 - 只有超级管理员
-			users.POST("", middleware.RequireRole([]string{model.RoleSuperAdmin}), h.CreateUser)
-			users.DELETE("/:id", middleware.RequireRole([]string{model.RoleSuperAdmin}), h.DeleteUser)
+			users.POST("", h.CreateUser)
+			users.DELETE("/:id", h.DeleteUser)
 
 			// 用户角色管理 - 先检查角色，再检查权限
-			users.POST("/:id/roles",
-				middleware.RequireRole([]string{model.RoleSuperAdmin, model.RoleEnterpriseAdmin}),
-				middleware.RequirePermission(model.PermissionAddDeleteUser),
-				h.AssignUserRole)
-			users.DELETE("/:id/roles/:role_id",
-				middleware.RequireRole([]string{model.RoleSuperAdmin, model.RoleEnterpriseAdmin}),
-				middleware.RequirePermission(model.PermissionAddDeleteUser),
-				h.RemoveUserRole)
+			users.POST("/:id/roles", h.AssignUserRole)
+			users.DELETE("/:id/roles/:role_id", h.RemoveUserRole)
 		}
 
 		// 角色管理路由
@@ -86,23 +77,13 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			roles.GET("/:id/permissions", h.GetRolePermissions)
 
 			// 角色管理 - 超级管理员、企业管理员
-			roles.POST("",
-				middleware.RequireRole([]string{model.RoleSuperAdmin, model.RoleEnterpriseAdmin}),
-				h.CreateRole)
-			roles.PUT("/:id",
-				middleware.RequireRole([]string{model.RoleSuperAdmin, model.RoleEnterpriseAdmin}),
-				h.UpdateRole)
-			roles.DELETE("/:id",
-				middleware.RequireRole([]string{model.RoleSuperAdmin, model.RoleEnterpriseAdmin}),
-				h.DeleteRole)
+			roles.POST("", h.CreateRole)
+			roles.PUT("/:id", h.UpdateRole)
+			roles.DELETE("/:id", h.DeleteRole)
 
 			// 角色权限管理 - 超级管理员、企业管理员
-			roles.POST("/:id/permissions",
-				middleware.RequireRole([]string{model.RoleSuperAdmin, model.RoleEnterpriseAdmin}),
-				h.AssignRolePermission)
-			roles.DELETE("/:id/permissions/:permission_id",
-				middleware.RequireRole([]string{model.RoleSuperAdmin, model.RoleEnterpriseAdmin}),
-				h.RemoveRolePermission)
+			roles.POST("/:id/permissions", h.AssignRolePermission)
+			roles.DELETE("/:id/permissions/:permission_id", h.RemoveRolePermission)
 		}
 
 		// 权限管理路由
@@ -123,40 +104,18 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			spaces.GET("/:id", h.GetSpace)
 
 			// 创建知识空间 - 超级管理员、企业管理员、空间管理员
-			spaces.POST("",
-				middleware.RequireRole([]string{model.RoleSuperAdmin, model.RoleEnterpriseAdmin, model.RoleSpaceAdmin}),
-				h.CreateSpace)
+			spaces.POST("", h.CreateSpace)
 
 			// 管理空间 - 先检查空间成员，再检查角色权限
-			spaces.PUT("/:id",
-				middleware.RequireSpaceMemberFromURL(db),
-				middleware.RequireRole([]string{model.RoleSuperAdmin, model.RoleEnterpriseAdmin, model.RoleSpaceAdmin}),
-				h.UpdateSpace)
-			spaces.DELETE("/:id",
-				middleware.RequireSpaceMemberFromURL(db),
-				middleware.RequireRole([]string{model.RoleSuperAdmin, model.RoleEnterpriseAdmin, model.RoleSpaceAdmin}),
-				h.DeleteSpace)
+			spaces.PUT("/:id", h.UpdateSpace)
+			spaces.DELETE("/:id", h.DeleteSpace)
 
 			// 空间成员管理 - 先检查空间成员，再检查角色权限
-			spaces.GET("/:id/members",
-				middleware.RequireSpaceMemberFromURL(db),
-				h.GetSpaceMembers)
-			spaces.POST("/:id/members",
-				middleware.RequireSpaceMemberFromURL(db),
-				middleware.RequireRole([]string{model.RoleSuperAdmin, model.RoleEnterpriseAdmin, model.RoleSpaceAdmin}),
-				h.AddSpaceMember)
-			spaces.DELETE("/:id/members/:user_id",
-				middleware.RequireSpaceMemberFromURL(db),
-				middleware.RequireRole([]string{model.RoleSuperAdmin, model.RoleEnterpriseAdmin, model.RoleSpaceAdmin}),
-				h.RemoveSpaceMember)
-			spaces.PUT("/:id/members/:user_id",
-				middleware.RequireSpaceMemberFromURL(db),
-				middleware.RequireRole([]string{model.RoleSuperAdmin, model.RoleEnterpriseAdmin, model.RoleSpaceAdmin}),
-				h.UpdateSpaceMemberRole)
-			spaces.GET("/:id/members/:role_id",
-				middleware.RequireSpaceMemberFromURL(db),
-				middleware.RequireRole([]string{model.RoleSuperAdmin, model.RoleEnterpriseAdmin, model.RoleSpaceAdmin}),
-				h.GetSpaceMembersByRole)
+			spaces.GET("/:id/members", h.GetSpaceMembers)
+			spaces.POST("/:id/members", h.AddSpaceMember)
+			spaces.DELETE("/:id/members/:user_id", h.RemoveSpaceMember)
+			spaces.PUT("/:id/members/:user_id", h.UpdateSpaceMemberRole)
+			spaces.GET("/:id/members/:role_id", h.GetSpaceMembersByRole)
 		}
 	}
 

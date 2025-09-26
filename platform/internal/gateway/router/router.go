@@ -44,6 +44,7 @@ func Setup(cfg *config.Config) *gin.Engine {
 				users.GET("", iamHandler.ProxyToIamClient)
 				users.GET("/:id", iamHandler.ProxyToIamClient)
 				users.POST("", iamHandler.ProxyToIamClient)
+				users.POST("/:id/roles", iamHandler.ProxyToIamClient)
 				users.PUT("/:id", iamHandler.ProxyToIamClient)
 				users.DELETE("/:id", iamHandler.ProxyToIamClient)
 			}
