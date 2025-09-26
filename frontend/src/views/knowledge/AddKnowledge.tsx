@@ -6,18 +6,19 @@ import { CheckCircleFilled, CloudUploadOutlined, DeleteOutlined, EyeFilled } fro
 import CateSelect from "./CateSelect"
 import { useState } from "react"
 import utils from "@/utils"
+import FileUploader from "./Preview"
 type RangePickerProps = GetProps<typeof DatePicker.RangePicker>;
 
 export default function AddKnowledge() {
     const [cateOpen, setCopen] = useState<boolean>(false)
     const [isBase, setIsBase] = useState<boolean>(true)
+    const [fileInfo, setFileInfo] = useState<any>(null)
 
     const onOk = (value: DatePickerProps['value'] | RangePickerProps['value']) => {
         console.log('onOk: ', value);
     };
 
     const beforeUpload = (file: any) => {
-        console.log(file)
         const whiteArr = [
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -25,6 +26,14 @@ export default function AddKnowledge() {
         ]
         if (!whiteArr.includes(file.type)) {
             message.error("doc/docx/pdf", 1)
+        } else {
+            setFileInfo({
+                file: file, fileType: ['application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                ].includes(file.type)
+                    ? 'docx'
+                    : 'pdf'
+            })
         }
         return whiteArr.includes(file.type) ? true : Upload.LIST_IGNORE
     }
@@ -49,6 +58,7 @@ export default function AddKnowledge() {
             name='bigFile'
         >
             <Dragger
+                maxCount={1}
                 customRequest={customRequest}
                 beforeUpload={beforeUpload}
             >
@@ -121,7 +131,7 @@ export default function AddKnowledge() {
             }
         </Form.Item>
 
-        <Form.Item label='版本'>
+        <Form.Item style={{ marginBottom: 0 }} label='版本'>
             <Input />
         </Form.Item>
 
@@ -212,18 +222,7 @@ export default function AddKnowledge() {
                     </Form.Item>
 
                     <Form.Item className="h-100p" wrapperCol={{ offset: 1 }}>
-                        <div className="pdf-container">
-                            <object
-                                type="application/pdf"
-                                data={''}
-                                width="100%"
-                                height='100%'
-                            >
-                                <div className="p-center flex-center">
-                                    <a href={''}>您的浏览器不支持 PDF 文件，请下载后查看。</a>
-                                </div>
-                            </object>
-                        </div>
+                        <FileUploader fileInfo={fileInfo} />
                     </Form.Item>
 
                 </div>
