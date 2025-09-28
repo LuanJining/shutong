@@ -23,7 +23,7 @@ echo -e "\n3. 登录获取token..."
 LOGIN_RESPONSE=$(curl -s -X POST "$GATEWAY_URL/api/v1/iam/auth/login" \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "admin",
+    "login": "admin",
     "password": "admin123"
   }')
 
