@@ -5,12 +5,12 @@ import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.js?url';
 import { useState, useEffect, useMemo } from 'react';
 import { usePDFStreamRenderer } from '@/hooks/usePDFStreamRenderer';
-import { Porps_File_View } from '@/types/pages';
+import { Props_File_View } from '@/types/pages';
 import { useLocation } from 'react-router-dom';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
-export default function CustomFileViewer({ fileType, file, type, styles }: Porps_File_View) {
+export default function CustomFileViewer({ fileType, file, type, styles }: Props_File_View) {
     const [docxHtml, setDocxHtml] = useState<string>('');
 
     const documentId: any = useLocation().state?.documentId

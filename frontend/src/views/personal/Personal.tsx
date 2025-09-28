@@ -15,7 +15,7 @@ export default function Personal() {
     }), [userInfo])
 
     const getPermissions = async () => {
-        const { permissions}: any = await api_frontend.getRolePermissions(userInfo?.roles?.[0]?.id)
+        const { permissions }: any = await api_frontend.getRolePermissions(userInfo?.roles?.[0]?.id)
         setPers(permissions.map((v: any) => v.display_name).join('、'))
     }
 
