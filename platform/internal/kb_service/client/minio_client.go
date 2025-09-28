@@ -116,27 +116,43 @@ func (c *S3Client) isSecureEndpoint() bool {
 	return true
 }
 
-// UploadFile 上传文件到MinIO
-func (c *S3Client) UploadFile(ctx context.Context, objectName string, reader io.Reader, objectSize int64, contentType string) error {
+// UploadFile 上传文件到MinIO，返回实际写入的字节数
+func (c *S3Client) UploadFile(ctx context.Context, objectName string, reader io.Reader, objectSize int64, contentType string) (int64, error) {
 	client, err := c.GetClient()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// 确保bucket存在
 	if err := c.ensureBucketExists(ctx, client, c.config.Bucket); err != nil {
-		return fmt.Errorf("failed to ensure bucket exists: %w", err)
+		return 0, fmt.Errorf("failed to ensure bucket exists: %w", err)
+	}
+
+	// 尝试从reader获取实际大小，避免由于不准确的Size导致文件截断
+	putSize := objectSize
+	if seeker, ok := reader.(io.Seeker); ok {
+		currentOffset, seekErr := seeker.Seek(0, io.SeekCurrent)
+		if seekErr == nil {
+			if endOffset, sizeErr := seeker.Seek(0, io.SeekEnd); sizeErr == nil {
+				putSize = endOffset
+			}
+			// 恢复原始读取位置
+			_, _ = seeker.Seek(currentOffset, io.SeekStart)
+		}
+	}
+	if putSize <= 0 {
+		putSize = -1
 	}
 
 	// 上传文件
-	_, err = client.PutObject(ctx, c.config.Bucket, objectName, reader, objectSize, minio.PutObjectOptions{
+	uploadInfo, err := client.PutObject(ctx, c.config.Bucket, objectName, reader, putSize, minio.PutObjectOptions{
 		ContentType: contentType,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to upload file: %w", err)
+		return 0, fmt.Errorf("failed to upload file: %w", err)
 	}
 
-	return nil
+	return uploadInfo.Size, nil
 }
 
 // DownloadFile 从MinIO下载文件

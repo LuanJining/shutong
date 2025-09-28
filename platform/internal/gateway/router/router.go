@@ -114,11 +114,9 @@ func Setup(cfg *config.Config) *gin.Engine {
 
 		kb := api.Group("/kb")
 		{
-			kb.GET("", kbHandler.ProxyToKbClient)
-			kb.GET("/:id", kbHandler.ProxyToKbClient)
-			kb.POST("", kbHandler.ProxyToKbClient)
-			kb.PUT("/:id", kbHandler.ProxyToKbClient)
-			kb.DELETE("/:id", kbHandler.ProxyToKbClient)
+			kb.POST("/upload", kbHandler.ProxyToKbClient)
+			kb.GET("/:id/preview", kbHandler.ProxyToKbClient)
+			kb.GET("/:id/download", kbHandler.ProxyToKbClient)
 		}
 	}
 

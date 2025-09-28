@@ -7,7 +7,7 @@ set -e
 
 # 配置
 KB_SERVICE_URL="http://localhost:8083"
-TEST_FILE="/Users/gideonzy/Downloads/draftv1.pdf"
+TEST_FILE="/Users/gideonzy/Downloads/evaluation_report2.pdf"
 TEST_CONTENT="这是一个测试文档内容，用于验证KB服务的上传和预览功能。\n\n包含中文内容测试。\n\n测试时间: $(date)"
 
 # 颜色输出
@@ -40,13 +40,6 @@ check_service() {
     fi
 }
 
-# 创建测试文件
-create_test_file() {
-    print_info "创建测试文件: $TEST_FILE"
-    echo -e "$TEST_CONTENT" > "$TEST_FILE"
-    print_success "测试文件创建完成"
-}
-
 # 测试文档上传
 test_upload() {
     print_info "测试文档上传..."
@@ -62,7 +55,7 @@ test_upload() {
         -F "created_by=1" \
         -F "department=技术部" \
         "$KB_SERVICE_URL/api/v1/documents/upload")
-    
+    echo "响应: $response"
     # 检查响应
     if echo "$response" | grep -q "document_id"; then
         # 提取document_id
@@ -124,7 +117,6 @@ test_download() {
 # 清理测试文件
 cleanup() {
     print_info "清理测试文件..."
-    rm -f "$TEST_FILE" "downloaded-$TEST_FILE"
     print_success "清理完成"
 }
 
@@ -136,24 +128,20 @@ main() {
     
     # 检查服务
     check_service
-    
-    # 创建测试文件
-    create_test_file
-    
     # 测试上传
     test_upload
     
     # 等待一下让处理完成
     print_info "等待文档处理完成..."
     
-    # 测试预览
-    test_preview
+    # # 测试预览
+    # test_preview
     
-    # 测试下载
-    test_download
+    # # 测试下载
+    # test_download
     
-    # 清理
-    cleanup
+    # # 清理
+    # cleanup
     
     echo "=========================================="
     print_success "所有测试完成！"

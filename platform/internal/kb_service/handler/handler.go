@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -62,11 +63,24 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 		createdBy = uint(createdByUint)
 	}
 
+	// 获取实际文件大小
+	var actualSize int64
+	if seeker, ok := file.(io.Seeker); ok {
+		currentPos, _ := seeker.Seek(0, io.SeekCurrent)
+		endPos, _ := seeker.Seek(0, io.SeekEnd)
+		actualSize = endPos - currentPos
+		log.Printf("实际文件大小: %d", actualSize)
+		// 重置到开始位置
+		seeker.Seek(currentPos, io.SeekStart)
+	} else {
+		actualSize = header.Size
+	}
+
 	// 构建服务请求
 	req := &service.UploadDocumentRequest{
 		File:        file,
 		FileName:    header.Filename,
-		FileSize:    header.Size,
+		FileSize:    actualSize,
 		ContentType: header.Header.Get("Content-Type"),
 		SpaceID:     uint(spaceID),
 		Visibility:  visibility,

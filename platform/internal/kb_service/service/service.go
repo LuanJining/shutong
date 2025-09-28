@@ -89,13 +89,17 @@ func (s *DocumentService) UploadDocument(ctx context.Context, req *UploadDocumen
 		Summary:    req.Summary,
 	}
 	// 上传文件到MinIO
-	if err := s.minioClient.UploadFile(ctx, filePath, req.File, req.FileSize, req.ContentType); err != nil {
+	uploadedSize, err := s.minioClient.UploadFile(ctx, filePath, req.File, req.FileSize, req.ContentType)
+	if err != nil {
 		// 更新文档状态为失败
 		s.db.Model(document).Updates(map[string]any{
 			"status":      model.DocumentStatusFailed,
 			"parse_error": err.Error(),
 		})
 		return nil, fmt.Errorf("failed to upload file: %w", err)
+	}
+	if uploadedSize > 0 {
+		document.FileSize = uploadedSize
 	}
 
 	// 保存到数据库
