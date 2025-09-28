@@ -32,6 +32,7 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 	defer file.Close()
 
 	// 获取其他参数
+	fileName := c.PostForm("file_name")
 	spaceIDStr := c.PostForm("space_id")
 	visibility := c.PostForm("visibility")
 	urgency := c.PostForm("urgency")
@@ -39,6 +40,16 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 	summary := c.PostForm("summary")
 	createdByStr := c.PostForm("created_by")
 	department := c.PostForm("department")
+	needApprovalStr := c.PostForm("need_approval")
+	// 默认需要审批
+	needApproval := true
+	if needApprovalStr != "" {
+		needApproval, err = strconv.ParseBool(needApprovalStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid need_approval"})
+			return
+		}
+	}
 
 	// 验证必需参数
 	if spaceIDStr == "" {
@@ -78,17 +89,18 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 
 	// 构建服务请求
 	req := &service.UploadDocumentRequest{
-		File:        file,
-		FileName:    header.Filename,
-		FileSize:    actualSize,
-		ContentType: header.Header.Get("Content-Type"),
-		SpaceID:     uint(spaceID),
-		Visibility:  visibility,
-		Urgency:     urgency,
-		Tags:        tags,
-		Summary:     summary,
-		CreatedBy:   createdBy,
-		Department:  department,
+		File:         file,
+		FileName:     fileName,
+		FileSize:     actualSize,
+		ContentType:  header.Header.Get("Content-Type"),
+		SpaceID:      uint(spaceID),
+		Visibility:   visibility,
+		Urgency:      urgency,
+		Tags:         tags,
+		Summary:      summary,
+		CreatedBy:    createdBy,
+		Department:   department,
+		NeedApproval: needApproval,
 	}
 
 	// 调用服务层
@@ -249,4 +261,9 @@ func (h *DocumentHandler) PreviewDocument(c *gin.Context) {
 			fmt.Printf("Error copying file: %v\n", err)
 		}
 	}
+}
+
+// TODO 提交文档
+func (h *DocumentHandler) SubmitDocument(c *gin.Context) {
+
 }

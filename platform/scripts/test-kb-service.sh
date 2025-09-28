@@ -46,6 +46,7 @@ test_upload() {
     
     # 上传文档
     response=$(curl -s -X POST \
+        -F "file_name=test.pdf" \
         -F "file=@$TEST_FILE" \
         -F "space_id=1" \
         -F "visibility=private" \
@@ -54,6 +55,7 @@ test_upload() {
         -F "summary=这是一个测试文档" \
         -F "created_by=1" \
         -F "department=技术部" \
+        -F "need_approval=true" \
         "$KB_SERVICE_URL/api/v1/documents/upload")
     echo "响应: $response"
     # 检查响应

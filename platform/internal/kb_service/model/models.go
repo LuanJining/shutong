@@ -10,12 +10,11 @@ import (
 type DocumentStatus string
 
 const (
-	DocumentStatusUploading  DocumentStatus = "uploading"  // 上传中
-	DocumentStatusProcessing DocumentStatus = "processing" // 处理中
-	DocumentStatusParsing    DocumentStatus = "parsing"    // 解析中
-	DocumentStatusIndexing   DocumentStatus = "indexing"   // 索引中
-	DocumentStatusCompleted  DocumentStatus = "completed"  // 已完成
-	DocumentStatusFailed     DocumentStatus = "failed"     // 失败
+	DocumentStatusUploading       DocumentStatus = "uploading"        // 上传中
+	DocumentStatusPendingApproval DocumentStatus = "pending_approval" // 待审批
+	DocumentStatusPendingPublish  DocumentStatus = "pending_publish"  // 待发布
+	DocumentStatusPublished       DocumentStatus = "published"        // 已发布
+	DocumentStatusFailed          DocumentStatus = "failed"           // 失败
 )
 
 // DocumentVisibility 文档可见性
@@ -50,12 +49,13 @@ type Document struct {
 	Status       DocumentStatus     `json:"status" gorm:"size:20;not null;default:'uploading'"`   // 文档状态
 	Visibility   DocumentVisibility `json:"visibility" gorm:"size:20;not null;default:'private'"` // 可见性
 	Urgency      DocumentUrgency    `json:"urgency" gorm:"size:20;not null;default:'normal'"`     // 紧急程度
-
+	NeedApproval bool               `json:"need_approval" gorm:"default:false"`                   // 是否需要审批
 	// 关联字段
 	SpaceID    uint   `json:"space_id" gorm:"not null"`   // 所属空间ID
 	CreatedBy  uint   `json:"created_by" gorm:"not null"` // 创建人ID (关联IAM用户)
 	Approver   uint   `json:"approver"`                   // 审批人ID (关联IAM用户)
 	Department string `json:"department" gorm:"size:100"` // 所属部门
+	WorkflowID uint   `json:"workflow_id"`                // 工作流ID （关联workflow表，上传后为0表示没有，无需审批也为0，需要审批提交后为对应的workflow_id）
 
 	// 标签和摘要
 	Tags    string `json:"tags" gorm:"size:500"`     // 标签，JSON格式存储
@@ -82,4 +82,23 @@ type DocumentChunk struct {
 	TokenCount int       `json:"token_count" gorm:"default:0"`      // Token数量
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+type CreateWorkflowRequest struct {
+	Name        string              `json:"name" binding:"required"`
+	Description string              `json:"description"`
+	SpaceID     uint                `json:"space_id" binding:"required"`
+	Priority    int                 `json:"priority"`
+	Steps       []CreateStepRequest `json:"steps" binding:"required"`
+}
+
+// CreateStepRequest 创建步骤请求
+type CreateStepRequest struct {
+	StepName         string `json:"step_name" binding:"required"`
+	StepOrder        int    `json:"step_order" binding:"required"`
+	ApproverType     string `json:"approver_type" binding:"required"`
+	ApproverID       uint   `json:"approver_id"`
+	IsRequired       bool   `json:"is_required"`
+	TimeoutHours     int    `json:"timeout_hours"`
+	ApprovalStrategy string `json:"approval_strategy"` // 审批策略: any, all, majority
 }

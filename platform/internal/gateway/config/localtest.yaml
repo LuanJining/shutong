@@ -8,6 +8,9 @@ iam:
 
 workflow:
   url: http://localhost:8082
+
+kb:
+  url: http://localhost:8083
   
 gin:
   mode: debug

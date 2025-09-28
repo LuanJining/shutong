@@ -33,17 +33,18 @@ func NewDocumentService(db *gorm.DB, minioClient *client.S3Client, qdrantClient 
 
 // UploadDocumentRequest 上传文档请求
 type UploadDocumentRequest struct {
-	File        io.Reader
-	FileName    string
-	FileSize    int64
-	ContentType string
-	SpaceID     uint
-	Visibility  string
-	Urgency     string
-	Tags        string
-	Summary     string
-	CreatedBy   uint
-	Department  string
+	File         io.Reader
+	FileName     string
+	FileSize     int64
+	ContentType  string
+	SpaceID      uint
+	Visibility   string
+	Urgency      string
+	Tags         string
+	Summary      string
+	CreatedBy    uint
+	Department   string
+	NeedApproval bool
 }
 
 // UploadDocumentResponse 上传文档响应
@@ -73,20 +74,21 @@ func (s *DocumentService) UploadDocument(ctx context.Context, req *UploadDocumen
 
 	// 创建文档记录
 	document := &model.Document{
-		Title:      strings.TrimSuffix(req.FileName, fileExt),
-		FileName:   req.FileName,
-		FilePath:   filePath,
-		FileSize:   req.FileSize,
-		FileType:   fileExt,
-		MimeType:   req.ContentType,
-		Status:     model.DocumentStatusUploading,
-		Visibility: model.DocumentVisibility(req.Visibility),
-		Urgency:    model.DocumentUrgency(req.Urgency),
-		SpaceID:    req.SpaceID,
-		CreatedBy:  req.CreatedBy,
-		Department: req.Department,
-		Tags:       req.Tags,
-		Summary:    req.Summary,
+		Title:        strings.TrimSuffix(req.FileName, fileExt),
+		FileName:     req.FileName,
+		FilePath:     filePath,
+		FileSize:     req.FileSize,
+		FileType:     fileExt,
+		MimeType:     req.ContentType,
+		Status:       model.DocumentStatusUploading,
+		Visibility:   model.DocumentVisibility(req.Visibility),
+		Urgency:      model.DocumentUrgency(req.Urgency),
+		SpaceID:      req.SpaceID,
+		CreatedBy:    req.CreatedBy,
+		Department:   req.Department,
+		Tags:         req.Tags,
+		Summary:      req.Summary,
+		NeedApproval: req.NeedApproval,
 	}
 	// 上传文件到MinIO
 	uploadedSize, err := s.minioClient.UploadFile(ctx, filePath, req.File, req.FileSize, req.ContentType)
@@ -108,7 +110,7 @@ func (s *DocumentService) UploadDocument(ctx context.Context, req *UploadDocumen
 	}
 
 	// 更新文档状态为处理中
-	s.db.Model(document).Update("status", model.DocumentStatusProcessing)
+	s.db.Model(document).Update("status", model.DocumentStatusPendingApproval)
 
 	return &UploadDocumentResponse{
 		DocumentID: document.ID,
