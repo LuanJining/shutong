@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
+	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/client"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/model"
 	"gorm.io/gorm"
 )
 

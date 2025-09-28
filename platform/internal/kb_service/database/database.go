@@ -3,8 +3,8 @@ package database
 import (
 	"fmt"
 
+	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/config"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/model"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

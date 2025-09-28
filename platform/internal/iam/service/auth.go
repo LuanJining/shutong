@@ -4,8 +4,8 @@ import (
 	"errors"
 	"time"
 
+	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/config"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/model"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"

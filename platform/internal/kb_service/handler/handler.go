@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/model"
+	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/service"
 	"github.com/gin-gonic/gin"
 )

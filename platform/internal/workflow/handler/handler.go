@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/models"
+	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/service"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -31,15 +31,15 @@ func NewHandler(db *gorm.DB, workflowService *service.WorkflowService) *Handler 
 // @Accept json
 // @Produce json
 // @Param X-User-ID header string true "用户ID"
-// @Param request body models.CreateWorkflowRequest true "创建流程请求"
+// @Param request body model.CreateWorkflowRequest true "创建流程请求"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
 // @Router /api/v1/workflow/workflows [post]
 func (h *Handler) CreateWorkflow(c *gin.Context) {
-	var req models.CreateWorkflowRequest
+	var req model.CreateWorkflowRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusBadRequest, model.APIResponse{
 			Code:    400,
 			Message: "Invalid request: " + err.Error(),
 		})
@@ -49,7 +49,7 @@ func (h *Handler) CreateWorkflow(c *gin.Context) {
 	// 从上下文获取用户ID（需要中间件设置）
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
+		c.JSON(http.StatusUnauthorized, model.APIResponse{
 			Code:    401,
 			Message: "User not authenticated",
 		})
@@ -58,14 +58,14 @@ func (h *Handler) CreateWorkflow(c *gin.Context) {
 
 	workflow, err := h.workflowService.CreateWorkflow(&req, userID.(uint))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.APIResponse{
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
 			Code:    500,
 			Message: "Failed to create workflow: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
+	c.JSON(http.StatusOK, model.APIResponse{
 		Code:    200,
 		Message: "Workflow created successfully",
 		Data:    workflow,
@@ -110,14 +110,14 @@ func (h *Handler) GetWorkflows(c *gin.Context) {
 
 	result, err := h.workflowService.GetWorkflows(spaceID, page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.APIResponse{
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
 			Code:    500,
 			Message: "Failed to get workflows: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
+	c.JSON(http.StatusOK, model.APIResponse{
 		Code:    200,
 		Message: "Success",
 		Data:    result,
@@ -140,7 +140,7 @@ func (h *Handler) GetWorkflow(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusBadRequest, model.APIResponse{
 			Code:    400,
 			Message: "Invalid workflow ID",
 		})
@@ -150,12 +150,12 @@ func (h *Handler) GetWorkflow(c *gin.Context) {
 	workflow, err := h.workflowService.GetWorkflow(uint(id))
 	if err != nil {
 		if err.Error() == "workflow not found" {
-			c.JSON(http.StatusNotFound, models.APIResponse{
+			c.JSON(http.StatusNotFound, model.APIResponse{
 				Code:    404,
 				Message: "Workflow not found",
 			})
 		} else {
-			c.JSON(http.StatusInternalServerError, models.APIResponse{
+			c.JSON(http.StatusInternalServerError, model.APIResponse{
 				Code:    500,
 				Message: "Failed to get workflow: " + err.Error(),
 			})
@@ -163,7 +163,7 @@ func (h *Handler) GetWorkflow(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
+	c.JSON(http.StatusOK, model.APIResponse{
 		Code:    200,
 		Message: "Success",
 		Data:    workflow,
@@ -178,7 +178,7 @@ func (h *Handler) GetWorkflow(c *gin.Context) {
 // @Produce json
 // @Param X-User-ID header string true "用户ID"
 // @Param id path int true "流程ID"
-// @Param request body models.CreateWorkflowRequest true "更新流程请求"
+// @Param request body model.CreateWorkflowRequest true "更新流程请求"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
 // @Failure 404 {object} map[string]interface{}
@@ -188,16 +188,16 @@ func (h *Handler) UpdateWorkflow(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusBadRequest, model.APIResponse{
 			Code:    400,
 			Message: "Invalid workflow ID",
 		})
 		return
 	}
 
-	var req models.CreateWorkflowRequest
+	var req model.CreateWorkflowRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusBadRequest, model.APIResponse{
 			Code:    400,
 			Message: "Invalid request: " + err.Error(),
 		})
@@ -207,7 +207,7 @@ func (h *Handler) UpdateWorkflow(c *gin.Context) {
 	// 从上下文获取用户ID
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
+		c.JSON(http.StatusUnauthorized, model.APIResponse{
 			Code:    401,
 			Message: "User not authenticated",
 		})
@@ -217,12 +217,12 @@ func (h *Handler) UpdateWorkflow(c *gin.Context) {
 	workflow, err := h.workflowService.UpdateWorkflow(uint(id), &req, userID.(uint))
 	if err != nil {
 		if err.Error() == "workflow not found" {
-			c.JSON(http.StatusNotFound, models.APIResponse{
+			c.JSON(http.StatusNotFound, model.APIResponse{
 				Code:    404,
 				Message: "Workflow not found",
 			})
 		} else {
-			c.JSON(http.StatusInternalServerError, models.APIResponse{
+			c.JSON(http.StatusInternalServerError, model.APIResponse{
 				Code:    500,
 				Message: "Failed to update workflow: " + err.Error(),
 			})
@@ -230,7 +230,7 @@ func (h *Handler) UpdateWorkflow(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
+	c.JSON(http.StatusOK, model.APIResponse{
 		Code:    200,
 		Message: "Workflow updated successfully",
 		Data:    workflow,
@@ -253,7 +253,7 @@ func (h *Handler) DeleteWorkflow(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusBadRequest, model.APIResponse{
 			Code:    400,
 			Message: "Invalid workflow ID",
 		})
@@ -263,17 +263,17 @@ func (h *Handler) DeleteWorkflow(c *gin.Context) {
 	err = h.workflowService.DeleteWorkflow(uint(id))
 	if err != nil {
 		if err.Error() == "workflow not found" {
-			c.JSON(http.StatusNotFound, models.APIResponse{
+			c.JSON(http.StatusNotFound, model.APIResponse{
 				Code:    404,
 				Message: "Workflow not found",
 			})
 		} else if err.Error() == "cannot delete workflow with active instances" {
-			c.JSON(http.StatusBadRequest, models.APIResponse{
+			c.JSON(http.StatusBadRequest, model.APIResponse{
 				Code:    400,
 				Message: "Cannot delete workflow with active instances",
 			})
 		} else {
-			c.JSON(http.StatusInternalServerError, models.APIResponse{
+			c.JSON(http.StatusInternalServerError, model.APIResponse{
 				Code:    500,
 				Message: "Failed to delete workflow: " + err.Error(),
 			})
@@ -281,7 +281,7 @@ func (h *Handler) DeleteWorkflow(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
+	c.JSON(http.StatusOK, model.APIResponse{
 		Code:    200,
 		Message: "Workflow deleted successfully",
 	})
@@ -294,15 +294,15 @@ func (h *Handler) DeleteWorkflow(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param X-User-ID header string true "用户ID"
-// @Param request body models.StartWorkflowRequest true "启动流程请求"
+// @Param request body model.StartWorkflowRequest true "启动流程请求"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
 // @Router /api/v1/workflow/instances [post]
 func (h *Handler) StartWorkflow(c *gin.Context) {
-	var req models.StartWorkflowRequest
+	var req model.StartWorkflowRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusBadRequest, model.APIResponse{
 			Code:    400,
 			Message: "Invalid request: " + err.Error(),
 		})
@@ -312,7 +312,7 @@ func (h *Handler) StartWorkflow(c *gin.Context) {
 	// 从上下文获取用户ID
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
+		c.JSON(http.StatusUnauthorized, model.APIResponse{
 			Code:    401,
 			Message: "User not authenticated",
 		})
@@ -321,14 +321,14 @@ func (h *Handler) StartWorkflow(c *gin.Context) {
 
 	instance, err := h.workflowService.StartWorkflow(&req, userID.(uint))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.APIResponse{
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
 			Code:    500,
 			Message: "Failed to start workflow: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
+	c.JSON(http.StatusOK, model.APIResponse{
 		Code:    200,
 		Message: "Workflow started successfully",
 		Data:    instance,
@@ -384,14 +384,14 @@ func (h *Handler) GetInstances(c *gin.Context) {
 
 	result, err := h.workflowService.GetInstances(workflowID, spaceID, status, page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.APIResponse{
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
 			Code:    500,
 			Message: "Failed to get instances: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
+	c.JSON(http.StatusOK, model.APIResponse{
 		Code:    200,
 		Message: "Success",
 		Data:    result,
@@ -413,7 +413,7 @@ func (h *Handler) GetInstances(c *gin.Context) {
 func (h *Handler) GetInstanceByUserID(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
+		c.JSON(http.StatusUnauthorized, model.APIResponse{
 			Code:    401,
 			Message: "User not authenticated",
 		})
@@ -435,14 +435,14 @@ func (h *Handler) GetInstanceByUserID(c *gin.Context) {
 
 	result, err := h.workflowService.GetInstanceByUserID(userID.(uint), page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.APIResponse{
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
 			Code:    500,
 			Message: "Failed to get instances: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
+	c.JSON(http.StatusOK, model.APIResponse{
 		Code:    200,
 		Message: "Success",
 		Data:    result,
@@ -464,7 +464,7 @@ func (h *Handler) GetInstance(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusBadRequest, model.APIResponse{
 			Code:    400,
 			Message: "Invalid instance ID",
 		})
@@ -474,12 +474,12 @@ func (h *Handler) GetInstance(c *gin.Context) {
 	instance, err := h.workflowService.GetInstance(uint(id))
 	if err != nil {
 		if err.Error() == "instance not found" {
-			c.JSON(http.StatusNotFound, models.APIResponse{
+			c.JSON(http.StatusNotFound, model.APIResponse{
 				Code:    404,
 				Message: "Instance not found",
 			})
 		} else {
-			c.JSON(http.StatusInternalServerError, models.APIResponse{
+			c.JSON(http.StatusInternalServerError, model.APIResponse{
 				Code:    500,
 				Message: "Failed to get instance: " + err.Error(),
 			})
@@ -487,7 +487,7 @@ func (h *Handler) GetInstance(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
+	c.JSON(http.StatusOK, model.APIResponse{
 		Code:    200,
 		Message: "Success",
 		Data:    instance,
@@ -510,7 +510,7 @@ func (h *Handler) CancelInstance(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusBadRequest, model.APIResponse{
 			Code:    400,
 			Message: "Invalid instance ID",
 		})
@@ -520,7 +520,7 @@ func (h *Handler) CancelInstance(c *gin.Context) {
 	// 从上下文获取用户ID
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
+		c.JSON(http.StatusUnauthorized, model.APIResponse{
 			Code:    401,
 			Message: "User not authenticated",
 		})
@@ -530,22 +530,22 @@ func (h *Handler) CancelInstance(c *gin.Context) {
 	err = h.workflowService.CancelInstance(uint(id), userID.(uint))
 	if err != nil {
 		if err.Error() == "instance not found" {
-			c.JSON(http.StatusNotFound, models.APIResponse{
+			c.JSON(http.StatusNotFound, model.APIResponse{
 				Code:    404,
 				Message: "Instance not found",
 			})
 		} else if err.Error() == "unauthorized to cancel this instance" {
-			c.JSON(http.StatusForbidden, models.APIResponse{
+			c.JSON(http.StatusForbidden, model.APIResponse{
 				Code:    403,
 				Message: "Unauthorized to cancel this instance",
 			})
 		} else if err.Error() == "instance cannot be cancelled in current status" {
-			c.JSON(http.StatusBadRequest, models.APIResponse{
+			c.JSON(http.StatusBadRequest, model.APIResponse{
 				Code:    400,
 				Message: "Instance cannot be cancelled in current status",
 			})
 		} else {
-			c.JSON(http.StatusInternalServerError, models.APIResponse{
+			c.JSON(http.StatusInternalServerError, model.APIResponse{
 				Code:    500,
 				Message: "Failed to cancel instance: " + err.Error(),
 			})
@@ -553,7 +553,7 @@ func (h *Handler) CancelInstance(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
+	c.JSON(http.StatusOK, model.APIResponse{
 		Code:    200,
 		Message: "Instance cancelled successfully",
 	})
@@ -575,7 +575,7 @@ func (h *Handler) GetMyTasks(c *gin.Context) {
 	// 从上下文获取用户ID
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
+		c.JSON(http.StatusUnauthorized, model.APIResponse{
 			Code:    401,
 			Message: "User not authenticated",
 		})
@@ -598,14 +598,14 @@ func (h *Handler) GetMyTasks(c *gin.Context) {
 
 	result, err := h.workflowService.GetMyTasks(userID.(uint), page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.APIResponse{
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
 			Code:    500,
 			Message: "Failed to get tasks: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
+	c.JSON(http.StatusOK, model.APIResponse{
 		Code:    200,
 		Message: "Success",
 		Data:    result,
@@ -620,7 +620,7 @@ func (h *Handler) GetMyTasks(c *gin.Context) {
 // @Produce json
 // @Param X-User-ID header string true "用户ID"
 // @Param id path int true "任务ID"
-// @Param request body models.ApproveTaskRequest true "审批请求"
+// @Param request body model.ApproveTaskRequest true "审批请求"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
@@ -629,16 +629,16 @@ func (h *Handler) ApproveTask(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusBadRequest, model.APIResponse{
 			Code:    400,
 			Message: "Invalid task ID",
 		})
 		return
 	}
 
-	var req models.ApproveTaskRequest
+	var req model.ApproveTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusBadRequest, model.APIResponse{
 			Code:    400,
 			Message: "Invalid request: " + err.Error(),
 		})
@@ -648,7 +648,7 @@ func (h *Handler) ApproveTask(c *gin.Context) {
 	// 从上下文获取用户ID
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
+		c.JSON(http.StatusUnauthorized, model.APIResponse{
 			Code:    401,
 			Message: "User not authenticated",
 		})
@@ -657,14 +657,14 @@ func (h *Handler) ApproveTask(c *gin.Context) {
 
 	err = h.workflowService.ApproveTask(uint(id), userID.(uint), req.Comment)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.APIResponse{
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
 			Code:    500,
 			Message: "Failed to approve task: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
+	c.JSON(http.StatusOK, model.APIResponse{
 		Code:    200,
 		Message: "Task approved successfully",
 	})
@@ -678,7 +678,7 @@ func (h *Handler) ApproveTask(c *gin.Context) {
 // @Produce json
 // @Param X-User-ID header string true "用户ID"
 // @Param id path int true "任务ID"
-// @Param request body models.RejectTaskRequest true "拒绝请求"
+// @Param request body model.RejectTaskRequest true "拒绝请求"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
@@ -687,16 +687,16 @@ func (h *Handler) RejectTask(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusBadRequest, model.APIResponse{
 			Code:    400,
 			Message: "Invalid task ID",
 		})
 		return
 	}
 
-	var req models.RejectTaskRequest
+	var req model.RejectTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusBadRequest, model.APIResponse{
 			Code:    400,
 			Message: "Invalid request: " + err.Error(),
 		})
@@ -706,7 +706,7 @@ func (h *Handler) RejectTask(c *gin.Context) {
 	// 从上下文获取用户ID
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
+		c.JSON(http.StatusUnauthorized, model.APIResponse{
 			Code:    401,
 			Message: "User not authenticated",
 		})
@@ -715,14 +715,14 @@ func (h *Handler) RejectTask(c *gin.Context) {
 
 	err = h.workflowService.RejectTask(uint(id), userID.(uint), req.Comment)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.APIResponse{
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
 			Code:    500,
 			Message: "Failed to reject task: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
+	c.JSON(http.StatusOK, model.APIResponse{
 		Code:    200,
 		Message: "Task rejected successfully",
 	})
@@ -736,7 +736,7 @@ func (h *Handler) RejectTask(c *gin.Context) {
 // @Produce json
 // @Param X-User-ID header string true "用户ID"
 // @Param id path int true "任务ID"
-// @Param request body models.TransferTaskRequest true "转交请求"
+// @Param request body model.TransferTaskRequest true "转交请求"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
@@ -745,16 +745,16 @@ func (h *Handler) TransferTask(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusBadRequest, model.APIResponse{
 			Code:    400,
 			Message: "Invalid task ID",
 		})
 		return
 	}
 
-	var req models.TransferTaskRequest
+	var req model.TransferTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusBadRequest, model.APIResponse{
 			Code:    400,
 			Message: "Invalid request: " + err.Error(),
 		})
@@ -764,7 +764,7 @@ func (h *Handler) TransferTask(c *gin.Context) {
 	// 从上下文获取用户ID
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
+		c.JSON(http.StatusUnauthorized, model.APIResponse{
 			Code:    401,
 			Message: "User not authenticated",
 		})
@@ -774,27 +774,27 @@ func (h *Handler) TransferTask(c *gin.Context) {
 	err = h.workflowService.TransferTask(uint(id), userID.(uint), req.ToUserID, req.Comment)
 	if err != nil {
 		if err.Error() == "task not found" {
-			c.JSON(http.StatusNotFound, models.APIResponse{
+			c.JSON(http.StatusNotFound, model.APIResponse{
 				Code:    404,
 				Message: "Task not found",
 			})
 		} else if err.Error() == "unauthorized to transfer this task" {
-			c.JSON(http.StatusForbidden, models.APIResponse{
+			c.JSON(http.StatusForbidden, model.APIResponse{
 				Code:    403,
 				Message: "Unauthorized to transfer this task",
 			})
 		} else if err.Error() == "task is not pending" {
-			c.JSON(http.StatusBadRequest, models.APIResponse{
+			c.JSON(http.StatusBadRequest, model.APIResponse{
 				Code:    400,
 				Message: "Task is not pending",
 			})
 		} else if err.Error() == "target user not found or inactive" {
-			c.JSON(http.StatusBadRequest, models.APIResponse{
+			c.JSON(http.StatusBadRequest, model.APIResponse{
 				Code:    400,
 				Message: "Target user not found or inactive",
 			})
 		} else {
-			c.JSON(http.StatusInternalServerError, models.APIResponse{
+			c.JSON(http.StatusInternalServerError, model.APIResponse{
 				Code:    500,
 				Message: "Failed to transfer task: " + err.Error(),
 			})
@@ -802,7 +802,7 @@ func (h *Handler) TransferTask(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
+	c.JSON(http.StatusOK, model.APIResponse{
 		Code:    200,
 		Message: "Task transferred successfully",
 	})
@@ -824,7 +824,7 @@ func (h *Handler) GetWorkflowStatus(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusBadRequest, model.APIResponse{
 			Code:    400,
 			Message: "Invalid workflow ID",
 		})
@@ -833,14 +833,14 @@ func (h *Handler) GetWorkflowStatus(c *gin.Context) {
 
 	status, err := h.workflowService.GetWorkflowStatus(uint(id))
 	if err != nil || status == "" {
-		c.JSON(http.StatusInternalServerError, models.APIResponse{
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
 			Code:    500,
 			Message: "Failed to get workflow status: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
+	c.JSON(http.StatusOK, model.APIResponse{
 		Code:    200,
 		Message: "Success",
 		Data:    status,

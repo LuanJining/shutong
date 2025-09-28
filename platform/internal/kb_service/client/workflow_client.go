@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/config"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/model"
 )
 
 // TODO 存取流程打通后接入
