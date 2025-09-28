@@ -4,7 +4,6 @@ import (
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/client"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/config"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/handler"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/middleware"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/service"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -12,7 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, qdrantClient *client.QdrantClient, ocrClient *client.OCRClient) *gin.Engine {
+func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, qdrantClient *client.QdrantClient, ocrClient *client.OCRClient, workflowClient *client.WorkflowClient) *gin.Engine {
 	// 设置Gin模式
 	gin.SetMode(cfg.Gin.Mode)
 
@@ -21,11 +20,11 @@ func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, qdrant
 	// 添加中间件
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
-	r.Use(middleware.CORS())
+	// r.Use(middleware.CORS())
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
 
 	// 创建服务层
-	documentService := service.NewDocumentService(db, minioClient, qdrantClient, ocrClient)
+	documentService := service.NewDocumentService(db, minioClient, qdrantClient, ocrClient, workflowClient)
 
 	// 创建处理器
 	documentHandler := handler.NewDocumentHandler(documentService)
@@ -45,8 +44,7 @@ func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, qdrant
 			documents.GET("/:id/preview", documentHandler.PreviewDocument)
 			documents.GET("/:id/download", documentHandler.DownloadDocument)
 
-			// TODO提交审批
-			//documents.POST("/:id/submit", documentHandler.SubmitDocument)
+			documents.POST("/:id/submit", documentHandler.SubmitDocument)
 		}
 	}
 

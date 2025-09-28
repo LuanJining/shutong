@@ -84,16 +84,18 @@ type DocumentChunk struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
-type CreateWorkflowRequest struct {
-	Name        string              `json:"name" binding:"required"`
-	Description string              `json:"description"`
-	SpaceID     uint                `json:"space_id" binding:"required"`
-	Priority    int                 `json:"priority"`
-	Steps       []CreateStepRequest `json:"steps" binding:"required"`
+// Workflow 工作流模型
+type Workflow struct {
+	ID          uint           `json:"id" gorm:"primaryKey"`
+	Name        string         `json:"name" binding:"required"`
+	Description string         `json:"description"`
+	SpaceID     uint           `json:"space_id" binding:"required"`
+	Priority    int            `json:"priority"`
+	Steps       []WorkflowStep `json:"steps" binding:"required"`
 }
 
-// CreateStepRequest 创建步骤请求
-type CreateStepRequest struct {
+// WorkflowStep 创建步骤请求
+type WorkflowStep struct {
 	StepName         string `json:"step_name" binding:"required"`
 	StepOrder        int    `json:"step_order" binding:"required"`
 	ApproverType     string `json:"approver_type" binding:"required"`
@@ -101,4 +103,11 @@ type CreateStepRequest struct {
 	IsRequired       bool   `json:"is_required"`
 	TimeoutHours     int    `json:"timeout_hours"`
 	ApprovalStrategy string `json:"approval_strategy"` // 审批策略: any, all, majority
+}
+
+// APIResponse 响应结构体
+type APIResponse struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    any    `json:"data,omitempty"`
 }

@@ -265,5 +265,34 @@ func (h *DocumentHandler) PreviewDocument(c *gin.Context) {
 
 // TODO 提交文档
 func (h *DocumentHandler) SubmitDocument(c *gin.Context) {
+	documentIDStr := c.Param("id")
+	documentID, err := strconv.ParseUint(documentIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document ID"})
+		return
+	}
 
+	document, err := h.documentService.GetDocument(c.Request.Context(), uint(documentID))
+	if err != nil {
+		if err.Error() == "document not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Document not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// TODO 不需要审批 直接OCR然后向量化，最后发布
+	if !document.NeedApproval {
+		c.JSON(http.StatusOK, gin.H{"TODO": "Document does not need approval"})
+		return
+	}
+
+	// 需要审批 创建审批流程
+	document, err = h.documentService.CreateWorkflow(c.Request.Context(), document)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, document)
 }

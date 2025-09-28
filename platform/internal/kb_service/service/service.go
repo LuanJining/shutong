@@ -15,19 +15,21 @@ import (
 
 // DocumentService 文档服务
 type DocumentService struct {
-	db           *gorm.DB
-	minioClient  *client.S3Client
-	qdrantClient *client.QdrantClient
-	ocrClient    *client.OCRClient
+	db             *gorm.DB
+	minioClient    *client.S3Client
+	qdrantClient   *client.QdrantClient
+	ocrClient      *client.OCRClient
+	workflowClient *client.WorkflowClient
 }
 
 // NewDocumentService 创建文档服务
-func NewDocumentService(db *gorm.DB, minioClient *client.S3Client, qdrantClient *client.QdrantClient, ocrClient *client.OCRClient) *DocumentService {
+func NewDocumentService(db *gorm.DB, minioClient *client.S3Client, qdrantClient *client.QdrantClient, ocrClient *client.OCRClient, workflowClient *client.WorkflowClient) *DocumentService {
 	return &DocumentService{
-		db:           db,
-		minioClient:  minioClient,
-		qdrantClient: qdrantClient,
-		ocrClient:    ocrClient,
+		db:             db,
+		minioClient:    minioClient,
+		qdrantClient:   qdrantClient,
+		ocrClient:      ocrClient,
+		workflowClient: workflowClient,
 	}
 }
 
@@ -109,6 +111,14 @@ func (s *DocumentService) UploadDocument(ctx context.Context, req *UploadDocumen
 		return nil, fmt.Errorf("failed to create document record: %w", err)
 	}
 
+	// 如果需要审批，则创建审批流程
+	if document.NeedApproval {
+		document, err = s.CreateWorkflow(ctx, document)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create workflow: %w", err)
+		}
+	}
+
 	// 更新文档状态为处理中
 	s.db.Model(document).Update("status", model.DocumentStatusPendingApproval)
 
@@ -145,4 +155,30 @@ func (s *DocumentService) DownloadDocument(ctx context.Context, documentID uint)
 	}
 
 	return fileReader, nil
+}
+
+func (s *DocumentService) CreateWorkflow(ctx context.Context, document *model.Document) (*model.Document, error) {
+	// 直接写死空间管理员审批，后期再扩展
+	workflowStep := model.WorkflowStep{
+		StepName:         "文档发布审批",
+		StepOrder:        1,
+		ApproverType:     "space_admin",
+		ApproverID:       0,
+		IsRequired:       true,
+		TimeoutHours:     24,
+		ApprovalStrategy: "any",
+	}
+	workflow := model.Workflow{
+		Name:        "文档发布审批流程",
+		Description: "用于文档发布的审批流程",
+		SpaceID:     document.SpaceID,
+		Priority:    1,
+		Steps:       []model.WorkflowStep{workflowStep},
+	}
+	workflowID, err := s.workflowClient.CreateWorkflow(ctx, &workflow)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create workflow: %w", err)
+	}
+	s.db.Model(document).Update("workflow_id", workflowID)
+	return document, nil
 }

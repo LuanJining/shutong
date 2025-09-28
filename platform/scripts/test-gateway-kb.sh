@@ -60,6 +60,8 @@ test_upload_proxy() {
     
     # 通过Gateway上传文档
     response=$(curl -s -X POST \
+        -H "Authorization: Bearer $TOKEN" \
+        -F "file_name=test.pdf" \
         -F "file=@$TEST_FILE" \
         -F "space_id=1" \
         -F "visibility=private" \
@@ -68,6 +70,7 @@ test_upload_proxy() {
         -F "summary=通过Gateway代理上传的测试文档" \
         -F "created_by=1" \
         -F "department=技术部" \
+        -F "need_approval=true" \
         "$GATEWAY_URL/api/v1/kb/upload")
     
     # 检查响应
