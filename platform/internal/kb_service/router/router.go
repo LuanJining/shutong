@@ -45,6 +45,11 @@ func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, qdrant
 			documents.GET("/:id/download", documentHandler.DownloadDocument)
 
 			documents.POST("/:id/submit", documentHandler.SubmitDocument)
+
+			documents.GET("/:id/info", documentHandler.GetDocument)
+			documents.GET(":id/space", documentHandler.GetDocumentsBySpaceId)
+
+			documents.POST("/:id/publish", documentHandler.PublishDocument)
 		}
 	}
 

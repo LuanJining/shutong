@@ -134,3 +134,20 @@ func (c *WorkflowClient) StartWorkflow(ctx context.Context, workflow *model.Work
 	id := fmt.Sprintf("%.0f", idFloat)
 	return id, nil
 }
+
+func (c *WorkflowClient) CheckWorkflowStatus(ctx context.Context, workflowID uint) (string, error) {
+	targetURL := fmt.Sprintf("%s/api/v1/workflow/workflows/%d/status", c.config.Url, workflowID)
+	resp, err := c.client.Get(targetURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var response model.APIResponse
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return response.Data.(string), nil
+}

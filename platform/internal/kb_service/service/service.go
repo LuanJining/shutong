@@ -146,6 +146,40 @@ func (s *DocumentService) GetDocument(ctx context.Context, documentID uint) (*mo
 	return &document, nil
 }
 
+// GetDocumentsBySpaceId 获取空间下的文档
+func (s *DocumentService) GetDocumentsBySpaceId(ctx context.Context, spaceID uint, page int, pageSize int) (*model.PaginationResponse, error) {
+	var documents []model.Document
+	var total int64
+
+	// 构建查询条件
+	query := s.db.Where("space_id = ?", spaceID)
+
+	// 获取总数
+	if err := query.Model(&model.Document{}).Count(&total).Error; err != nil {
+		return nil, fmt.Errorf("failed to count documents: %w", err)
+	}
+
+	// 分页查询
+	offset := (page - 1) * pageSize
+	if err := query.Order("created_at DESC").
+		Offset(offset).
+		Limit(pageSize).
+		Find(&documents).Error; err != nil {
+		return nil, fmt.Errorf("failed to get documents: %w", err)
+	}
+
+	// 计算总页数
+	totalPages := int((total + int64(pageSize) - 1) / int64(pageSize))
+
+	return &model.PaginationResponse{
+		Items:      documents,
+		Total:      total,
+		Page:       page,
+		PageSize:   pageSize,
+		TotalPages: totalPages,
+	}, nil
+}
+
 // DownloadDocument 下载文档 给前端返回文件流
 func (s *DocumentService) DownloadDocument(ctx context.Context, documentID uint) (io.ReadCloser, error) {
 	var document model.Document
@@ -200,4 +234,12 @@ func (s *DocumentService) CreateWorkflow(ctx context.Context, document *model.Do
 		return nil, fmt.Errorf("failed to start workflow: %w", err)
 	}
 	return document, nil
+}
+
+func (s *DocumentService) CheckWorkflowStatus(ctx context.Context, workflowID uint) (string, error) {
+	status, err := s.workflowClient.CheckWorkflowStatus(ctx, workflowID)
+	if err != nil {
+		return "", fmt.Errorf("failed to check workflow status: %w", err)
+	}
+	return status, nil
 }

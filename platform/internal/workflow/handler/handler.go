@@ -808,6 +808,45 @@ func (h *Handler) TransferTask(c *gin.Context) {
 	})
 }
 
+// GetWorkflowStatus 获取流程状态
+
+// @Summary 获取流程状态
+// @Description 获取流程状态
+// @Tags workflow
+// @Produce json
+// @Param id path int true "流程ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/workflow/workflows/{id}/status [get]
+func (h *Handler) GetWorkflowStatus(c *gin.Context) {
+
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Code:    400,
+			Message: "Invalid workflow ID",
+		})
+		return
+	}
+
+	status, err := h.workflowService.GetWorkflowStatus(uint(id))
+	if err != nil || status == "" {
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Code:    500,
+			Message: "Failed to get workflow status: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{
+		Code:    200,
+		Message: "Success",
+		Data:    status,
+	})
+}
+
 // Health 健康检查
 func (h *Handler) Health(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})

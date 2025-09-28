@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/model"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/service"
 	"github.com/gin-gonic/gin"
 )
@@ -133,6 +134,37 @@ func (h *DocumentHandler) GetDocument(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, document)
+}
+
+// GetDocumentsBySpaceId 获取空间下的文档
+func (h *DocumentHandler) GetDocumentsBySpaceId(c *gin.Context) {
+	spaceIDStr := c.Param("id")
+	spaceID, err := strconv.ParseUint(spaceIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid space ID"})
+		return
+	}
+
+	pageStr := c.DefaultQuery("page", "1")
+	pageSizeStr := c.DefaultQuery("page_size", "10")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	pageSize, err := strconv.Atoi(pageSizeStr)
+	if err != nil || pageSize < 1 || pageSize > 100 {
+		pageSize = 10
+	}
+
+	documents, err := h.documentService.GetDocumentsBySpaceId(c.Request.Context(), uint(spaceID), page, pageSize)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, documents)
 }
 
 // DownloadDocument 下载文档
@@ -295,4 +327,46 @@ func (h *DocumentHandler) SubmitDocument(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, document)
+}
+
+// PublishDocument 发布文档
+func (h *DocumentHandler) PublishDocument(c *gin.Context) {
+	documentIDStr := c.Param("id")
+	documentID, err := strconv.ParseUint(documentIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document ID"})
+		return
+	}
+
+	document, err := h.documentService.GetDocument(c.Request.Context(), uint(documentID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if document.Status != model.DocumentStatusPendingApproval {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Document is not pending approval"})
+		return
+	}
+
+	// 检查审批是否结束
+	workflowID := document.WorkflowID
+	status, err := h.documentService.CheckWorkflowStatus(c.Request.Context(), uint(workflowID))
+	log.Printf("workflowID: %d, status: %s", workflowID, status)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if status == "pending" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Document is pending approval"})
+		return
+	}
+
+	// TODO审批通过 发布文档
+	// if status == "approved" {
+	// 	document.Status = model.DocumentStatusPublished
+	// 	h.documentService.PublishDocument(c.Request.Context(), document)
+	// 	c.JSON(http.StatusOK, document)
+	// 	return
+	// }
 }

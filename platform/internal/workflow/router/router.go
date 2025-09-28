@@ -45,6 +45,8 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 					handler.UpdateWorkflow) // 更新流程
 				workflows.DELETE("/:id", middleware.FetchUserIdFromHeader(),
 					handler.DeleteWorkflow) // 删除流程
+
+				workflows.GET("/:id/status", handler.GetWorkflowStatus) // 获取流程状态
 			}
 
 			// 流程实例管理

@@ -680,39 +680,19 @@ func (s *WorkflowService) processTask(taskID uint, userID uint, status string, c
 }
 
 // GetWorkflowStatus 获取流程状态统计
-func (s *WorkflowService) GetWorkflowStatus(instanceID uint) (map[string]interface{}, error) {
+func (s *WorkflowService) GetWorkflowStatus(workflowID uint) (string, error) {
+	// 获取该workflow的最新实例状态
 	var instance models.WorkflowInstance
-	if err := s.db.Preload("Tasks").Preload("Workflow").First(&instance, instanceID).Error; err != nil {
-		return nil, fmt.Errorf("failed to get workflow instance: %w", err)
-	}
-
-	// 统计任务状态
-	statusCount := make(map[string]int)
-	for _, task := range instance.Tasks {
-		statusCount[task.Status]++
-	}
-
-	// 检查当前步骤
-	var currentStep *models.WorkflowStep
-	if len(instance.Workflow.Steps) > 0 {
-		// 找到第一个未完成的步骤
-		for _, step := range instance.Workflow.Steps {
-			stepCompleted, err := s.checkStepCompletion(s.db, instanceID, step.ID, step.ApprovalStrategy)
-			if err != nil {
-				return nil, fmt.Errorf("failed to check step completion: %w", err)
-			}
-			if !stepCompleted {
-				currentStep = &step
-				break
-			}
+	if err := s.db.Where("workflow_id = ?", workflowID).
+		Order("created_at DESC").
+		First(&instance).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "no_instance", nil // 该workflow还没有实例
 		}
+		return "", fmt.Errorf("failed to get latest workflow instance: %w", err)
 	}
 
-	return map[string]interface{}{
-		"instance":     instance,
-		"status_count": statusCount,
-		"current_step": currentStep,
-	}, nil
+	return instance.Status, nil
 }
 
 // ProcessTimeoutTasks 处理超时任务

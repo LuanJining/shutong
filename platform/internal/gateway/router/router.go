@@ -117,6 +117,9 @@ func Setup(cfg *config.Config) *gin.Engine {
 			kb.POST("/upload", kbHandler.ProxyToKbClient)
 			kb.GET("/:id/preview", kbHandler.ProxyToKbClient)
 			kb.GET("/:id/download", kbHandler.ProxyToKbClient)
+
+			kb.GET("/:id/info", kbHandler.ProxyToKbClient)
+			kb.GET("/:id/space", kbHandler.ProxyToKbClient)
 		}
 	}
 

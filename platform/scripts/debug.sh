@@ -43,7 +43,7 @@ curl -s -X GET "$GATEWAY_URL/api/v1/workflow/tasks?page=1&page_size=1" \
   -H "X-User-ID: $USER_ID" | jq .
 
 echo -e "\n5. 测试审批任务..."
-curl -s -X POST "$GATEWAY_URL/api/v1/workflow/tasks/11/approve" \
+curl -s -X POST "$GATEWAY_URL/api/v1/workflow/tasks/10/approve" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -H "X-User-ID: $USER_ID" \
