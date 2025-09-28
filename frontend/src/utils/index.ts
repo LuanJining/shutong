@@ -48,7 +48,7 @@ function normFile(e: any) {
  * @param value:File
  * @returns formData
  */
-export function getFormData(values: {}) {
+function getFormData(values: {}) {
     if (!values || _.isEmpty(values)) return values
 
     const formData: any = new FormData();
@@ -58,8 +58,23 @@ export function getFormData(values: {}) {
     return formData;
 }
 
+
+function downloadFromFlow(res: any, filename: string) {
+    let blob = new Blob([res], {
+        type: "application/octet-stream;charset=UTF-8",
+    });
+    let downloadElement: any = document.createElement("a");
+    downloadElement.download = filename; // 文件名称 自定义
+    downloadElement.href = window.URL.createObjectURL(blob);
+    downloadElement.click();
+    document.body.appendChild(downloadElement);
+    document.body.removeChild(downloadElement);
+    window.URL.revokeObjectURL(downloadElement.href);
+}
+
+
 export default {
-    setLoading, isFalseValue, normFile, getFormData
+    setLoading, isFalseValue, normFile, getFormData, downloadFromFlow
 }
 
 

@@ -15,6 +15,7 @@ const AddKnowledge = lazy(() => import("@/views/knowledge/AddKnowledge"));
 const Notification = lazy(() => import("@/views/notification/Index"));
 const Personal = lazy(() => import("@/views/personal/Index"));
 const Knowledge = lazy(() => import("@/views/knowledge/Index"));
+const DocumentDetail = lazy(() => import("@/views/knowledge/DocumentDetail"));
 
 /* 懒加载需要添加loading组件 */
 const withLoadingComponent = (comp: JSX.Element) => (
@@ -84,7 +85,15 @@ const routes: ROUTESELF_TYPE[] = [
             show: true
         },
     },
-
+     {
+        path: "document/detail",
+        element: withLoadingComponent(<DocumentDetail />),
+        meta: {
+            title: "文档详情",
+            show: false
+        },
+    },
+    
     {
         path: "knowledge/add",
         element: withLoadingComponent(<AddKnowledge />),

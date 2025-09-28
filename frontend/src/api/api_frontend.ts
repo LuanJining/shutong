@@ -57,20 +57,28 @@ const uploadFile = (par: Par_Upload_File): Promise<any> => post(`/kb/upload`, pa
 );
 
 /** @param 获取上传的文档流 */
-const getFile = (documentId: string | number): Promise<any> => get(`/kb/${documentId}/preview`);
+const getFile = (documentId: string | number): Promise<any> => get(`/kb/${documentId}/preview`, {},{}, {
+    responseType: 'blob'
+});
 
 /** @param 获取待处理任务 */
 const getTasks = (par: Par_Common_Params): Promise<any> => get(`/workflow/tasks`, par);
 
 /** @param 审批任务 */
-const taskAgree = (taskId: string | number,comment:string): Promise<any> => post(`/workflow/tasks/${taskId}/approve`,{comment});
+const taskAgree = (taskId: string | number, comment: string): Promise<any> => post(`/workflow/tasks/${taskId}/approve`, { comment });
 
 /** @param 用户看审批进度 */
 const userTasks = (): Promise<any> => get(`/workflow/instances/user`);
 
+/** @param 文档详情 */
+const documentDetail = (documentId: string | number): Promise<any> => get(`/kb/${documentId}/info`);
+
+/** @param 文档列表 */
+const documentList = (space_id: string | number, par: Par_Common_Params): Promise<any> => get(`/kb/${space_id}/space`, par);
+
 export default {
     login, createUser, assignRoles, getUsers, getRoles, getPermissions, createSpace, getSpaces,
     getSpaceById, checkPermission, updateSpace, deleteSpace, getRolePermissions, getUserById, getRoleById,
-    getPermissionById, uploadFile, getFile, getTasks, taskAgree, userTasks
+    getPermissionById, uploadFile, getFile, getTasks, taskAgree, userTasks, documentDetail, documentList
 }
 

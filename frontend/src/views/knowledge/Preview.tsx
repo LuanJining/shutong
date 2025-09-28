@@ -1,33 +1,41 @@
+import "./styles/preview.scss"
 import _ from 'lodash';
 import mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.js?url';
 import { useState, useEffect, useMemo } from 'react';
 import { usePDFStreamRenderer } from '@/hooks/usePDFStreamRenderer';
+import { Porps_File_View } from '@/types/pages';
+import { useLocation } from 'react-router-dom';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
-export default function CustomFileViewer({ fileInfo }: any) {
-    const fileType: string = fileInfo?.fileType
+export default function CustomFileViewer({ fileType, file, type, styles }: Porps_File_View) {
     const [docxHtml, setDocxHtml] = useState<string>('');
+
+    const documentId: any = useLocation().state?.documentId
+
     const source: any = useMemo(() => {
-        if (!fileInfo?.file || fileType !== 'pdf') return null;
-        return { type: 'file', file: fileInfo.file };
-    }, [fileInfo?.file])
+        if (fileType !== 'pdf') return null;
+        const result: any = { type }
+        type === 'file'
+            ? result.file = file
+            : result.documentId = documentId
+        return result
+    }, [type, fileType])
+
     const { pdfPages } = usePDFStreamRenderer(source)
 
     useEffect(() => {
-        !_.isEmpty(fileInfo) && handleFileChange()
-    }, [fileInfo])
+        fileType === 'docx' && handleFileChange()
+    }, [fileType])
 
     const handleFileChange = () => {
-        const selectedFile = fileInfo.file
         setDocxHtml('');
-
-        if (!selectedFile) return;
+        if (!file) return;
 
         if (fileType === 'docx') {
-            renderDocx(selectedFile);
+            renderDocx(file);
         }
     };
 
@@ -49,7 +57,7 @@ export default function CustomFileViewer({ fileInfo }: any) {
     };
 
     return (
-        <div className='pdf-container'>
+        <div className='pdf-container' style={styles}>
             {fileType === 'pdf' && pdfPages.length !== 0
                 ? pdfPages
                 : fileType === 'docx' && docxHtml ? (

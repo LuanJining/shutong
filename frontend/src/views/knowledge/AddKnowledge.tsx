@@ -14,11 +14,15 @@ import _opts from '@/config/_opts';
 import api_frontend from "@/api/api_frontend"
 // type RangePickerProps = GetProps<typeof DatePicker.RangePicker>;
 
+const initFileInfo: any = {
+    file: null, fileType: ''
+}
+
 export default function AddKnowledge() {
     const [form] = useForm()
     const [cateOpen, setCopen] = useState<boolean>(false)
     const [isBase, setIsBase] = useState<boolean>(true)
-    const [fileInfo, setFileInfo] = useState<any>(null)
+    const [fileInfo, setFileInfo] = useState<any>(initFileInfo)
     const [spaces, setSpaces] = useState<any[]>([])
     const userInfo: any = useSelector((state: any) => state.systemSlice.userInfo)
 
@@ -51,7 +55,6 @@ export default function AddKnowledge() {
             console.log(file)
             setFileInfo({
                 file: file,
-                filename: file.name,
                 fileType: [
                     'application/msword',
                     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -79,10 +82,11 @@ export default function AddKnowledge() {
         >
             <Dragger
                 maxCount={1}
+                showUploadList={false}
                 customRequest={customRequest}
                 beforeUpload={beforeUpload}
                 onRemove={() => {
-                    setFileInfo(null)
+                    setFileInfo(initFileInfo)
                     form.setFieldValue('file_name', '')
                     return true
                 }}
@@ -211,7 +215,7 @@ export default function AddKnowledge() {
     const onFinish = async () => {
         utils.setLoading(true)
         const values: any = form.getFieldsValue([
-            'urgency', 'tags', 'summary', 'need_approval', 'space_id','file_name'
+            'urgency', 'tags', 'summary', 'need_approval', 'space_id', 'file_name'
         ])
         const par: any = utils.getFormData({
             ...values,
@@ -245,7 +249,7 @@ export default function AddKnowledge() {
                             <div onClick={() => { setIsBase(true) }} className="chose-txt">基本信息</div>
                             <div className="mgL16 mgR16">|</div>
                             <div onClick={() => {
-                                form.validateFields(['space_id','tags']).then(() => {
+                                form.validateFields(['space_id', 'tags']).then(() => {
                                     setIsBase(false)
                                 })
                             }} className="chose-txt">流程审批</div>
@@ -263,11 +267,11 @@ export default function AddKnowledge() {
                     <div className="file-info flex al-center space-between">
                         <div className="flex al-center">
                             {
-                                fileInfo ?
+                                fileInfo.fileType ?
                                     <div className="icon-img mgR16"> <img src={fileInfo.fileType === 'pdf' ? IconPdf : IconWendang} alt="" /></div>
                                     : <></>
                             }
-                            <div className="primary-gray nm-fs elli">{fileInfo?.filename}</div>
+                            <div className="primary-gray nm-fs elli">{form.getFieldValue('file_name')}</div>
                         </div>
 
                         <div className="flex flex1 jf-end al-center">
@@ -279,7 +283,10 @@ export default function AddKnowledge() {
 
                             <div className="flex al-center">
                                 <EyeFilled className="mgR12" />
-                                <DeleteOutlined />
+                                <DeleteOutlined onClick={() => {
+                                    setFileInfo(initFileInfo)
+                                    form.setFieldValue('file_name', '')
+                                }} className="pointer" />
                             </div>
                         </div>
                     </div>
@@ -293,7 +300,15 @@ export default function AddKnowledge() {
                     </Form.Item>
 
                     <Form.Item className="h-100p" wrapperCol={{ offset: 1 }}>
-                        <FileUploader fileInfo={fileInfo} />
+                        <FileUploader
+                            file={fileInfo.file}
+                            type='file'
+                            fileType={fileInfo.fileType}
+                            styles={{
+                                maxHeight: 'calc(100vh - 380px)',
+                                maxWidth: ' calc(100vw - 680px)'
+                            }}
+                        />
                     </Form.Item>
 
                 </div>

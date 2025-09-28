@@ -1,3 +1,4 @@
+import api_frontend from '@/api/api_frontend';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.js?url';
 import { useState, useEffect, useCallback } from 'react';
@@ -7,7 +8,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl
 
 type RenderSource =
     | { type: 'file'; file: File }
-    | { type: 'url'; pdfUrl: string; requestOptions?: any };
+    | { type: 'url'; documentId: string | number; };
 
 interface UsePDFStreamRendererReturn {
     pdfPages: JSX.Element[];
@@ -44,19 +45,11 @@ export const usePDFStreamRenderer = (
                 const file = source.file;
                 arrayBuffer = await file.arrayBuffer();
             } else if (source.type === 'url') {
-                // 情况 2：传入的是 URL，通过 axios/fetch 请求 PDF 流
-                const { pdfUrl, requestOptions } = source;
-
-                // 示例使用 fetch（你也可以换成 axios，记得设置 responseType: 'arraybuffer'）
-                const response = await fetch(pdfUrl, requestOptions);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: 无法加载 PDF`);
-                }
+                const response = await api_frontend.getFile(source.documentId); // 假设这个方法等价于你下面的 getFile
                 arrayBuffer = await response.arrayBuffer();
             } else {
                 throw new Error('无效的 source 类型');
             }
-
             try {
                 const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
 

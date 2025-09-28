@@ -42,12 +42,14 @@ export default function WaitDeal() {
     const columns: TableProps<any>['columns'] = [
         {
             title: '标题',
-            render: (data: any) => data.instance.title
+            render: (data: any) => data.instance.title,
+            width:'50%',
+            ellipsis:true
         },
         {
             title: '描述',
             render: (data: any) => data.instance.description,
-            width: 400,
+            width: 200,
             ellipsis: true
         },
 
@@ -63,8 +65,9 @@ export default function WaitDeal() {
         },
         {
             title: '操作',
+            align:'center',
             render: (data: any) => (
-                <Space size="middle">
+                <Space size="middle" className='flex-center'>
                     <Popconfirm
                         placement="leftBottom"
                         title={'同意审批'}
