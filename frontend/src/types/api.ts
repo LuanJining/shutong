@@ -1,3 +1,9 @@
+export interface Par_Common_Params {
+    page: string | number;
+    page_size: string | number;
+    total?: string | number;
+}
+
 export interface Par_Users {
     username: string;
     phone: string;
@@ -18,4 +24,17 @@ export interface Par_Check_Permission {
     space_id: number | string;
     resource: string;
     action: string;
+}
+
+export interface Par_Upload_File {
+    file: File;
+    file_name: string;
+    space_id: number | string;
+    visibility: 'public' | 'internal' | 'private' | 'protected';
+    urgency?: 'normal' | 'urgent';
+    tags: string;
+    summary: string;
+    created_by: string;
+    department: string;
+    need_approval: boolean
 }

@@ -15,8 +15,13 @@ const SPACE_TYPE: ENUM_TYPE = {
     team: '团队知识库',
 }
 
+const URGENCY: ENUM_TYPE = {
+    normal: '一般',
+    urgent: '紧急',
+}
+
 const optsEnum = {
-    ROLES,SPACE_TYPE
+    ROLES, SPACE_TYPE, URGENCY
 };
 
 type EnumOType = typeof optsEnum;

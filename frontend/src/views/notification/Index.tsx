@@ -20,17 +20,17 @@ const items: MenuItem[] = [
                 key: 'wait',
                 label: '待处理',
             },
-            {
-                key: 'done',
-                label: '已处理',
-            },
+            // {
+            //     key: 'done',
+            //     label: '已处理',
+            // },
         ],
     },
-    {
-        key: 'system',
-        label: '系统通知',
-        icon: <img style={{ width: 20, height: 20, objectFit: 'cover' }} src={IconNotifications} />,
-    },
+    // {
+    //     key: 'system',
+    //     label: '系统通知',
+    //     icon: <img style={{ width: 20, height: 20, objectFit: 'cover' }} src={IconNotifications} />,
+    // },
 ];
 
 const compEnum: any = {

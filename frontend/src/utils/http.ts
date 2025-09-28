@@ -15,6 +15,7 @@ instance.interceptors.request.use(
         const token = storage.get(_caches.AUTH_INFO)?.access_token
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
+            !config.url?.includes('/iam') && (config.headers['X-User-ID'] = storage.get(_caches.AUTH_INFO)?.user?.id)
         }
         return config;
     },

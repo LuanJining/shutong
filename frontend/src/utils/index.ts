@@ -48,14 +48,18 @@ function normFile(e: any) {
  * @param value:File
  * @returns formData
  */
-export function getFormData(key: string, value: File) {
+export function getFormData(values: {}) {
+    if (!values || _.isEmpty(values)) return values
+
     const formData: any = new FormData();
-    formData.append(key, value);
+    Object.entries(values).map(([key, value]: any) => {
+        formData.append(key, value);
+    })
     return formData;
 }
 
 export default {
-    setLoading, isFalseValue, normFile,getFormData
+    setLoading, isFalseValue, normFile, getFormData
 }
 
 

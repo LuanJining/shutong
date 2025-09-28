@@ -24,15 +24,10 @@ export default function UsersManagement() {
     useEffect(() => { getUsers() }, [])
 
     const getUsers = async () => {
-        try {
-            utils.setLoading(true)
-            const { data: { users } } = await api_frontend.getUsers()
-            setData(users.map((v: any) => ({ key: v.id, ...v })))
-            utils.setLoading(false)
-        } catch (e) {
-            utils.setLoading(false)
-            throw (e)
-        }
+        utils.setLoading(true)
+        const { data: { users } } = await api_frontend.getUsers()
+        setData(users.map((v: any) => ({ key: v.id, ...v })))
+        utils.setLoading(false)
     }
 
 

@@ -1,5 +1,5 @@
 import { get, post, put, del } from "@/utils/http";
-import { Par_Check_Permission, Par_Space, Par_Users } from "@/types/api";
+import { Par_Check_Permission, Par_Common_Params, Par_Space, Par_Upload_File, Par_Users } from "@/types/api";
 
 /** @returns 登录*/
 const login = (par: { login: string; password: string; }): Promise<any> => post('/iam/auth/login', par);
@@ -49,9 +49,28 @@ const getRoleById = (roleId: string): Promise<any> => get(`/iam/roles/${roleId}`
 /** @param 获取单个权限 */
 const getPermissionById = (permissionId: string): Promise<any> => get(`/iam/permissions/${permissionId}`);
 
+/** @param 提交审批流程 */
+const uploadFile = (par: Par_Upload_File): Promise<any> => post(`/kb/upload`, par,
+    {
+        'Content-Type': 'application/x-www-form-urlencoded'
+    },
+);
+
+/** @param 获取上传的文档流 */
+const getFile = (documentId: string | number): Promise<any> => get(`/kb/${documentId}/preview`);
+
+/** @param 获取待处理任务 */
+const getTasks = (par: Par_Common_Params): Promise<any> => get(`/workflow/tasks`, par);
+
+/** @param 审批任务 */
+const taskAgree = (taskId: string | number,comment:string): Promise<any> => post(`/workflow/tasks/${taskId}/approve`,{comment});
+
+/** @param 用户看审批进度 */
+const userTasks = (): Promise<any> => get(`/workflow/instances/user`);
+
 export default {
     login, createUser, assignRoles, getUsers, getRoles, getPermissions, createSpace, getSpaces,
     getSpaceById, checkPermission, updateSpace, deleteSpace, getRolePermissions, getUserById, getRoleById,
-    getPermissionById
+    getPermissionById, uploadFile, getFile, getTasks, taskAgree, userTasks
 }
 
