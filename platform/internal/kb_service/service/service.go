@@ -118,10 +118,14 @@ func (s *DocumentService) UploadDocument(ctx context.Context, req *UploadDocumen
 		if err != nil {
 			return nil, fmt.Errorf("failed to create workflow: %w", err)
 		}
+		// 设置状态为待审批
+		s.db.Model(document).Update("status", model.DocumentStatusPendingApproval)
+		document.Status = model.DocumentStatusPendingApproval
+	} else {
+		// 不需要审批，直接设置为已发布
+		s.db.Model(document).Update("status", model.DocumentStatusPendingPublish)
+		document.Status = model.DocumentStatusPendingPublish
 	}
-
-	// 更新文档状态为处理中
-	s.db.Model(document).Update("status", model.DocumentStatusPendingApproval)
 
 	return &UploadDocumentResponse{
 		DocumentID: document.ID,

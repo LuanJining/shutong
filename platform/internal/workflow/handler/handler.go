@@ -398,6 +398,57 @@ func (h *Handler) GetInstances(c *gin.Context) {
 	})
 }
 
+// GetInstanceByUserID 获取用户创建的实例详情
+// @Summary 获取用户创建的实例详情
+// @Description 获取用户创建的实例详情
+// @Tags workflow
+// @Produce json
+// @Param X-User-ID header string true "用户ID"
+// @Param id path int true "实例ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/workflow/instances/{id}/user [get]
+func (h *Handler) GetInstanceByUserID(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, models.APIResponse{
+			Code:    401,
+			Message: "User not authenticated",
+		})
+		return
+	}
+
+	pageStr := c.DefaultQuery("page", "1")
+	pageSizeStr := c.DefaultQuery("page_size", "10")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	pageSize, err := strconv.Atoi(pageSizeStr)
+	if err != nil || pageSize < 1 || pageSize > 100 {
+		pageSize = 10
+	}
+
+	result, err := h.workflowService.GetInstanceByUserID(userID.(uint), page, pageSize)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Code:    500,
+			Message: "Failed to get instances: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{
+		Code:    200,
+		Message: "Success",
+		Data:    result,
+	})
+}
+
 // GetInstance 获取流程实例详情
 // @Summary 获取流程实例详情
 // @Description 根据ID获取流程实例详情

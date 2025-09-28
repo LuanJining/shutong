@@ -407,6 +407,38 @@ func (s *WorkflowService) GetInstance(id uint) (*models.WorkflowInstance, error)
 	return &instance, nil
 }
 
+// GetInstanceByUserID 获取用户创建的实例详情
+func (s *WorkflowService) GetInstanceByUserID(userID uint, page, pageSize int) (*models.PaginationResponse, error) {
+	var instances []models.WorkflowInstance
+	var total int64
+
+	query := s.db.Model(&models.WorkflowInstance{}).Where("created_by = ?", userID)
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, fmt.Errorf("failed to count instances: %w", err)
+	}
+
+	offset := (page - 1) * pageSize
+	if err := query.Preload("Workflow").
+		Preload("Tasks").
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(pageSize).
+		Find(&instances).Error; err != nil {
+		return nil, fmt.Errorf("failed to get instances: %w", err)
+	}
+
+	totalPages := int((total + int64(pageSize) - 1) / int64(pageSize))
+
+	return &models.PaginationResponse{
+		Items:      instances,
+		Total:      total,
+		Page:       page,
+		PageSize:   pageSize,
+		TotalPages: totalPages,
+	}, nil
+}
+
 // CancelInstance 取消流程实例
 func (s *WorkflowService) CancelInstance(id uint, userID uint) error {
 	// 开始事务

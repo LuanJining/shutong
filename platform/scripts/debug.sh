@@ -52,11 +52,11 @@ curl -s -X POST "$GATEWAY_URL/api/v1/workflow/tasks/11/approve" \
   }' | jq .
 
 echo -e "\n6. 测试获取审批流程实例详情..."
-curl -s -X GET "$GATEWAY_URL/api/v1/workflow/instances/11" \
+curl -s -X GET "$GATEWAY_URL/api/v1/workflow/instances/user" \
   -H "Authorization: Bearer $TOKEN" \
   -H "X-User-ID: $USER_ID" | jq .
 
-echo -e "\n7. 测试获取审批流程"
-curl -s -X GET "$GATEWAY_URL/api/v1/workflow/workflows/18" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "X-User-ID: $USER_ID" | jq .
+# echo -e "\n7. 测试获取审批流程"
+# curl -s -X GET "$GATEWAY_URL/api/v1/workflow/workflows/18" \
+#   -H "Authorization: Bearer $TOKEN" \
+#   -H "X-User-ID: $USER_ID" | jq .

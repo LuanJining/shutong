@@ -101,7 +101,7 @@ func Setup(cfg *config.Config) *gin.Engine {
 			workflow.GET("/instances", workflowHandler.ProxyToWorkflowClient)
 			workflow.GET("/instances/:instance_id", workflowHandler.ProxyToWorkflowClient)
 			workflow.PUT("/instances/:instance_id/cancel", workflowHandler.ProxyToWorkflowClient)
-
+			workflow.GET("/instances/user", workflowHandler.ProxyToWorkflowClient)
 			// 任务管理
 			workflow.GET("/tasks", workflowHandler.ProxyToWorkflowClient)
 			workflow.POST("/tasks/:task_id/approve", workflowHandler.ProxyToWorkflowClient)

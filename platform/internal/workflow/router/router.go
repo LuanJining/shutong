@@ -56,6 +56,8 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 				instances.GET("/:id", handler.GetInstance) // 获取实例详情
 				instances.PUT("/:id/cancel", middleware.FetchUserIdFromHeader(),
 					handler.CancelInstance) // 取消实例
+				instances.GET("/user", middleware.FetchUserIdFromHeader(),
+					handler.GetInstanceByUserID) // 获取用户创建的实例详情
 			}
 
 			// 审批任务管理
