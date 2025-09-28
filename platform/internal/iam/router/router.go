@@ -45,6 +45,8 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			auth.POST("/logout", h.Logout)
 			auth.POST("/refresh", h.RefreshToken)
 			auth.PATCH("/change-password", middleware.AuthRequired(authService), h.ChangePassword)
+
+			auth.POST("/validate-token", h.ValidateToken)
 		}
 
 		// 用户管理路由

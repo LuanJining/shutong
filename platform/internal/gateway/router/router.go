@@ -1,6 +1,7 @@
 package router
 
 import (
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/client"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/config"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/handler"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/middleware"
@@ -18,7 +19,8 @@ func Setup(cfg *config.Config) *gin.Engine {
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
 
-	iamHandler := handler.NewIamHandler(&cfg.Iam)
+	iamClient := client.NewIamClient(&cfg.Iam)
+	iamHandler := handler.NewIamHandler(&cfg.Iam, iamClient)
 	kbHandler := handler.NewKbHandler(&cfg.Kb)
 	workflowHandler := handler.NewWorkflowHandler(&cfg.Workflow)
 	api := r.Group("/api/v1")

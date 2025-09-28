@@ -61,14 +61,17 @@ test_upload_proxy() {
     # 通过Gateway上传文档
     print_info "上传文件大小: $(stat -f%z "$TEST_FILE" 2>/dev/null || stat -c%s "$TEST_FILE" 2>/dev/null || echo "unknown") 字节"
     response=$(curl -v -X POST \
+        -H "Authorization: Bearer $TOKEN" \
+        -F "file_name=test.pdf" \
         -F "file=@$TEST_FILE" \
-        -F "space_id=1" \
+        -F "space_id=6" \
         -F "visibility=private" \
         -F "urgency=normal" \
         -F "tags=测试,代理" \
         -F "summary=通过Gateway代理上传的测试文档" \
         -F "created_by=1" \
         -F "department=技术部" \
+        -F "need_approval=true" \
         "$GATEWAY_URL/api/v1/kb/upload" 2>&1)
     
     # 检查响应

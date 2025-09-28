@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/model"
+	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/service"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -1143,4 +1143,20 @@ func (h *Handler) GetSpaceMembersByRole(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "获取空间成员成功", "data": members})
+}
+
+func (h *Handler) ValidateToken(c *gin.Context) {
+	token := c.GetHeader("Authorization")
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "缺少Authorization头"})
+		return
+	}
+
+	user, err := h.authService.ValidateToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "无效的token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "token有效", "data": user})
 }

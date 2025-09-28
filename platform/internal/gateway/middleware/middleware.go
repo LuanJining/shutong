@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/handler"
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,6 +20,27 @@ func CORS() gin.HandlerFunc {
 			return
 		}
 
+		c.Next()
+	}
+}
+
+func AuthRequired(iamHandler *handler.IamHandler) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.GetHeader("Authorization")
+		if token == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "缺少Authorization头"})
+			c.Abort()
+			return
+		}
+
+		user, err := iamHandler.ValidateToken(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			c.Abort()
+			return
+		}
+
+		c.Set("user", user)
 		c.Next()
 	}
 }
