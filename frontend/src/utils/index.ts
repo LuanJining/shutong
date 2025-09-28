@@ -1,6 +1,6 @@
 import _ from "lodash";
 import store from "@/store";
-import { setIsLoading } from "@/store/loadingSlice";
+import { setIsLoading } from "@/store/systemSlice";
 
 /**
  * @returns 是否为 {} [] '' NAN  null undefined

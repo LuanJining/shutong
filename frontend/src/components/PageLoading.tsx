@@ -4,7 +4,7 @@ import { Spin } from "antd";
 import { useSelector } from "react-redux";
 
 const PageLoading: React.FC = () => {
-    const loading = useSelector((state: any) => state.loadingSlice.isLoading)
+    const loading = useSelector((state: any) => state.systemSlice.isLoading)
     if (!loading) return null
 
     return (

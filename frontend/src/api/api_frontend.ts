@@ -1,5 +1,5 @@
-import { Par_Check_Permission, Par_Space, Par_Users } from "@/types/api";
 import { get, post, put, del } from "@/utils/http";
+import { Par_Check_Permission, Par_Space, Par_Users } from "@/types/api";
 
 /** @returns 登录*/
 const login = (par: { login: string; password: string; }): Promise<any> => post('/iam/auth/login', par);

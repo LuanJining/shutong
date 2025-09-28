@@ -1,30 +1,35 @@
-import api_frontend from "@/api/api_frontend";
 import "./index.scss"
+import api_frontend from "@/api/api_frontend";
 import { Button, Form, Input, message } from "antd";
 import storage from "@/utils/storage";
 import _cache from "@/config/_caches";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setIsLogin, setUserInfo } from "@/store/systemSlice";
+import utils from "@/utils";
 
 export default function Index() {
     const navigate = useNavigate()
     const dispatch = useDispatch()
 
     const onFinish = async (values: any) => {
+        utils.setLoading(true)
         const r: any = await api_frontend.login(values)
         storage.set(_cache.AUTH_INFO, r.data)
         dispatch(setIsLogin({ isLogin: true }))
         dispatch(setUserInfo({ userInfo: r.data.user }))
         message.success('登录成功')
         navigate('/home')
+        utils.setLoading(false)
     }
 
     return (
-        <div className="app-login flex-center flex-col">
-            <div className="text-center mgB24 hg-fs fw-bold">用户登录</div>
+        <div className="app-login flex-center">
+            <Form
+                layout="vertical"
+                className="login-form" onFinish={onFinish}>
 
-            <Form labelCol={{ span: 5 }} className="login-form" onFinish={onFinish}>
+                <div className="text-center mgB24 hg-fs fw-bold">用户登录</div>
 
                 <Form.Item name='login' label='用户名'>
                     <Input placeholder="用户名/手机号/邮箱" />
@@ -34,9 +39,8 @@ export default function Index() {
                     <Input.Password placeholder="请输入密码" />
                 </Form.Item>
 
-                <Form.Item className="flex-center mgT32">
-                    <Button>取消</Button>
-                    <Button className="mgL24" htmlType="submit" type="primary">确定</Button>
+                <Form.Item className="mgT32">
+                    <Button style={{ width: '100%', height: 36 }} htmlType="submit" type="primary">登录</Button>
                 </Form.Item>
             </Form>
 

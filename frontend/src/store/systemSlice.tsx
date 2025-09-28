@@ -3,11 +3,13 @@ import storage from "@/utils/storage";
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState: {
-    isLogin: boolean,
     userInfo: any,
+    isLogin: boolean,
+    isLoading: boolean,
 } = {
     isLogin: storage.get(_cache.AUTH_INFO)?.access_token,
     userInfo: storage.get(_cache.AUTH_INFO)?.user,
+    isLoading: false,
 };
 
 export const systemSlice = createSlice({
@@ -22,9 +24,12 @@ export const systemSlice = createSlice({
         setIsLogin(state, { payload }) {
             state.isLogin = payload.isLogin;
         },
+        setIsLoading(state, { payload }) {
+            state.isLoading = payload.isLoading;
+        },
     },
 });
 
-export const { setUserInfo, setIsLogin } = systemSlice.actions;
+export const { setUserInfo, setIsLogin, setIsLoading } = systemSlice.actions;
 
 export default systemSlice.reducer; 

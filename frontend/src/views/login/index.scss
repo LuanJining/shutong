@@ -1,11 +1,13 @@
 .app-login {
   height: 100vh;
   width: 100vw;
+  background-color: #f5f5f5;
 
   .login-form {
     width: 500px;
-    padding: 56px 78px 24px;
-    border: 1px solid var(--primary-border-color);
-    border-radius: 5px;
+    background-color: #fff;
+    padding: 30px 78px 24px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   }
 }

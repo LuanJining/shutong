@@ -1,15 +1,15 @@
-import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
-import { getViteUrl } from "./tools";
-import { message } from "antd";
+import utils from ".";
 import storage from "./storage";
 import _caches from "@/config/_caches";
+import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
+import { message } from "antd";
+import { getViteUrl } from "./tools";
 
-// 创建一个axios实例
 const instance = axios.create({
     baseURL: getViteUrl('VITE_API_URL'),
-    timeout: 120000, // 请求超时时间（毫秒）
+    timeout: 20000,
 });
-// 请求拦截器
+
 instance.interceptors.request.use(
     (config) => {
         const token = storage.get(_caches.AUTH_INFO)?.access_token
@@ -22,15 +22,15 @@ instance.interceptors.request.use(
         return Promise.reject(err);
     }
 );
-// 响应拦截器
+
 instance.interceptors.response.use(
     (res) => {
-
         return res;
     },
     (err) => {
         console.log(err)
-        message.error(err?.response?.data?.error)
+        message.error(err?.response?.data?.error ?? err?.message)
+        utils.setLoading(false)
         return Promise.reject(err);
     },
 );
