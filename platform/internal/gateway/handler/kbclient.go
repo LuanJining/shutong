@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/config"
 	"github.com/gin-gonic/gin"
@@ -19,7 +20,9 @@ type KbHandler struct {
 func NewKbHandler(config *config.KbConfig) *KbHandler {
 	return &KbHandler{
 		config: config,
-		client: &http.Client{},
+		client: &http.Client{
+			Timeout: 5 * time.Minute, // 设置5分钟超时，适合大文件上传
+		},
 	}
 }
 
@@ -51,7 +54,8 @@ func (h *KbHandler) ProxyToKbClient(c *gin.Context) {
 	// 发送请求
 	resp, err := h.client.Do(proxyReq)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "Failed to proxy request"})
+		fmt.Printf("Gateway proxy error: %v\n", err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "Failed to proxy request: " + err.Error()})
 		return
 	}
 	defer resp.Body.Close()
@@ -65,7 +69,8 @@ func (h *KbHandler) ProxyToKbClient(c *gin.Context) {
 	// 复制响应体
 	_, err = io.Copy(c.Writer, resp.Body)
 	if err != nil {
-		fmt.Printf("Error copying response body: %v\n", err)
+		fmt.Printf("Gateway response copy error: %v\n", err)
+		// 不要返回错误，因为可能已经部分传输了
 	}
 }
 

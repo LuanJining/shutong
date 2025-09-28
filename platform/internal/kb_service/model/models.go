@@ -111,3 +111,14 @@ type APIResponse struct {
 	Message string `json:"message"`
 	Data    any    `json:"data,omitempty"`
 }
+
+// StartWorkflowRequest 启动流程请求
+type StartWorkflowRequest struct {
+	WorkflowID   uint   `json:"workflow_id" binding:"required"`
+	Title        string `json:"title" binding:"required"`
+	Description  string `json:"description"`
+	ResourceType string `json:"resource_type" binding:"required"`
+	ResourceID   uint   `json:"resource_id" binding:"required"`
+	SpaceID      uint   `json:"space_id" binding:"required"`
+	Priority     string `json:"priority"`
+}

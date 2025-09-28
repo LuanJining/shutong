@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -175,10 +176,24 @@ func (s *DocumentService) CreateWorkflow(ctx context.Context, document *model.Do
 		Priority:    1,
 		Steps:       []model.WorkflowStep{workflowStep},
 	}
-	workflowID, err := s.workflowClient.CreateWorkflow(ctx, &workflow)
+	workflowIDStr, err := s.workflowClient.CreateWorkflow(ctx, &workflow, document.CreatedBy)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create workflow: %w", err)
 	}
+
+	// 将字符串ID转换为uint
+	workflowID, err := strconv.ParseUint(workflowIDStr, 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse workflow ID: %w", err)
+	}
+
 	s.db.Model(document).Update("workflow_id", workflowID)
+
+	// 更新workflow对象的ID，用于启动工作流
+	workflow.ID = uint(workflowID)
+	_, err = s.workflowClient.StartWorkflow(ctx, &workflow, document.CreatedBy, document.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start workflow: %w", err)
+	}
 	return document, nil
 }

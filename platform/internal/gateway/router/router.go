@@ -86,7 +86,7 @@ func Setup(cfg *config.Config) *gin.Engine {
 		{
 			// 工作流定义管理
 			workflow.GET("", workflowHandler.ProxyToWorkflowClient)
-			workflow.GET("/:id", workflowHandler.ProxyToWorkflowClient)
+			workflow.GET("/workflows/:id", workflowHandler.ProxyToWorkflowClient)
 			workflow.POST("", workflowHandler.ProxyToWorkflowClient)
 			workflow.PUT("/:id", workflowHandler.ProxyToWorkflowClient)
 			workflow.DELETE("/:id", workflowHandler.ProxyToWorkflowClient)
@@ -104,7 +104,7 @@ func Setup(cfg *config.Config) *gin.Engine {
 
 			// 任务管理
 			workflow.GET("/tasks", workflowHandler.ProxyToWorkflowClient)
-			workflow.PUT("/tasks/:task_id/approve", workflowHandler.ProxyToWorkflowClient)
+			workflow.POST("/tasks/:task_id/approve", workflowHandler.ProxyToWorkflowClient)
 			workflow.PUT("/tasks/:task_id/reject", workflowHandler.ProxyToWorkflowClient)
 			workflow.PUT("/tasks/:task_id/transfer", workflowHandler.ProxyToWorkflowClient)
 

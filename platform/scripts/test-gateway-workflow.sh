@@ -2,7 +2,7 @@
 
 # 测试Gateway的Workflow代理功能
 
-GATEWAY_URL="http://localhost:8080"
+GATEWAY_URL="http://192.168.0.56:8080"
 IAM_URL="http://localhost:8081"
 WORKFLOW_URL="http://localhost:8082"
 
