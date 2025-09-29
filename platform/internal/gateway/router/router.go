@@ -122,6 +122,9 @@ func Setup(cfg *configs.Config) *gin.Engine {
 
 			kb.GET("/:id/info", kbHandler.ProxyToKbClient)
 			kb.GET("/:id/space", kbHandler.ProxyToKbClient)
+
+			kb.POST("/:id/chat", kbHandler.ProxyToKbClient)
+			kb.POST("/:id/chat/stream", kbHandler.ProxyToKbClient)
 		}
 	}
 

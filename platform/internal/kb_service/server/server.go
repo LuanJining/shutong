@@ -29,9 +29,9 @@ func (s *Server) Start() error {
 	s.server = &http.Server{
 		Addr:         addr,
 		Handler:      s.router,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		ReadTimeout:  5 * time.Minute,
+		WriteTimeout: 5 * time.Minute,
+		IdleTimeout:  5 * time.Minute,
 	}
 
 	fmt.Printf("Server starting on %s\n", addr)

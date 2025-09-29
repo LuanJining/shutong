@@ -40,3 +40,8 @@ qdrant:
 
 ocr:
   url: http://localhost:8084
+
+
+openai:
+  url: https://api.deepseek.com/v1
+  api_key: sk-bd26f4335716448889f4be844fb8e4a3

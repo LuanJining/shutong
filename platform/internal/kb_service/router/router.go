@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, qdrantClient *client.QdrantClient, ocrClient *client.OCRClient, workflowClient *client.WorkflowClient) *gin.Engine {
+func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, qdrantClient *client.QdrantClient, ocrClient *client.OCRClient, workflowClient *client.WorkflowClient, openaiClient *client.OpenAIClient) *gin.Engine {
 	// 设置Gin模式
 	gin.SetMode(cfg.Gin.Mode)
 
@@ -24,7 +24,7 @@ func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, qdrant
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
 
 	// 创建服务层
-	documentService := service.NewDocumentService(db, minioClient, qdrantClient, ocrClient, workflowClient)
+	documentService := service.NewDocumentService(db, minioClient, qdrantClient, ocrClient, workflowClient, openaiClient)
 
 	// 创建处理器
 	documentHandler := handler.NewDocumentHandler(documentService)
@@ -50,6 +50,9 @@ func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, qdrant
 			documents.GET(":id/space", documentHandler.GetDocumentsBySpaceId)
 
 			documents.POST("/:id/publish", documentHandler.PublishDocument)
+
+			documents.POST("/:id/chat", documentHandler.ChatDocument)              // space_id
+			documents.POST("/:id/chat/stream", documentHandler.ChatDocumentStream) // space_id
 		}
 	}
 

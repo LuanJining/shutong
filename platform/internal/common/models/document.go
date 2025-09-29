@@ -1,6 +1,8 @@
 package model
 
 import (
+	"errors"
+	"io"
 	"time"
 
 	"gorm.io/gorm"
@@ -93,4 +95,56 @@ type Workflow struct {
 	SpaceID     uint           `json:"space_id" binding:"required"`
 	Priority    int            `json:"priority"`
 	Steps       []WorkflowStep `json:"steps" binding:"required"`
+}
+
+var (
+	// ErrOpenAIClientNotConfigured indicates that the OpenAI client configuration is missing.
+	ErrOpenAIClientNotConfigured = errors.New("openai client is not configured")
+	// ErrNoDocumentsAvailable indicates that there are no usable documents for the chat request.
+	ErrNoDocumentsAvailable = errors.New("no documents available for chat")
+	// ErrEmptyChatQuestion indicates an empty or whitespace-only question.
+	ErrEmptyChatQuestion = errors.New("question is required")
+)
+
+// ChatDocumentRequest 请求结构
+type ChatDocumentRequest struct {
+	Question    string `json:"question" binding:"required"`
+	DocumentIDs []uint `json:"document_ids"`
+	Limit       int    `json:"limit"`
+}
+
+// ChatDocumentResponse 响应结构
+type ChatDocumentResponse struct {
+	Answer  string               `json:"answer"`
+	Sources []ChatDocumentSource `json:"sources,omitempty"`
+}
+
+// ChatDocumentSource 聊天引用的文档信息
+type ChatDocumentSource struct {
+	DocumentID uint   `json:"document_id"`
+	Title      string `json:"title"`
+	FilePath   string `json:"file_path"`
+}
+
+// UploadDocumentRequest 上传文档请求
+type UploadDocumentRequest struct {
+	File         io.Reader
+	FileName     string
+	FileSize     int64
+	ContentType  string
+	SpaceID      uint
+	Visibility   string
+	Urgency      string
+	Tags         string
+	Summary      string
+	CreatedBy    uint
+	Department   string
+	NeedApproval bool
+}
+
+// UploadDocumentResponse 上传文档响应
+type UploadDocumentResponse struct {
+	DocumentID uint           `json:"document_id"`
+	Status     DocumentStatus `json:"status"`
+	Message    string         `json:"message"`
 }

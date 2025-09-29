@@ -64,7 +64,7 @@ test_upload_proxy() {
         -H "Authorization: Bearer $TOKEN" \
         -F "file_name=test.pdf" \
         -F "file=@$TEST_FILE" \
-        -F "space_id=6" \
+        -F "space_id=14" \
         -F "visibility=private" \
         -F "urgency=normal" \
         -F "tags=测试,代理" \

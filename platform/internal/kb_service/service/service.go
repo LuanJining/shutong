@@ -4,10 +4,14 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	openai "github.com/openai/openai-go/v2"
+	"github.com/openai/openai-go/v2/packages/ssestream"
 
 	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/client"
@@ -21,44 +25,28 @@ type DocumentService struct {
 	qdrantClient   *client.QdrantClient
 	ocrClient      *client.OCRClient
 	workflowClient *client.WorkflowClient
+	openaiClient   *client.OpenAIClient
+}
+
+type ChatDocumentStreamResult struct {
+	Stream  *ssestream.Stream[openai.ChatCompletionChunk]
+	Sources []model.ChatDocumentSource
 }
 
 // NewDocumentService 创建文档服务
-func NewDocumentService(db *gorm.DB, minioClient *client.S3Client, qdrantClient *client.QdrantClient, ocrClient *client.OCRClient, workflowClient *client.WorkflowClient) *DocumentService {
+func NewDocumentService(db *gorm.DB, minioClient *client.S3Client, qdrantClient *client.QdrantClient, ocrClient *client.OCRClient, workflowClient *client.WorkflowClient, openaiClient *client.OpenAIClient) *DocumentService {
 	return &DocumentService{
 		db:             db,
 		minioClient:    minioClient,
 		qdrantClient:   qdrantClient,
 		ocrClient:      ocrClient,
 		workflowClient: workflowClient,
+		openaiClient:   openaiClient,
 	}
 }
 
-// UploadDocumentRequest 上传文档请求
-type UploadDocumentRequest struct {
-	File         io.Reader
-	FileName     string
-	FileSize     int64
-	ContentType  string
-	SpaceID      uint
-	Visibility   string
-	Urgency      string
-	Tags         string
-	Summary      string
-	CreatedBy    uint
-	Department   string
-	NeedApproval bool
-}
-
-// UploadDocumentResponse 上传文档响应
-type UploadDocumentResponse struct {
-	DocumentID uint                 `json:"document_id"`
-	Status     model.DocumentStatus `json:"status"`
-	Message    string               `json:"message"`
-}
-
 // UploadDocument 上传文档
-func (s *DocumentService) UploadDocument(ctx context.Context, req *UploadDocumentRequest) (*UploadDocumentResponse, error) {
+func (s *DocumentService) UploadDocument(ctx context.Context, req *model.UploadDocumentRequest) (*model.UploadDocumentResponse, error) {
 	// 设置默认值
 	if req.Visibility == "" {
 		req.Visibility = "private"
@@ -127,7 +115,7 @@ func (s *DocumentService) UploadDocument(ctx context.Context, req *UploadDocumen
 		document.Status = model.DocumentStatusPendingPublish
 	}
 
-	return &UploadDocumentResponse{
+	return &model.UploadDocumentResponse{
 		DocumentID: document.ID,
 		Status:     document.Status,
 		Message:    "Document uploaded successfully",
@@ -194,6 +182,120 @@ func (s *DocumentService) DownloadDocument(ctx context.Context, documentID uint)
 	}
 
 	return fileReader, nil
+}
+
+// ChatDocument 基于空间内的文档进行对话
+func (s *DocumentService) ChatDocument(ctx context.Context, spaceID uint, req *model.ChatDocumentRequest) (*model.ChatDocumentResponse, error) {
+	if s.openaiClient == nil {
+		return nil, model.ErrOpenAIClientNotConfigured
+	}
+
+	question, fileContents, sources, err := s.prepareChatDocument(ctx, spaceID, req)
+	if err != nil {
+		return nil, err
+	}
+
+	answer, err := s.openaiClient.ChatWithFiles(ctx, question, fileContents)
+	if err != nil {
+		return nil, fmt.Errorf("failed to chat with documents: %w", err)
+	}
+
+	return &model.ChatDocumentResponse{
+		Answer:  answer,
+		Sources: sources,
+	}, nil
+}
+
+// ChatDocumentStream 基于空间内的文档进行流式对话
+func (s *DocumentService) ChatDocumentStream(ctx context.Context, spaceID uint, req *model.ChatDocumentRequest) (*ChatDocumentStreamResult, error) {
+	if s.openaiClient == nil {
+		return nil, model.ErrOpenAIClientNotConfigured
+	}
+
+	question, fileContents, sources, err := s.prepareChatDocument(ctx, spaceID, req)
+	if err != nil {
+		return nil, err
+	}
+
+	stream, err := s.openaiClient.ChatWithFilesStream(ctx, question, fileContents)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stream chat with documents: %w", err)
+	}
+
+	return &ChatDocumentStreamResult{
+		Stream:  stream,
+		Sources: sources,
+	}, nil
+}
+
+func (s *DocumentService) prepareChatDocument(ctx context.Context, spaceID uint, req *model.ChatDocumentRequest) (string, []string, []model.ChatDocumentSource, error) {
+	if req == nil {
+		return "", nil, nil, model.ErrEmptyChatQuestion
+	}
+
+	question := strings.TrimSpace(req.Question)
+	if question == "" {
+		return "", nil, nil, model.ErrEmptyChatQuestion
+	}
+
+	limit := req.Limit
+	if limit <= 0 {
+		limit = 3
+	}
+	if limit > 10 {
+		limit = 10
+	}
+
+	query := s.db.WithContext(ctx).
+		Where("space_id = ?", spaceID)
+
+	if len(req.DocumentIDs) > 0 {
+		query = query.Where("id IN ?", req.DocumentIDs)
+	}
+
+	var documents []model.Document
+	if err := query.
+		Order("updated_at DESC").
+		Limit(limit).
+		Find(&documents).Error; err != nil {
+		return "", nil, nil, fmt.Errorf("failed to load documents: %w", err)
+	}
+
+	log.Println("documents", documents)
+
+	if len(documents) == 0 {
+		return "", nil, nil, model.ErrNoDocumentsAvailable
+	}
+
+	objectNames := make([]string, 0, len(documents))
+	sources := make([]model.ChatDocumentSource, 0, len(documents))
+	for _, doc := range documents {
+		filePath := strings.TrimSpace(doc.FilePath)
+		if filePath == "" {
+			continue
+		}
+		objectNames = append(objectNames, filePath)
+		sources = append(sources, model.ChatDocumentSource{
+			DocumentID: doc.ID,
+			Title:      doc.Title,
+			FilePath:   filePath,
+		})
+	}
+
+	if len(objectNames) == 0 {
+		return "", nil, nil, model.ErrNoDocumentsAvailable
+	}
+
+	log.Println("objectNames", objectNames)
+
+	fileContents, err := s.openaiClient.ExtractMinioFileContents(ctx, s.minioClient, objectNames)
+	if err != nil {
+		return "", nil, nil, fmt.Errorf("failed to load file contents: %w", err)
+	}
+
+	log.Println("fileContents loaded", len(fileContents))
+
+	return question, fileContents, sources, nil
 }
 
 func (s *DocumentService) CreateWorkflow(ctx context.Context, document *model.Document) (*model.Document, error) {

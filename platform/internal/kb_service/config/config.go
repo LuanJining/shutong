@@ -18,6 +18,7 @@ type Config struct {
 	OCR      OCRConfig      `mapstructure:"ocr"`
 	Gin      GinConfig      `mapstructure:"gin"`
 	Log      LogConfig      `mapstructure:"log"`
+	OpenAI   OpenAIConfig   `mapstructure:"openai"`
 }
 
 type ServerConfig struct {
@@ -70,6 +71,11 @@ type OCRConfig struct {
 type LogConfig struct {
 	Level      string `mapstructure:"level"`        // 日志级别: debug, info, warn, error
 	DBLogLevel string `mapstructure:"db_log_level"` // 数据库日志级别: silent, error, warn, info
+}
+
+type OpenAIConfig struct {
+	ApiKey string `mapstructure:"api_key"`
+	Url    string `mapstructure:"url"`
 }
 
 func Load() (*Config, error) {
@@ -151,4 +157,6 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("ocr.url", "http://localhost:8084")
 	v.SetDefault("log.level", "info")
 	v.SetDefault("log.db_log_level", "warn")
+	v.SetDefault("openai.api_key", "")
+	v.SetDefault("openai.url", "https://api.deepseek.com/v1")
 }

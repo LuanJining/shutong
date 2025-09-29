@@ -12,6 +12,10 @@ import (
 func main() {
 	// 加载配置
 	cfg, err := configs.Load()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
 	serverCfg, err := serverCfg.Load()
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)

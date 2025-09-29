@@ -1,11 +1,16 @@
 package handler
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
+
+	openai "github.com/openai/openai-go/v2"
 
 	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/service"
@@ -89,7 +94,7 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 	}
 
 	// 构建服务请求
-	req := &service.UploadDocumentRequest{
+	req := &model.UploadDocumentRequest{
 		File:         file,
 		FileName:     fileName,
 		FileSize:     actualSize,
@@ -369,4 +374,168 @@ func (h *DocumentHandler) PublishDocument(c *gin.Context) {
 	// 	c.JSON(http.StatusOK, document)
 	// 	return
 	// }
+}
+
+func (h *DocumentHandler) ChatDocument(c *gin.Context) {
+	spaceIDStr := c.Param("id")
+	spaceID, err := strconv.ParseUint(spaceIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid space ID"})
+		return
+	}
+
+	var chatReq model.ChatDocumentRequest
+	if err := c.ShouldBindJSON(&chatReq); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	resp, err := h.documentService.ChatDocument(c.Request.Context(), uint(spaceID), &chatReq)
+	if err != nil {
+		switch {
+		case errors.Is(err, model.ErrEmptyChatQuestion):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		case errors.Is(err, model.ErrNoDocumentsAvailable):
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		case errors.Is(err, model.ErrOpenAIClientNotConfigured):
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func (h *DocumentHandler) ChatDocumentStream(c *gin.Context) {
+	spaceIDStr := c.Param("id")
+	spaceID, err := strconv.ParseUint(spaceIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid space ID"})
+		return
+	}
+
+	var chatReq model.ChatDocumentRequest
+	if err := c.ShouldBindJSON(&chatReq); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	result, err := h.documentService.ChatDocumentStream(c.Request.Context(), uint(spaceID), &chatReq)
+	if err != nil {
+		switch {
+		case errors.Is(err, model.ErrEmptyChatQuestion):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		case errors.Is(err, model.ErrNoDocumentsAvailable):
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		case errors.Is(err, model.ErrOpenAIClientNotConfigured):
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	writer := c.Writer
+	flusher, ok := writer.(http.Flusher)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "streaming not supported"})
+		return
+	}
+
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
+	writer.WriteHeader(http.StatusOK)
+
+	if err := writeSSE(writer, flusher, "sources", result.Sources); err != nil {
+		log.Printf("failed to write sources SSE: %v", err)
+		return
+	}
+
+	stream := result.Stream
+	defer stream.Close()
+	acc := openai.ChatCompletionAccumulator{}
+
+	for stream.Next() {
+		chunk := stream.Current()
+		_ = acc.AddChunk(chunk)
+
+		if len(chunk.Choices) == 0 {
+			continue
+		}
+
+		for _, choice := range chunk.Choices {
+			if delta := choice.Delta.Content; delta != "" {
+				if err := writeSSE(writer, flusher, "token", map[string]string{"content": delta}); err != nil {
+					log.Printf("failed to write token SSE: %v", err)
+					return
+				}
+			}
+			if refusal := choice.Delta.Refusal; refusal != "" {
+				if err := writeSSE(writer, flusher, "refusal", map[string]string{"content": refusal}); err != nil {
+					log.Printf("failed to write refusal SSE: %v", err)
+					return
+				}
+			}
+		}
+	}
+
+	if err := stream.Err(); err != nil {
+		_ = writeSSE(writer, flusher, "error", map[string]string{"message": err.Error()})
+		return
+	}
+
+	finalMessage := ""
+	if len(acc.Choices) > 0 {
+		finalMessage = strings.TrimSpace(acc.Choices[0].Message.Content)
+	}
+
+	if err := writeSSE(writer, flusher, "done", map[string]any{
+		"message": finalMessage,
+		"sources": result.Sources,
+	}); err != nil {
+		log.Printf("failed to write done SSE: %v", err)
+	}
+}
+
+func writeSSE(w http.ResponseWriter, flusher http.Flusher, event string, payload any) error {
+	var builder strings.Builder
+	if event != "" {
+		builder.WriteString("event: ")
+		builder.WriteString(event)
+		builder.WriteString("\n")
+	}
+
+	switch v := payload.(type) {
+	case string:
+		lines := strings.Split(v, "\n")
+		if len(lines) == 0 {
+			lines = []string{""}
+		}
+		for _, line := range lines {
+			builder.WriteString("data: ")
+			builder.WriteString(line)
+			builder.WriteString("\n")
+		}
+	default:
+		data, err := json.Marshal(payload)
+		if err != nil {
+			return err
+		}
+		builder.WriteString("data: ")
+		builder.Write(data)
+		builder.WriteString("\n")
+	}
+
+	builder.WriteString("\n")
+
+	if _, err := w.Write([]byte(builder.String())); err != nil {
+		return err
+	}
+
+	flusher.Flush()
+	return nil
 }
