@@ -30,14 +30,13 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 	// 创建处理器
 	h := handler.NewHandler(db, authService)
 
-	// 健康检查
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
-	})
-
 	// API路由组
 	api := r.Group("/api/v1")
 	{
+		api.GET("/health", func(c *gin.Context) {
+			c.JSON(200, gin.H{"status": "ok"})
+		})
+
 		// 认证相关路由
 		auth := api.Group("/auth")
 		{
