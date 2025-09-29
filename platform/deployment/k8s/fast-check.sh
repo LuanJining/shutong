@@ -1,15 +1,4 @@
 
-# 初始化数据库
-POSTGRES_POD=$(kubectl get pods -n kb-platform -l app=postgres-master -o jsonpath='{.items[0].metadata.name}')
-if [ -z "$POSTGRES_POD" ]; then
-    echo "❌ 未找到 PostgreSQL master pod, 请确保 StatefulSet 已部署"
-    exit 1
-fi
-
-kubectl exec -it $POSTGRES_POD -n kb-platform -- psql -U postgres -c "CREATE DATABASE kb_platform;"
-kubectl exec -it $POSTGRES_POD -n kb-platform -- psql -U postgres -d kb_platform -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO postgres; GRANT ALL ON SCHEMA public TO public;"
-kubectl exec -i $POSTGRES_POD -n kb-platform -- psql -U postgres -d kb_platform < ../database/init-database.sql
-
 # 获取gateway的cluster ip
 GATEWAY_CLUSTER_IP=$(kubectl get svc -n kb-platform -l app=gateway -o jsonpath='{.items[0].spec.clusterIP}')
 if [ -z "$GATEWAY_CLUSTER_IP" ]; then
@@ -58,3 +47,19 @@ if [ -z "$KB_SERVICE_CLUSTER_IP" ]; then
     echo "❌ 未找到 KB Service 的 ClusterIP, 请确保 Service 已部署"
     exit 1
 fi
+
+# 测试kb-service
+echo "=== KB Service测试 ==="
+curl -s http://$KB_SERVICE_CLUSTER_IP/api/v1/health | jq .
+
+echo "=== KB Service测试完成 ==="
+echo "KB Service URL: http://$KB_SERVICE_CLUSTER_IP"
+
+# 数据库master的cluster ip
+POSTGRES_MASTER_CLUSTER_IP=$(kubectl get svc -n kb-platform -l app=postgres-master -o jsonpath='{.items[0].spec.clusterIP}')
+if [ -z "$POSTGRES_MASTER_CLUSTER_IP" ]; then
+    echo "❌ 未找到 PostgreSQL master 的 ClusterIP, 请确保 Service 已部署"
+    exit 1
+fi
+
+echo "PostgreSQL master URL: http://$POSTGRES_MASTER_CLUSTER_IP"

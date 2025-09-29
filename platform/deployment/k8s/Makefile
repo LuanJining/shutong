@@ -6,3 +6,6 @@ uninstall:
 
 check:
 	./fast-check.sh
+
+init-db:
+	./fast-init-db.sh
