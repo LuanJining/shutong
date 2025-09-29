@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: iam
-          image: harbor.kunxiangtech.com:8443/kb-platform/iam:v1.0.0
+          image: harbor.kunxiangtech.com:8443/kb-platform/iam:v1.0.1
           ports:
             - containerPort: 8081
               name: http
