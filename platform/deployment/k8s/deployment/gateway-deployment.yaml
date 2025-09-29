@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: gateway
-          image: harbor.kunxiangtech.com:8443/kb-platform/gateway:v1.0.0
+          image: harbor.kunxiangtech.com:8443/kb-platform/gateway:v1.0.1
           ports:
             - containerPort: 8080
               name: http

@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: workflow
-          image: harbor.kunxiangtech.com:8443/kb-platform/workflow:v1.0.0
+          image: harbor.kunxiangtech.com:8443/kb-platform/workflow:v1.0.1
           ports:
             - containerPort: 8082
               name: http

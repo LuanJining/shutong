@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: kb-service
-          image: harbor.kunxiangtech.com:8443/kb-platform/kb-service:v1.0.0
+          image: harbor.kunxiangtech.com:8443/kb-platform/kb-service:v1.0.1
           ports:
             - containerPort: 8083
               name: http

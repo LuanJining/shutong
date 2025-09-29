@@ -7,16 +7,16 @@ metadata:
     app: iam
     version: v1.0.0
 data:
-  KBASE_ENV: localtest
-  KBASE_SERVER_HOST: 0.0.0.0
-  KBASE_SERVER_PORT: 8081
-  KBASE_DATABASE_HOST: postgres-master-service
-  KBASE_DATABASE_PORT: 5432
-  KBASE_DATABASE_DBNAME: kb_platform
-  KBASE_DATABASE_SSLMODE: disable
+  KBASE_ENV: "production"
+  KBASE_SERVER_HOST: "0.0.0.0"
+  KBASE_SERVER_PORT: "8081"
+  KBASE_DATABASE_HOST: "postgres-master-service"
+  KBASE_DATABASE_PORT: "5432"
+  KBASE_DATABASE_DBNAME: "kb_platform"
+  KBASE_DATABASE_SSLMODE: "disable"
   KBASE_JWT_ACCESS_TOKEN_EXPIRE_TIME: "24"
   KBASE_JWT_REFRESH_TOKEN_EXPIRE_TIME: "720"
-  KBASE_LOG_LEVEL: warn
-  KBASE_DB_LOG_LEVEL: error
-  KBASE_GIN_MODE: release
-  KBASE_LOG_DB_LOG_LEVEL: error
+  KBASE_LOG_LEVEL: "warn"
+  KBASE_DB_LOG_LEVEL: "error"
+  KBASE_GIN_MODE: "release"
+  KBASE_LOG_DB_LOG_LEVEL: "error"
