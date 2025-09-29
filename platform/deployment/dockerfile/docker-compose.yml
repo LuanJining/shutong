@@ -96,13 +96,14 @@ services:
       KBASE_MINIO_SECRET_KEY: minioadmin
       KBASE_MINIO_BUCKET: kb-platform
       KBASE_MINIO_REGION: us-east-1
+      KBASE_IAM_URL: http://iam:8081
+      KBASE_WORKFLOW_URL: http://workflow:8082
       KBASE_QDRANT_HOST: qdrant
       KBASE_QDRANT_PORT: "6333"
       KBASE_QDRANT_USER: qdrant
       KBASE_QDRANT_PASSWORD: qdrant
       KBASE_QDRANT_DBNAME: kb_platform
       KBASE_QDRANT_SSLMODE: disable
-      KBASE_OCR_URL: http://ocr:8084
       KBASE_OPENAI_API_KEY: your-api-key
       KBASE_OPENAI_URL: https://api.deepseek.com/v1
       KBASE_GIN_MODE: release

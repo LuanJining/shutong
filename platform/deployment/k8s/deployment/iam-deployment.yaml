@@ -26,6 +26,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: iam-config
+            - secretRef:
+                name: iam-secret
           resources:
             requests:
               cpu: 100m

@@ -8,22 +8,12 @@ metadata:
     version: v1.0.0
 data:
   KBASE_ENV: localtest
-  KBASE_SERVER_HOST: localhost
+  KBASE_SERVER_HOST: 0.0.0.0
   KBASE_SERVER_PORT: 8082
   KBASE_DATABASE_HOST: postgres-master-service
   KBASE_DATABASE_PORT: 5432
-  KBASE_DATABASE_USER: 
-    valueFrom:
-      secretKeyRef:
-        name: workflow-secret
-        key: DATABASE_USER
-  KBASE_DATABASE_PASSWORD: 
-    valueFrom:
-      secretKeyRef:
-        name: workflow-secret
-        key: DATABASE_PASSWORD
   KBASE_DATABASE_DBNAME: kb_platform
-  KBASE_DATABASE_SSLMODE: enable
+  KBASE_DATABASE_SSLMODE: disable
   KBASE_LOG_LEVEL: warn
   KBASE_DB_LOG_LEVEL: error
   KBASE_GIN_MODE: release

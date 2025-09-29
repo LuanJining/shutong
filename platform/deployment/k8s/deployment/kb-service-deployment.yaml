@@ -26,6 +26,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: kb-service-config
+            - secretRef:
+                name: kb-service-secret
           resources:
             requests:
               cpu: 100m
