@@ -7,7 +7,7 @@ import { getViteUrl } from "./tools";
 
 const instance = axios.create({
     baseURL: getViteUrl('VITE_API_URL'),
-    timeout: 20000,
+    timeout: 120000,
 });
 
 instance.interceptors.request.use(

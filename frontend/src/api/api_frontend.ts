@@ -1,5 +1,5 @@
 import { get, post, put, del } from "@/utils/http";
-import { Par_Check_Permission, Par_Common_Params, Par_Space, Par_Upload_File, Par_Users } from "@/types/api";
+import { Par_Chat, Par_Check_Permission, Par_Common_Params, Par_Space, Par_Upload_File, Par_Users } from "@/types/api";
 
 /** @returns 登录*/
 const login = (par: { login: string; password: string; }): Promise<any> => post('/iam/auth/login', par);
@@ -76,9 +76,13 @@ const documentDetail = (documentId: string | number): Promise<any> => get(`/kb/$
 /** @param 文档列表 */
 const documentList = (space_id: string | number, par: Par_Common_Params): Promise<any> => get(`/kb/${space_id}/space`, par);
 
+/** @param 文档列表 */
+const chat = (par: Par_Chat): Promise<any> => post(`kb/${par.space_id}/chat/stream`, par);
+
 export default {
     login, createUser, assignRoles, getUsers, getRoles, getPermissions, createSpace, getSpaces,
     getSpaceById, checkPermission, updateSpace, deleteSpace, getRolePermissions, getUserById, getRoleById,
-    getPermissionById, uploadFile, getFile, getTasks, taskAgree, userTasks, documentDetail, documentList
+    getPermissionById, uploadFile, getFile, getTasks, taskAgree, userTasks, documentDetail, documentList,
+    chat
 }
 

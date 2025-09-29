@@ -38,3 +38,10 @@ export interface Par_Upload_File {
     department: string;
     need_approval: boolean
 }
+
+export interface Par_Chat {
+    space_id: string;
+    question:string;
+    document_ids: [];
+    limit: number;
+}

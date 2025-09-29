@@ -1,37 +1,104 @@
 .app-qa {
-  height: 100%;
   display: flex;
-  flex-direction: column;
-  padding: 12px 24px 56px;
+  width: 100%;
+  height: 100%;
+  padding: 16px 24px;
   box-sizing: border-box;
-  background-color: #fff;
-  .chat-content {
-    .chat-container {
-      width: 60%;
-      margin: -50px auto 0;
-      .chat-desc {
-        img {
-          width: 200px;
-          height: 200px;
-          object-fit: cover;
-        }
 
-        .ai-chart {
-          font-size: 36px;
-          letter-spacing: 4px;
-          margin: 6px 0; 
-        }
+  .title {
+    padding: 36px 0 56px;
+    height: 140px;
+    box-sizing: border-box;
+    font-size: 32px;
+    font-weight: bold;
+    text-align: center;
+  }
+
+  .line {
+    height: 1px;
+    width: 90%;
+    background-color: #cacaca;
+    margin: 8px 0;
+  }
+  .chat-container {
+    margin: -50px auto 0;
+    .chat-desc {
+      img {
+        width: 200px;
+        height: 200px;
+        object-fit: cover;
+      }
+
+      .ai-chart {
+        font-size: 36px;
+        letter-spacing: 4px;
+        margin: 6px 0;
       }
     }
+  }
 
-    .send-box {
-      width: 60%;
-      margin: 0 auto;
-      padding: 12px;
-      box-sizing: border-box;
-      border-radius: 10px;
-      background-color: rgba(255, 255, 255, 1);
-      border: 2px dashed rgba(187, 187, 187, 1);
+  .chat-box {
+    overflow-y: auto;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .chat-container-box {
+    flex: 1;
+    max-width: 60%;
+    width: 60%;
+    padding: 48px 0;
+    box-sizing: border-box;
+
+    .ai-message {
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .user-message {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 20px;
+      span {
+        padding: 8px 12px;
+        border-radius: 20px;
+        border-bottom-right-radius: 5px;
+        max-width: 80%;
+        background-color: #f5f5f5;
+        font-size: 14px;
+      }
+    }
+  }
+
+  .send-box {
+    width: 60%;
+    margin: 0 auto;
+    padding: 12px;
+    box-sizing: border-box;
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 1);
+    border: 2px dashed rgba(187, 187, 187, 1);
+
+    .send-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border: none;
+      border-radius: 50%;
+      background-color: #4285f4;
+      color: white;
+      transition: background-color 0.3s;
+      margin-left: 30px;
+      cursor: pointer;
+      #send-icon,
+      #stop-icon {
+        width: 20px;
+        height: 20px;
+      }
     }
   }
 }

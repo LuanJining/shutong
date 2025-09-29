@@ -64,7 +64,9 @@ export default function KonwledgeDetail() {
                     <BaseInfo />
                 </div>
 
-                <div className="right-content flex1 flex flex-col">
+                <div style={{
+                    maxWidth: 'calc(100vw - 506px)'
+                }} className="right-content flex1 flex flex-col">
                     <Form.Item style={{ marginBottom: 12 }} wrapperCol={{ offset: 1 }}>
                         <div className="flex al-center">
                             <div className="hg-fs elli fw-bold">{info?.title}</div>
