@@ -2,7 +2,7 @@
 
 # 测试Gateway的Workflow代理功能
 
-GATEWAY_URL="http://localhost:8080"
+GATEWAY_URL="http://192.168.0.56:8080"
 IAM_URL="http://localhost:8081"
 WORKFLOW_URL="http://localhost:8082"
 
@@ -23,7 +23,7 @@ echo -e "\n3. 登录获取token..."
 LOGIN_RESPONSE=$(curl -s -X POST "$GATEWAY_URL/api/v1/iam/auth/login" \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "admin",
+    "login": "admin",
     "password": "admin123"
   }')
 
@@ -132,8 +132,7 @@ echo "获取到实例ID: $INSTANCE_ID"
 # 测试获取实例列表
 echo -e "\n8. 测试获取实例列表..."
 curl -s -X GET "$GATEWAY_URL/api/v1/workflow/instances" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "X-User-ID: $USER_ID" | jq .
+  -H "Authorization: Bearer $TOKEN"  | jq .
 
 # 测试获取实例详情
 echo -e "\n9. 测试获取实例详情..."

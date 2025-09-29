@@ -4,8 +4,8 @@ import (
 	"errors"
 	"time"
 
+	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/config"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/model"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -220,7 +220,7 @@ func (s *AuthService) generateRefreshToken(user *model.User) (string, time.Time,
 
 // ValidateToken 验证JWT token
 func (s *AuthService) ValidateToken(tokenString string) (*model.User, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
 		}

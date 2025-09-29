@@ -6,17 +6,17 @@ import (
 	"net/http"
 	"time"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/config"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/configs"
 	"github.com/gin-gonic/gin"
 )
 
 type Server struct {
-	config *config.ServerConfig
+	config *configs.ServerConfig
 	router *gin.Engine
 	server *http.Server
 }
 
-func New(cfg *config.ServerConfig, router *gin.Engine) *Server {
+func New(cfg *configs.ServerConfig, router *gin.Engine) *Server {
 	return &Server{
 		config: cfg,
 		router: router,
@@ -29,9 +29,9 @@ func (s *Server) Start() error {
 	s.server = &http.Server{
 		Addr:         addr,
 		Handler:      s.router,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		ReadTimeout:  5 * time.Minute,
+		WriteTimeout: 5 * time.Minute,
+		IdleTimeout:  5 * time.Minute,
 	}
 
 	fmt.Printf("Server starting on %s\n", addr)

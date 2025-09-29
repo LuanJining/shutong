@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -8,17 +9,20 @@ import (
 	"strings"
 	"time"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/config"
+	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/client"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/configs"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/models"
 	"github.com/gin-gonic/gin"
 )
 
 type IamHandler struct {
-	config *config.IamConfig
+	config    *configs.IamConfig
+	iamClient *client.IamClient
 }
 
-func NewIamHandler(config *config.IamConfig) *IamHandler {
-	return &IamHandler{config: config}
+func NewIamHandler(config *configs.IamConfig, iamClient *client.IamClient) *IamHandler {
+	return &IamHandler{config: config, iamClient: iamClient}
 }
 
 func (h *IamHandler) ProxyToIamClient(c *gin.Context) {
@@ -131,4 +135,20 @@ func (h *IamHandler) ProxyToIamClient(c *gin.Context) {
 		// 普通响应，直接复制
 		io.Copy(c.Writer, resp.Body)
 	}
+}
+
+func (h *IamHandler) ValidateToken(c *gin.Context) (*model.User, error) {
+	token := c.GetHeader("Authorization")
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "缺少Authorization头"})
+		return nil, errors.New("缺少Authorization头")
+	}
+
+	user, err := h.iamClient.ValidateToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "无效的token"})
+		return nil, errors.New("无效的token")
+	}
+
+	return user, nil
 }

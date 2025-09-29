@@ -1,0 +1,47 @@
+server:
+  host: localhost
+  port: "8083"
+
+iam:
+  url: http://localhost:8081
+
+workflow:
+  url: http://localhost:8082
+
+gin:
+  mode: debug
+
+database:
+  host: localhost
+  port: "5432"
+  user: postgres
+  password: password
+  dbname: kb_platform
+  sslmode: disable
+
+log:
+  level: info
+  db_log_level: warn
+
+minio:
+  endpoint: api.kunxiangtech.com:9000
+  access_key: tIib6uMMDCUgujlicB3B
+  secret_key: 38lmILFSwAZUR9Rl155VYVlCgKNbZe7jIfY9EmoF
+  bucket: kb-platform
+  region: us-east-1
+
+qdrant:
+  host: localhost
+  port: "6333"
+  user: qdrant
+  password: qdrant
+  dbname: kb_platform
+  sslmode: disable
+
+ocr:
+  url: http://localhost:8084
+
+
+openai:
+  url: https://api.deepseek.com/v1
+  api_key: sk-bd26f4335716448889f4be844fb8e4a3

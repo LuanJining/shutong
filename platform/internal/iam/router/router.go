@@ -21,7 +21,7 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 	// 添加中间件
 	r.Use(middleware.Logger())
 	r.Use(middleware.Recovery())
-	r.Use(middleware.CORS())
+	// r.Use(middleware.CORS())
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
 
 	// 创建服务
@@ -45,6 +45,8 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			auth.POST("/logout", h.Logout)
 			auth.POST("/refresh", h.RefreshToken)
 			auth.PATCH("/change-password", middleware.AuthRequired(authService), h.ChangePassword)
+
+			auth.POST("/validate-token", h.ValidateToken)
 		}
 
 		// 用户管理路由

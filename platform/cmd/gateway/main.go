@@ -3,18 +3,17 @@ package main
 import (
 	"log"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/config"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/configs"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/router"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/server"
 )
 
 func main() {
 	// 加载配置
-	cfg, err := config.Load()
+	cfg, err := configs.Load()
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
-
 	// 初始化路由
 	r := router.Setup(cfg)
 

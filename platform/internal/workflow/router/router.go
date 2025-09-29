@@ -16,7 +16,7 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
-	r.Use(middleware.CORS())
+	// r.Use(middleware.CORS())
 
 	// Swagger文档
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
@@ -45,6 +45,8 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 					handler.UpdateWorkflow) // 更新流程
 				workflows.DELETE("/:id", middleware.FetchUserIdFromHeader(),
 					handler.DeleteWorkflow) // 删除流程
+
+				workflows.GET("/:id/status", handler.GetWorkflowStatus) // 获取流程状态
 			}
 
 			// 流程实例管理
@@ -56,6 +58,8 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 				instances.GET("/:id", handler.GetInstance) // 获取实例详情
 				instances.PUT("/:id/cancel", middleware.FetchUserIdFromHeader(),
 					handler.CancelInstance) // 取消实例
+				instances.GET("/user", middleware.FetchUserIdFromHeader(),
+					handler.GetInstanceByUserID) // 获取用户创建的实例详情
 			}
 
 			// 审批任务管理

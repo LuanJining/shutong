@@ -1,7 +1,8 @@
 package router
 
 import (
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/config"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/client"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/configs"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/handler"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/middleware"
 	"github.com/gin-gonic/gin"
@@ -9,7 +10,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-func Setup(cfg *config.Config) *gin.Engine {
+func Setup(cfg *configs.Config) *gin.Engine {
 	gin.SetMode(cfg.Gin.Mode)
 	r := gin.New()
 	r.Use(gin.Logger())
@@ -18,7 +19,8 @@ func Setup(cfg *config.Config) *gin.Engine {
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
 
-	iamHandler := handler.NewIamHandler(&cfg.Iam)
+	iamClient := client.NewIamClient(&cfg.Iam)
+	iamHandler := handler.NewIamHandler(&cfg.Iam, iamClient)
 	kbHandler := handler.NewKbHandler(&cfg.Kb)
 	workflowHandler := handler.NewWorkflowHandler(&cfg.Workflow)
 	api := r.Group("/api/v1")
@@ -86,7 +88,7 @@ func Setup(cfg *config.Config) *gin.Engine {
 		{
 			// 工作流定义管理
 			workflow.GET("", workflowHandler.ProxyToWorkflowClient)
-			workflow.GET("/:id", workflowHandler.ProxyToWorkflowClient)
+			workflow.GET("/workflows/:id", workflowHandler.ProxyToWorkflowClient)
 			workflow.POST("", workflowHandler.ProxyToWorkflowClient)
 			workflow.PUT("/:id", workflowHandler.ProxyToWorkflowClient)
 			workflow.DELETE("/:id", workflowHandler.ProxyToWorkflowClient)
@@ -101,10 +103,10 @@ func Setup(cfg *config.Config) *gin.Engine {
 			workflow.GET("/instances", workflowHandler.ProxyToWorkflowClient)
 			workflow.GET("/instances/:instance_id", workflowHandler.ProxyToWorkflowClient)
 			workflow.PUT("/instances/:instance_id/cancel", workflowHandler.ProxyToWorkflowClient)
-
+			workflow.GET("/instances/user", workflowHandler.ProxyToWorkflowClient)
 			// 任务管理
 			workflow.GET("/tasks", workflowHandler.ProxyToWorkflowClient)
-			workflow.PUT("/tasks/:task_id/approve", workflowHandler.ProxyToWorkflowClient)
+			workflow.POST("/tasks/:task_id/approve", workflowHandler.ProxyToWorkflowClient)
 			workflow.PUT("/tasks/:task_id/reject", workflowHandler.ProxyToWorkflowClient)
 			workflow.PUT("/tasks/:task_id/transfer", workflowHandler.ProxyToWorkflowClient)
 
@@ -114,11 +116,15 @@ func Setup(cfg *config.Config) *gin.Engine {
 
 		kb := api.Group("/kb")
 		{
-			kb.GET("", kbHandler.ProxyToKbClient)
-			kb.GET("/:id", kbHandler.ProxyToKbClient)
-			kb.POST("", kbHandler.ProxyToKbClient)
-			kb.PUT("/:id", kbHandler.ProxyToKbClient)
-			kb.DELETE("/:id", kbHandler.ProxyToKbClient)
+			kb.POST("/upload", kbHandler.ProxyToKbClient)
+			kb.GET("/:id/preview", kbHandler.ProxyToKbClient)
+			kb.GET("/:id/download", kbHandler.ProxyToKbClient)
+
+			kb.GET("/:id/info", kbHandler.ProxyToKbClient)
+			kb.GET("/:id/space", kbHandler.ProxyToKbClient)
+
+			kb.POST("/:id/chat", kbHandler.ProxyToKbClient)
+			kb.POST("/:id/chat/stream", kbHandler.ProxyToKbClient)
 		}
 	}
 

@@ -3,8 +3,8 @@ package database
 import (
 	"fmt"
 
+	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/config"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/model"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -30,7 +30,8 @@ func Init(cfg config.DatabaseConfig, logCfg config.LogConfig) (*gorm.DB, error) 
 	}
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logLevel),
+		Logger:                                   logger.Default.LogMode(logLevel),
+		DisableForeignKeyConstraintWhenMigrating: true, // 禁用自动外键约束创建
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
@@ -46,7 +47,9 @@ func Init(cfg config.DatabaseConfig, logCfg config.LogConfig) (*gorm.DB, error) 
 
 func autoMigrate(db *gorm.DB) error {
 	// 自动迁移所有模型
+	// 注意：Space表由IAM服务管理，这里不创建
 	return db.AutoMigrate(
 		&model.Document{},
+		&model.DocumentChunk{},
 	)
 }

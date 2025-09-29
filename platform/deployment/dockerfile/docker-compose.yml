@@ -1,0 +1,151 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: kb_platform
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  minio:
+    image: minio/minio:latest
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant-data:/qdrant/storage
+
+  iam:
+    build:
+      context: ../..
+      dockerfile: deployment/dockerfile/Dockerfile.iam
+    depends_on:
+      - postgres
+    environment:
+      KBASE_SERVER_HOST: 0.0.0.0
+      KBASE_SERVER_PORT: "8081"
+      KBASE_DATABASE_HOST: postgres
+      KBASE_DATABASE_PORT: "5432"
+      KBASE_DATABASE_USER: postgres
+      KBASE_DATABASE_PASSWORD: password
+      KBASE_DATABASE_DBNAME: kb_platform
+      KBASE_DATABASE_SSLMODE: disable
+      KBASE_JWT_SECRET: super-secret
+      KBASE_JWT_ACCESS_TOKEN_EXPIRE_TIME: "24"
+      KBASE_JWT_REFRESH_TOKEN_EXPIRE_TIME: "720"
+      KBASE_GIN_MODE: release
+    ports:
+      - "8081:8081"
+
+  workflow:
+    build:
+      context: ../..
+      dockerfile: deployment/dockerfile/Dockerfile.workflow
+    depends_on:
+      - postgres
+    environment:
+      KBASE_SERVER_HOST: 0.0.0.0
+      KBASE_SERVER_PORT: "8082"
+      KBASE_DATABASE_HOST: postgres
+      KBASE_DATABASE_PORT: "5432"
+      KBASE_DATABASE_USER: postgres
+      KBASE_DATABASE_PASSWORD: password
+      KBASE_DATABASE_DBNAME: kb_platform
+      KBASE_DATABASE_SSLMODE: disable
+      KBASE_GIN_MODE: release
+    ports:
+      - "8082:8082"
+
+  kb-service:
+    build:
+      context: ../..
+      dockerfile: deployment/dockerfile/Dockerfile.kb_service
+    depends_on:
+      - postgres
+      - minio
+      - qdrant
+      - iam
+      - workflow
+    environment:
+      KBASE_SERVER_HOST: 0.0.0.0
+      KBASE_SERVER_PORT: "8083"
+      KBASE_DATABASE_HOST: postgres
+      KBASE_DATABASE_PORT: "5432"
+      KBASE_DATABASE_USER: postgres
+      KBASE_DATABASE_PASSWORD: password
+      KBASE_DATABASE_DBNAME: kb_platform
+      KBASE_DATABASE_SSLMODE: disable
+      KBASE_MINIO_ENDPOINT: minio:9000
+      KBASE_MINIO_ACCESS_KEY: minioadmin
+      KBASE_MINIO_SECRET_KEY: minioadmin
+      KBASE_MINIO_BUCKET: kb-platform
+      KBASE_MINIO_REGION: us-east-1
+      KBASE_IAM_URL: http://iam:8081
+      KBASE_WORKFLOW_URL: http://workflow:8082
+      KBASE_QDRANT_HOST: qdrant
+      KBASE_QDRANT_PORT: "6333"
+      KBASE_QDRANT_USER: qdrant
+      KBASE_QDRANT_PASSWORD: qdrant
+      KBASE_QDRANT_DBNAME: kb_platform
+      KBASE_QDRANT_SSLMODE: disable
+      KBASE_OPENAI_API_KEY: your-api-key
+      KBASE_OPENAI_URL: https://api.deepseek.com/v1
+      KBASE_GIN_MODE: release
+    ports:
+      - "8083:8083"
+
+  gateway:
+    build:
+      context: ../..
+      dockerfile: deployment/dockerfile/Dockerfile.gateway
+    depends_on:
+      - iam
+      - workflow
+      - kb-service
+    environment:
+      KBASE_SERVER_HOST: 0.0.0.0
+      KBASE_SERVER_PORT: "8080"
+      KBASE_DATABASE_HOST: postgres
+      KBASE_DATABASE_PORT: "5432"
+      KBASE_DATABASE_USER: postgres
+      KBASE_DATABASE_PASSWORD: password
+      KBASE_DATABASE_DBNAME: kb_platform
+      KBASE_DATABASE_SSLMODE: disable
+      KBASE_KB_URL: http://kb-service:8083
+      KBASE_WORKFLOW_URL: http://workflow:8082
+      KBASE_IAM_URL: http://iam:8081
+      KBASE_MINIO_ENDPOINT: minio:9000
+      KBASE_MINIO_ACCESS_KEY: minioadmin
+      KBASE_MINIO_SECRET_KEY: minioadmin
+      KBASE_MINIO_BUCKET: kb-platform
+      KBASE_MINIO_REGION: us-east-1
+      KBASE_QDRANT_HOST: qdrant
+      KBASE_QDRANT_PORT: "6333"
+      KBASE_QDRANT_USER: qdrant
+      KBASE_QDRANT_PASSWORD: qdrant
+      KBASE_QDRANT_DBNAME: kb_platform
+      KBASE_QDRANT_SSLMODE: disable
+      KBASE_GIN_MODE: release
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres-data:
+  minio-data:
+  qdrant-data:

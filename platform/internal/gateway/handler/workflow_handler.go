@@ -8,15 +8,15 @@ import (
 	"strings"
 	"time"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/config"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/configs"
 	"github.com/gin-gonic/gin"
 )
 
 type WorkflowHandler struct {
-	config *config.WorkflowConfig
+	config *configs.WorkflowConfig
 }
 
-func NewWorkflowHandler(config *config.WorkflowConfig) *WorkflowHandler {
+func NewWorkflowHandler(config *configs.WorkflowConfig) *WorkflowHandler {
 	return &WorkflowHandler{config: config}
 }
 
