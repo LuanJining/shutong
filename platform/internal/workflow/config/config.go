@@ -88,6 +88,20 @@ func Load() (*Config, error) {
 
 func bindEnvVars(v *viper.Viper) {
 	// 服务器配置
+	v.BindEnv("server.host", "KBASE_SERVER_HOST", "SERVER_HOST")
+	v.BindEnv("server.port", "KBASE_SERVER_PORT", "SERVER_PORT")
+
+	// 数据库配置
+	v.BindEnv("database.host", "KBASE_DATABASE_HOST", "DB_HOST")
+	v.BindEnv("database.port", "KBASE_DATABASE_PORT", "DB_PORT")
+	v.BindEnv("database.user", "KBASE_DATABASE_USER", "DB_USER")
+	v.BindEnv("database.password", "KBASE_DATABASE_PASSWORD", "DB_PASSWORD")
+	v.BindEnv("database.dbname", "KBASE_DATABASE_DBNAME", "DB_NAME")
+	v.BindEnv("database.sslmode", "KBASE_DATABASE_SSLMODE", "DB_SSLMODE")
+
+	// 日志配置
+	v.BindEnv("log.level", "KBASE_LOG_LEVEL", "LOG_LEVEL")
+	v.BindEnv("log.db_log_level", "KBASE_DB_LOG_LEVEL", "DB_LOG_LEVEL")
 }
 
 func setDefaults(v *viper.Viper) {

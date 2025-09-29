@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kb-platform
+  labels:
+    name: kb-platform
+    env: production
+    app: kb-platform

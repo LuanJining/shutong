@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/configs"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/configs"
 	"github.com/gin-gonic/gin"
 )
 

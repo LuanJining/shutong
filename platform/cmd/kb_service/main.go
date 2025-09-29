@@ -25,17 +25,14 @@ func main() {
 
 	// 初始化minioClient
 	minioClient := client.NewS3Client(&cfg.Minio)
-	// 初始化qdrantClient
-	qdrantClient := client.NewQdrantClient(&cfg.Qdrant)
-	// 初始化ocrClient
-	ocrClient := client.NewOCRClient(&cfg.OCR)
+
 	// 初始化workflowClient
 	workflowClient := client.NewWorkflowClient(&cfg.Workflow)
 	// 初始化OpenAI客户端
 	openAIClient := client.NewOpenAIClient(&cfg.OpenAI)
 
 	// 初始化路由
-	r := router.Setup(cfg, db, minioClient, qdrantClient, ocrClient, workflowClient, openAIClient)
+	r := router.Setup(cfg, db, minioClient, workflowClient, openAIClient)
 
 	// 启动服务器
 	srv := server.New(&cfg.Server, r)

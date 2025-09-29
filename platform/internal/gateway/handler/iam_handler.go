@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/configs"
 	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/client"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/configs"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/models"
 	"github.com/gin-gonic/gin"
 )

@@ -22,8 +22,6 @@ import (
 type DocumentService struct {
 	db             *gorm.DB
 	minioClient    *client.S3Client
-	qdrantClient   *client.QdrantClient
-	ocrClient      *client.OCRClient
 	workflowClient *client.WorkflowClient
 	openaiClient   *client.OpenAIClient
 }
@@ -34,12 +32,10 @@ type ChatDocumentStreamResult struct {
 }
 
 // NewDocumentService 创建文档服务
-func NewDocumentService(db *gorm.DB, minioClient *client.S3Client, qdrantClient *client.QdrantClient, ocrClient *client.OCRClient, workflowClient *client.WorkflowClient, openaiClient *client.OpenAIClient) *DocumentService {
+func NewDocumentService(db *gorm.DB, minioClient *client.S3Client, workflowClient *client.WorkflowClient, openaiClient *client.OpenAIClient) *DocumentService {
 	return &DocumentService{
 		db:             db,
 		minioClient:    minioClient,
-		qdrantClient:   qdrantClient,
-		ocrClient:      ocrClient,
 		workflowClient: workflowClient,
 		openaiClient:   openaiClient,
 	}

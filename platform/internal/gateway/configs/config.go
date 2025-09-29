@@ -9,12 +9,37 @@ import (
 )
 
 type Config struct {
-	Server ServerConfig `mapstructure:"server"`
+	Server   ServerConfig   `mapstructure:"server"`
+	Iam      IamConfig      `mapstructure:"iam"`
+	Workflow WorkflowConfig `mapstructure:"workflow"`
+	Kb       KbConfig       `mapstructure:"kb"`
+	Gin      GinConfig      `mapstructure:"gin"`
+	Log      LogConfig      `mapstructure:"log"`
 }
 
 type ServerConfig struct {
 	Host string `mapstructure:"host"`
 	Port string `mapstructure:"port"`
+}
+
+type IamConfig struct {
+	Url string `mapstructure:"url"`
+}
+
+type WorkflowConfig struct {
+	Url string `mapstructure:"url"`
+}
+
+type KbConfig struct {
+	Url string `mapstructure:"url"`
+}
+
+type GinConfig struct {
+	Mode string `mapstructure:"mode"`
+}
+
+type LogConfig struct {
+	Level string `mapstructure:"level"`
 }
 
 func Load() (*Config, error) {
@@ -70,9 +95,21 @@ func bindEnvVars(v *viper.Viper) {
 	// 服务器配置
 	v.BindEnv("server.host", "KBASE_SERVER_HOST", "SERVER_HOST")
 	v.BindEnv("server.port", "KBASE_SERVER_PORT", "SERVER_PORT")
+	v.BindEnv("iam.url", "KBASE_IAM_URL", "IAM_URL")
+	v.BindEnv("workflow.url", "KBASE_WORKFLOW_URL", "WORKFLOW_URL")
+	v.BindEnv("kb.url", "KBASE_KB_URL", "KB_URL")
+	v.BindEnv("gin.mode", "KBASE_GIN_MODE", "GIN_MODE")
+	v.BindEnv("log.level", "KBASE_LOG_LEVEL", "LOG_LEVEL")
+	v.BindEnv("log.db_log_level", "KBASE_LOG_DB_LOG_LEVEL", "LOG_DB_LOG_LEVEL")
 }
 
 func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.host", "0.0.0.0")
 	v.SetDefault("server.port", "8080")
+	v.SetDefault("iam.url", "http://iam-service:8081")
+	v.SetDefault("workflow.url", "http://workflow-service:8082")
+	v.SetDefault("kb.url", "http://kb-service:8083")
+	v.SetDefault("gin.mode", "debug")
+	v.SetDefault("log.level", "info")
+	v.SetDefault("log.db_log_level", "warn")
 }

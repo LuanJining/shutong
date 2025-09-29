@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/configs"
 	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/configs"
 )
 
 type IamClient struct {

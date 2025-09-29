@@ -14,8 +14,6 @@ type Config struct {
 	Workflow WorkflowConfig `mapstructure:"workflow"`
 	Database DatabaseConfig `mapstructure:"database"`
 	Minio    MinioConfig    `mapstructure:"minio"`
-	Qdrant   QdrantConfig   `mapstructure:"qdrant"`
-	OCR      OCRConfig      `mapstructure:"ocr"`
 	Gin      GinConfig      `mapstructure:"gin"`
 	Log      LogConfig      `mapstructure:"log"`
 	OpenAI   OpenAIConfig   `mapstructure:"openai"`
@@ -54,20 +52,6 @@ type MinioConfig struct {
 	Bucket    string `mapstructure:"bucket"`
 	Region    string `mapstructure:"region"`
 }
-
-type QdrantConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     string `mapstructure:"port"`
-	User     string `mapstructure:"user"`
-	Password string `mapstructure:"password"`
-	DBName   string `mapstructure:"dbname"`
-	SSLMode  string `mapstructure:"sslmode"`
-}
-
-type OCRConfig struct {
-	Url string `mapstructure:"url"`
-}
-
 type LogConfig struct {
 	Level      string `mapstructure:"level"`        // 日志级别: debug, info, warn, error
 	DBLogLevel string `mapstructure:"db_log_level"` // 数据库日志级别: silent, error, warn, info
@@ -129,6 +113,43 @@ func Load() (*Config, error) {
 
 func bindEnvVars(v *viper.Viper) {
 	// 服务器配置
+	v.BindEnv("server.host", "KBASE_SERVER_HOST", "SERVER_HOST")
+	v.BindEnv("server.port", "KBASE_SERVER_PORT", "SERVER_PORT")
+
+	// 数据库配置
+	v.BindEnv("database.host", "KBASE_DATABASE_HOST", "DB_HOST")
+	v.BindEnv("database.port", "KBASE_DATABASE_PORT", "DB_PORT")
+	v.BindEnv("database.user", "KBASE_DATABASE_USER", "DB_USER")
+	v.BindEnv("database.password", "KBASE_DATABASE_PASSWORD", "DB_PASSWORD")
+	v.BindEnv("database.dbname", "KBASE_DATABASE_DBNAME", "DB_NAME")
+	v.BindEnv("database.sslmode", "KBASE_DATABASE_SSLMODE", "DB_SSLMODE")
+
+	// 日志配置
+	v.BindEnv("log.level", "KBASE_LOG_LEVEL", "LOG_LEVEL")
+	v.BindEnv("log.db_log_level", "KBASE_DB_LOG_LEVEL", "DB_LOG_LEVEL")
+
+	// Gin配置
+	v.BindEnv("gin.mode", "KBASE_GIN_MODE", "GIN_MODE")
+
+	// Minio配置
+	v.BindEnv("minio.endpoint", "KBASE_MINIO_ENDPOINT", "MINIO_ENDPOINT")
+	v.BindEnv("minio.access_key", "KBASE_MINIO_ACCESS_KEY", "MINIO_ACCESS_KEY")
+	v.BindEnv("minio.secret_key", "KBASE_MINIO_SECRET_KEY", "MINIO_SECRET_KEY")
+	v.BindEnv("minio.bucket", "KBASE_MINIO_BUCKET", "MINIO_BUCKET")
+	v.BindEnv("minio.region", "KBASE_MINIO_REGION", "MINIO_REGION")
+
+	// OpenAI配置
+	v.BindEnv("openai.api_key", "KBASE_OPENAI_API_KEY", "OPENAI_API_KEY")
+	v.BindEnv("openai.url", "KBASE_OPENAI_URL", "OPENAI_URL")
+
+	// Workflow配置
+	v.BindEnv("workflow.url", "KBASE_WORKFLOW_URL", "WORKFLOW_URL")
+
+	// Iam配置
+	v.BindEnv("iam.url", "KBASE_IAM_URL", "IAM_URL")
+
+	// Gin配置
+	v.BindEnv("gin.mode", "KBASE_GIN_MODE", "GIN_MODE")
 }
 
 func setDefaults(v *viper.Viper) {
@@ -148,13 +169,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("minio.secret_key", "minioadmin")
 	v.SetDefault("minio.bucket", "kb-platform")
 	v.SetDefault("minio.region", "us-east-1")
-	v.SetDefault("qdrant.host", "localhost")
-	v.SetDefault("qdrant.port", "6333")
-	v.SetDefault("qdrant.user", "qdrant")
-	v.SetDefault("qdrant.password", "qdrant")
-	v.SetDefault("qdrant.dbname", "kb_platform")
-	v.SetDefault("qdrant.sslmode", "disable")
-	v.SetDefault("ocr.url", "http://localhost:8084")
+
 	v.SetDefault("log.level", "info")
 	v.SetDefault("log.db_log_level", "warn")
 	v.SetDefault("openai.api_key", "")

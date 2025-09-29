@@ -115,6 +115,9 @@ func bindEnvVars(v *viper.Viper) {
 	// 日志配置
 	v.BindEnv("log.level", "KBASE_LOG_LEVEL", "LOG_LEVEL")
 	v.BindEnv("log.db_log_level", "KBASE_DB_LOG_LEVEL", "DB_LOG_LEVEL")
+
+	// Gin配置
+	v.BindEnv("gin.mode", "KBASE_GIN_MODE", "GIN_MODE")
 }
 
 func setDefaults(v *viper.Viper) {
