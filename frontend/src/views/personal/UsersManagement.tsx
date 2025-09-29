@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import utils from "@/utils";
 import api_frontend from "@/api/api_frontend";
 import AssignRoles from './AssignRoles';
+import { Par_Common_Params } from '@/types/api';
 
 interface DataType {
     username: string;
@@ -20,13 +21,17 @@ export default function UsersManagement() {
     const [open, setOpen] = useState<boolean>(false)
     const [assign, setAssign] = useState<string>('')
     const [data, setData] = useState<DataType[]>([])
+    const [par, setPar] = useState<Par_Common_Params>({ page: 1, page_size: 10, total: 0 })
 
     useEffect(() => { getUsers() }, [])
 
-    const getUsers = async () => {
+    const getUsers = async (values: any = {}) => {
         utils.setLoading(true)
-        const { data: { users } } = await api_frontend.getUsers()
+        const params: any = { ...par, ...values }
+        delete params?.total
+        const { data: { users, pagination: { total } } } = await api_frontend.getUsers(params)
         setData(users.map((v: any) => ({ key: v.id, ...v })))
+        setPar({ ...params, total })
         utils.setLoading(false)
     }
 
@@ -87,6 +92,12 @@ export default function UsersManagement() {
                 columns={columns}
                 dataSource={data}
                 className="mgT24"
+                pagination={{
+                    current: +par.page,
+                    pageSize: +par.page_size,
+                    total: +(par.total ?? 0),
+                    onChange: (page: number) => getUsers({ page })
+                }}
             />
 
             <CreatUser open={open} setOpen={setOpen} callback={() => { }} />

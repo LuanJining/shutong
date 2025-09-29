@@ -13,6 +13,8 @@ export default function KonwledgeDetail() {
     const fromPage: any = useLocation().state
     const [info, setInfo] = useState<any>(null)
 
+    console.log(fromPage)
+
     useEffect(() => { fromPage?.documentId && getInfo() }, [fromPage?.documentId])
 
     const getInfo = async () => {
@@ -66,7 +68,8 @@ export default function KonwledgeDetail() {
                     <Form.Item style={{ marginBottom: 12 }} wrapperCol={{ offset: 1 }}>
                         <div className="flex al-center">
                             <div className="hg-fs elli fw-bold">{info?.title}</div>
-                            <DownloadOutlined onClick={download} className="lg-fs mgL16 pointer fw-bold primary-blue" />
+                            {info?.id && <DownloadOutlined onClick={download} className="lg-fs mgL16 pointer fw-bold primary-blue" />
+                            }
                         </div>
                     </Form.Item>
 

@@ -5,6 +5,7 @@ import api_frontend from '@/api/api_frontend';
 import utils from '@/utils';
 import { Button, Col, Input, message, Popconfirm, Row, Space, Table, TableProps } from 'antd';
 import _optsEnum from '@/config/_optsEnum';
+import { Par_Common_Params } from '@/types/api';
 
 interface DataType {
     id: string;
@@ -18,13 +19,17 @@ export default function KonwledgeManagement() {
     const [list, setList] = useState<any[]>([])
     const [open, setOpen] = useState<boolean>(false)
     const [curItem, setCurItem] = useState<any>(null)
+    const [par, setPar] = useState<Par_Common_Params>({ page: 1, page_size: 10, total: 0 })
 
     useEffect(() => { getSpaces() }, [])
 
-    const getSpaces = async () => {
+    const getSpaces = async (values: any = {}) => {
         try {
-            const { data: { spaces } }: any = await api_frontend.getSpaces()
+            const params: any = { ...par, ...values }
+            delete params?.total
+            const { data: { spaces, pagination: { total } } }: any = await api_frontend.getSpaces(params)
             setList(spaces.map((v: any) => ({ key: v.id, ...v })))
+            setPar({ ...params, total })
         } catch (e) {
             throw (e)
         }
@@ -76,7 +81,7 @@ export default function KonwledgeManagement() {
         {
             title: '操作',
             width: 150,
-            align:'center',
+            align: 'center',
             render: (item: any) => (
                 <Space size="middle" className='flex-center'>
                     <span onClick={() => { setOpen(true); setCurItem(item) }} className="pointer primary-blue">编辑</span>
@@ -118,6 +123,12 @@ export default function KonwledgeManagement() {
                 columns={columns}
                 dataSource={list}
                 className="mgT24"
+                pagination={{
+                    current: +par.page,
+                    pageSize: +par.page_size,
+                    total: +(par.total ?? 0),
+                    onChange: (page: number) => getSpaces({ page })
+                }}
             />
             <AddModal open={open} setOpen={setOpen} callback={() => { getSpaces() }} item={curItem} />
         </div>

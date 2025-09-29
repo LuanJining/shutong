@@ -27,8 +27,9 @@ export default function DocumentManagement({ space_id }: { space_id: string | nu
         try {
             const params: Par_Common_Params = { ...par, ...values }
             delete params?.total
-            const { items }: any = await api_frontend.documentList(space_id, params)
+            const { items, total }: any = await api_frontend.documentList(space_id, params)
             setList(items.map((v: any) => ({ key: v.id, ...v })))
+            setPar({ ...params, total })
         } catch (e) {
             throw (e)
         }
@@ -110,7 +111,7 @@ export default function DocumentManagement({ space_id }: { space_id: string | nu
                 <Col className="text-right" flex={1}>
                     <Button
                         style={{ width: 150 }}
-                        onClick={() => {navigate('/knowledge/add')}}
+                        onClick={() => { navigate('/knowledge/add') }}
                         type="primary">
                         + 添加文档
                     </Button></Col>
@@ -121,6 +122,12 @@ export default function DocumentManagement({ space_id }: { space_id: string | nu
                 dataSource={list}
                 className="mgT24"
                 scroll={{ x: 'max-content' }}
+                pagination={{
+                    current: +par.page,
+                    pageSize: +par.page_size,
+                    total: +(par.total ?? 0),
+                    onChange: (page: number) => getDocument({ page })
+                }}
             />
         </div>
     )

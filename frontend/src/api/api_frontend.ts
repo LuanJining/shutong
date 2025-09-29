@@ -8,13 +8,13 @@ const login = (par: { login: string; password: string; }): Promise<any> => post(
 const createUser = (par: Par_Users): Promise<any> => post('/iam/users', par);
 
 /** @returns 用户列表*/
-const getUsers = (): Promise<any> => get('/iam/users',);
+const getUsers = (par: Par_Common_Params): Promise<any> => get('/iam/users', par);
 
 /** @returns 分配角色*/
 const assignRoles = (par: { role_id: number, userId: string }): Promise<any> => post(`/iam/users/${par.userId}/roles`, { role_id: par.role_id });
 
 /** @returns 角色列表 */
-const getRoles = (): Promise<any> => get('/iam/roles');
+const getRoles = (par: Par_Common_Params): Promise<any> => get('/iam/roles', par);
 
 /** @param 获取某个角色的权限*/
 const getRolePermissions = (roleId: string): Promise<any> => get(`/iam/roles/${roleId}/permissions`);
@@ -26,7 +26,7 @@ const getPermissions = (): Promise<any> => get('/iam/permissions');
 const createSpace = (par: Par_Space): Promise<any> => post('/iam/spaces', par);
 
 /** @returns 空间列表 */
-const getSpaces = (): Promise<any> => get('/iam/spaces');
+const getSpaces = (par?: Par_Common_Params): Promise<any> => get('/iam/spaces', par);
 
 /** @param 获取空间详情 */
 const getSpaceById = (spaceId: string): Promise<any> => get(`/iam/spaces/${spaceId}`);
@@ -57,7 +57,7 @@ const uploadFile = (par: Par_Upload_File): Promise<any> => post(`/kb/upload`, pa
 );
 
 /** @param 获取上传的文档流 */
-const getFile = (documentId: string | number): Promise<any> => get(`/kb/${documentId}/preview`, {},{}, {
+const getFile = (documentId: string | number): Promise<any> => get(`/kb/${documentId}/preview`, {}, {}, {
     responseType: 'blob'
 });
 
