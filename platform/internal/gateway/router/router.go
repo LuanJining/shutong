@@ -1,8 +1,8 @@
 package router
 
 import (
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/configs"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/client"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/configs"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/handler"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/middleware"
 	"github.com/gin-gonic/gin"
