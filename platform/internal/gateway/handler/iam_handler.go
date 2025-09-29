@@ -9,19 +9,19 @@ import (
 	"strings"
 	"time"
 
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/configs"
 	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/client"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/config"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/models"
 	"github.com/gin-gonic/gin"
 )
 
 type IamHandler struct {
-	config    *config.IamConfig
+	config    *configs.IamConfig
 	iamClient *client.IamClient
 }
 
-func NewIamHandler(config *config.IamConfig, iamClient *client.IamClient) *IamHandler {
+func NewIamHandler(config *configs.IamConfig, iamClient *client.IamClient) *IamHandler {
 	return &IamHandler{config: config, iamClient: iamClient}
 }
 

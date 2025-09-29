@@ -8,16 +8,16 @@ import (
 	"strings"
 	"time"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/config"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/configs"
 	"github.com/gin-gonic/gin"
 )
 
 type KbHandler struct {
-	config *config.KbConfig
+	config *configs.KbConfig
 	client *http.Client
 }
 
-func NewKbHandler(config *config.KbConfig) *KbHandler {
+func NewKbHandler(config *configs.KbConfig) *KbHandler {
 	return &KbHandler{
 		config: config,
 		client: &http.Client{

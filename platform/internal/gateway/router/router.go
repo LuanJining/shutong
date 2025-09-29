@@ -1,8 +1,8 @@
 package router
 
 import (
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/configs"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/client"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/config"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/handler"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/middleware"
 	"github.com/gin-gonic/gin"
@@ -10,7 +10,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-func Setup(cfg *config.Config) *gin.Engine {
+func Setup(cfg *configs.Config) *gin.Engine {
 	gin.SetMode(cfg.Gin.Mode)
 	r := gin.New()
 	r.Use(gin.Logger())

@@ -5,16 +5,16 @@ import (
 	"net/http"
 	"time"
 
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/configs"
 	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/config"
 )
 
 type IamClient struct {
-	config *config.IamConfig
+	config *configs.IamConfig
 	client *http.Client
 }
 
-func NewIamClient(config *config.IamConfig) *IamClient {
+func NewIamClient(config *configs.IamConfig) *IamClient {
 	return &IamClient{
 		config: config,
 		client: &http.Client{

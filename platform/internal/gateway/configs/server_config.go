@@ -1,4 +1,4 @@
-package config
+package configs
 
 import (
 	"fmt"
@@ -9,32 +9,12 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Iam      IamConfig      `mapstructure:"iam"`
-	Gin      GinConfig      `mapstructure:"gin"`
-	Kb       KbConfig       `mapstructure:"kb"`
-	Workflow WorkflowConfig `mapstructure:"workflow"`
+	Server ServerConfig `mapstructure:"server"`
 }
 
 type ServerConfig struct {
 	Host string `mapstructure:"host"`
 	Port string `mapstructure:"port"`
-}
-
-type IamConfig struct {
-	Url string `mapstructure:"url"`
-}
-
-type GinConfig struct {
-	Mode string `mapstructure:"mode"`
-}
-
-type KbConfig struct {
-	Url string `mapstructure:"url"`
-}
-
-type WorkflowConfig struct {
-	Url string `mapstructure:"url"`
 }
 
 func Load() (*Config, error) {
@@ -43,7 +23,7 @@ func Load() (*Config, error) {
 	// 设置配置文件名称和路径
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
-	v.AddConfigPath("./internal/gateway/config")
+	v.AddConfigPath("./internal/gateway/configs")
 	v.AddConfigPath("./config")
 	v.AddConfigPath(".")
 
@@ -88,13 +68,11 @@ func Load() (*Config, error) {
 
 func bindEnvVars(v *viper.Viper) {
 	// 服务器配置
+	v.BindEnv("server.host", "KBASE_SERVER_HOST", "SERVER_HOST")
+	v.BindEnv("server.port", "KBASE_SERVER_PORT", "SERVER_PORT")
 }
 
 func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.host", "0.0.0.0")
 	v.SetDefault("server.port", "8080")
-	v.SetDefault("iam.url", "http://localhost:8081")
-	v.SetDefault("kb.url", "http://localhost:8083")
-	v.SetDefault("workflow.url", "http://localhost:8082")
-	v.SetDefault("gin.mode", "debug")
 }

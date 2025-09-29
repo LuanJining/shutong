@@ -6,17 +6,17 @@ import (
 	"net/http"
 	"time"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/config"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/configs"
 	"github.com/gin-gonic/gin"
 )
 
 type Server struct {
-	config *config.ServerConfig
+	config *configs.ServerConfig
 	router *gin.Engine
 	server *http.Server
 }
 
-func New(cfg *config.ServerConfig, router *gin.Engine) *Server {
+func New(cfg *configs.ServerConfig, router *gin.Engine) *Server {
 	return &Server{
 		config: cfg,
 		router: router,
