@@ -80,6 +80,12 @@ func (h *IamHandler) ProxyToIamClient(c *gin.Context) {
 		}
 	}
 
+	user, _ := c.Get("user")
+
+	if user != nil {
+		req.Header.Add("X-User-ID", fmt.Sprintf("%d", user.(*model.User).ID))
+	}
+
 	// 发送请求
 	resp, err := client.Do(req)
 	if err != nil {

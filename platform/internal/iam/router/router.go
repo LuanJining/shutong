@@ -43,14 +43,14 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			auth.POST("/login", h.Login)
 			auth.POST("/logout", h.Logout)
 			auth.POST("/refresh", h.RefreshToken)
-			auth.PATCH("/change-password", middleware.AuthRequired(authService), h.ChangePassword)
+			auth.PATCH("/change-password", middleware.FetchUserFromHeader(db), h.ChangePassword)
 
 			auth.POST("/validate-token", h.ValidateToken)
 		}
 
 		// 用户管理路由
 		users := api.Group("/users")
-		users.Use(middleware.AuthRequired(authService))
+		users.Use(middleware.FetchUserFromHeader(db))
 		{
 			// 查看所有内容 - 所有认证用户都可以
 			users.GET("", h.GetUsers)
@@ -70,7 +70,7 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 
 		// 角色管理路由
 		roles := api.Group("/roles")
-		roles.Use(middleware.AuthRequired(authService))
+		roles.Use(middleware.FetchUserFromHeader(db))
 		{
 			// 查看所有内容 - 所有认证用户都可以
 			roles.GET("", h.GetRoles)
@@ -89,7 +89,7 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 
 		// 权限管理路由
 		permissions := api.Group("/permissions")
-		permissions.Use(middleware.AuthRequired(authService))
+		permissions.Use(middleware.FetchUserFromHeader(db))
 		{
 			permissions.GET("", h.GetPermissions)
 			permissions.GET("/:id", h.GetPermission)
@@ -98,7 +98,7 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 
 		// 空间管理路由
 		spaces := api.Group("/spaces")
-		spaces.Use(middleware.AuthRequired(authService))
+		spaces.Use(middleware.FetchUserFromHeader(db))
 		{
 			// 查看所有内容 - 所有认证用户都可以
 			spaces.GET("", h.GetSpaces)
