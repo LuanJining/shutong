@@ -3,10 +3,11 @@ package middleware
 import (
 	"fmt"
 	"net/http"
-	"strings"
+	"strconv"
 
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/service"
+	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // Logger 日志中间件
@@ -63,33 +64,27 @@ func CORS() gin.HandlerFunc {
 	}
 }
 
-// AuthRequired 认证中间件
-func AuthRequired(authService *service.AuthService) gin.HandlerFunc {
+func FetchUserFromHeader(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "缺少Authorization头"})
+		userIDStr := c.GetHeader("X-User-ID")
+		if userIDStr == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "用户未认证"})
 			c.Abort()
 			return
 		}
 
-		// 检查Bearer token格式
-		tokenParts := strings.SplitN(authHeader, " ", 2)
-		if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "无效的token格式"})
-			c.Abort()
-			return
-		}
-
-		token := tokenParts[1]
-		user, err := authService.ValidateToken(token)
+		userID, err := strconv.ParseUint(userIDStr, 10, 32)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "无效的token"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
 			c.Abort()
 			return
 		}
-
-		// 将用户信息存储到上下文中
+		var user model.User
+		if err := db.Preload("Roles").First(&user, uint(userID)).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "用户不存在"})
+			c.Abort()
+			return
+		}
 		c.Set("user", user)
 		c.Next()
 	}

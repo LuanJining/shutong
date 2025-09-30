@@ -40,9 +40,12 @@ func (c *IamClient) ValidateToken(token string) (*model.User, error) {
 		return nil, errors.New("无效的token: " + resp.Status)
 	}
 
-	var user model.User
-	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
+	var response struct {
+		Message string     `json:"message"`
+		Data    model.User `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return nil, err
 	}
-	return &user, nil
+	return &response.Data, nil
 }

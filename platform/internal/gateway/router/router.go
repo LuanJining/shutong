@@ -37,7 +37,9 @@ func Setup(cfg *configs.Config) *gin.Engine {
 				auth.POST("/login", iamHandler.ProxyToIamClient)
 				auth.POST("/logout", iamHandler.ProxyToIamClient)
 				auth.POST("/refresh", iamHandler.ProxyToIamClient)
-				auth.PATCH("/change-password", iamHandler.ProxyToIamClient)
+				auth.PATCH("/change-password",
+					middleware.AuthRequired(iamHandler),
+					iamHandler.ProxyToIamClient)
 			}
 
 			// 用户管理路由
