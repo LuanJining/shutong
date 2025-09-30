@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -289,43 +288,30 @@ func (s *DocumentService) prepareChatDocument(ctx context.Context, spaceID uint,
 }
 
 func (s *DocumentService) CreateWorkflow(ctx context.Context, document *model.Document) (*model.Document, error) {
-	// 直接写死空间管理员审批，后期再扩展
-	workflowStep := model.WorkflowStep{
-		StepName:         "文档发布审批",
-		StepOrder:        1,
-		ApproverType:     "space_admin",
-		ApproverID:       0,
-		IsRequired:       true,
-		TimeoutHours:     24,
-		ApprovalStrategy: "any",
+	step := model.Step{
+		StepName:     "文档发布审批",
+		StepOrder:    1,
+		StepRole:     "content_viewer",
+		IsRequired:   true,
+		TimeoutHours: 24 * 7,
+		Status:       model.StepStatusProcessing,
 	}
 	workflow := model.Workflow{
 		Name:        "文档发布审批流程",
 		Description: "用于文档发布的审批流程",
 		SpaceID:     document.SpaceID,
-		Priority:    1,
-		Steps:       []model.WorkflowStep{workflowStep},
+		Steps:       []model.Step{step},
 	}
-	workflowIDStr, err := s.workflowClient.CreateWorkflow(ctx, &workflow, document.CreatedBy)
+
+	workflowID, err := s.workflowClient.CreateWorkflow(ctx, &workflow, document.CreatedBy)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create workflow: %w", err)
 	}
 
-	// 将字符串ID转换为uint
-	workflowID, err := strconv.ParseUint(workflowIDStr, 10, 32)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse workflow ID: %w", err)
-	}
-
-	// 更新workflow对象的ID，用于启动工作流
-	workflow.ID = uint(workflowID)
-	_, err = s.workflowClient.StartWorkflow(ctx, &workflow, document.CreatedBy, document.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to start workflow: %w", err)
-	}
 	s.db.Model(document).Updates(map[string]any{
 		"workflow_id": workflowID,
 	})
+
 	return document, nil
 }
 

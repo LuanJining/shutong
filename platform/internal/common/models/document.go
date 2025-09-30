@@ -59,16 +59,6 @@ type Document struct {
 	VectorCount int        `json:"vector_count" gorm:"default:0"` // 向量数量
 }
 
-// Workflow 工作流模型
-type Workflow struct {
-	ID          uint           `json:"id" gorm:"primaryKey"`
-	Name        string         `json:"name" binding:"required"`
-	Description string         `json:"description"`
-	SpaceID     uint           `json:"space_id" binding:"required"`
-	Priority    int            `json:"priority"`
-	Steps       []WorkflowStep `json:"steps" binding:"required"`
-}
-
 var (
 	// ErrOpenAIClientNotConfigured indicates that the OpenAI client configuration is missing.
 	ErrOpenAIClientNotConfigured = errors.New("openai client is not configured")
