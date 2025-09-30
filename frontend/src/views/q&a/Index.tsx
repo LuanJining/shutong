@@ -118,9 +118,9 @@ export default function Index() {
                         continue;
                     } else if (line.startsWith('data:') && currentEvent) {
                         const dataStr = line.replace('data:', '').trim();
+                        if (!dataStr) continue;
                         try {
                             const data = JSON.parse(dataStr);
-
                             if (currentEvent === 'token') {
                                 // ✅ 拼接 AI 生成的 token 内容
                                 const content = data.content;

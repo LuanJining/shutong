@@ -8,6 +8,7 @@ import IconAns from '@/assets/icons/icon-ans.png'
 import IconBook from '@/assets/icons/icon-book.png'
 import IconSearch from '@/assets/icons/icon-search.png'
 
+const PageConstruct = lazy(() => import("@/components/PageConstruct"));
 
 const Qa = lazy(() => import("@/views/q&a/Index"));
 const Home = lazy(() => import("@/views/home/Index"));
@@ -41,7 +42,7 @@ const routes: ROUTESELF_TYPE[] = [
     },
     {
         path: "write",
-        // element: withLoadingComponent(<Home />),
+        element: withLoadingComponent(<PageConstruct />),
         meta: {
             title: "写作",
             icon: <img src={IconPen} />,
@@ -50,7 +51,7 @@ const routes: ROUTESELF_TYPE[] = [
     },
     {
         path: "approve",
-        // element: withLoadingComponent(<Home />),
+        element: withLoadingComponent(<PageConstruct />),
         meta: {
             title: "审核",
             icon: <img src={IconMask} />,
@@ -68,7 +69,7 @@ const routes: ROUTESELF_TYPE[] = [
     },
     {
         path: "proofread",
-        // element: withLoadingComponent(<Home />),
+        element: withLoadingComponent(<PageConstruct />),
         meta: {
             title: "校对",
             icon: <img src={IconSearch} />,
@@ -85,7 +86,7 @@ const routes: ROUTESELF_TYPE[] = [
             show: true
         },
     },
-     {
+    {
         path: "document/detail",
         element: withLoadingComponent(<DocumentDetail />),
         meta: {
@@ -93,7 +94,7 @@ const routes: ROUTESELF_TYPE[] = [
             show: false
         },
     },
-    
+
     {
         path: "knowledge/add",
         element: withLoadingComponent(<AddKnowledge />),
@@ -112,7 +113,7 @@ const routes: ROUTESELF_TYPE[] = [
         },
     },
 
-     {
+    {
         path: "personal",
         element: withLoadingComponent(<Personal />),
         meta: {
