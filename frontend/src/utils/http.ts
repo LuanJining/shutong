@@ -122,3 +122,22 @@ export async function del<T>(
         throw error;
     }
 }
+
+// 封装PATCH请求
+export async function pat<T>(
+    url: string,
+    data?: any,
+    headers?: any
+): Promise<T> {
+    try {
+        const response = await request<T>({
+            method: "patch",
+            url,
+            data,
+            headers,
+        });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+}

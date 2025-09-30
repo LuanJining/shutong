@@ -1,6 +1,6 @@
 import "./index.scss"
 import { marked } from "marked"
-import { Button, Input, message, Modal, Select } from "antd"
+import { Input, message, Modal, Select } from "antd"
 import { useEffect, useRef, useState } from "react"
 import { LoadingOutlined } from "@ant-design/icons"
 import { OPTIONS_TYPE } from "@/types/common"

@@ -45,3 +45,8 @@ export interface Par_Chat {
     document_ids: [];
     limit: number;
 }
+
+export interface Par_Change_Pwd {
+    old_password: string;
+    new_password:string;
+}

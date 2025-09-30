@@ -3,8 +3,11 @@ import IconUser from '@/assets/icons/icon-user.png'
 import { useEffect, useMemo, useState } from 'react'
 import { useSelector } from "react-redux"
 import api_frontend from '@/api/api_frontend'
+import { Button } from 'antd'
+import ResetEmailModal from './ResetEmailModal'
 
 export default function Personal() {
+    const [open, setOpen] = useState<boolean>(false)
     const [permis, setPers] = useState<string>('')
     const userInfo: any = useSelector((state: any) => state.systemSlice.userInfo) ?? {}
 
@@ -20,6 +23,8 @@ export default function Personal() {
     }
 
 
+
+
     return (
         <div className="app-common-deal">
             <div className="personal-item">
@@ -32,6 +37,12 @@ export default function Personal() {
             <div className="personal-item">
                 <div className="personal-title">用户名称：</div>
                 <div className="personal-desc">{userInfo.username}</div>
+            </div>
+
+            <div className="personal-item">
+                <div className="personal-title">用户密码：</div>
+                <div className="personal-desc">******</div>
+                <Button onClick={() => { setOpen(true) }} className='mgL24' type='primary' size='small'>修改密码</Button>
             </div>
 
             <div className="personal-item">
@@ -72,7 +83,7 @@ export default function Personal() {
                 <div className="personal-title">最后登录时间：</div>
                 <div className="personal-desc">{dayjs(userInfo.last_login).format('YYYY-MM-DD HH:mm')}</div>
             </div>
-
+            <ResetEmailModal open={open} setOpen={setOpen} />
         </div>
     )
 }
