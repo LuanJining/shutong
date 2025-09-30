@@ -8,7 +8,7 @@ const PageLoading: React.FC = () => {
     if (!loading) return null
 
     return (
-        <div className="loading-all flex-center">
+        <div className="page-loading flex-center">
             <Spin size="large" />
         </div>
     );

@@ -1,15 +1,9 @@
 /* 浏览器默认样式初始化 */
 html,
-body{
+body {
   margin: 0;
   padding: 0;
   border: 0;
-}
-body {
-  font-size: 16px;
-  line-height: 1.5;
-  font-family: "Microsoft Yahei", "simsun", "arial", "tahoma";
-  color: #333;
 }
 table {
   border-collapse: collapse;
@@ -158,15 +152,15 @@ table {
   display: none;
 }
 
-.visibility {
+.v-hidden {
   visibility: hidden;
 }
 
-.visible {
+.v-visible {
   visibility: visible;
 }
 
-.of-hidden {
+.o-hidden {
   overflow: hidden;
 }
 
@@ -570,7 +564,7 @@ table {
   font-weight: normal;
 }
 
-.va-middle {
+.v-middle {
   vertical-align: middle;
 }
 
@@ -597,6 +591,11 @@ table {
 .h-100vh {
   height: 100vh;
 }
+
 .pointer {
   cursor: pointer;
+}
+
+.not-allow {
+  cursor: not-allowed;
 }
