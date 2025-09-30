@@ -7,6 +7,8 @@ import { OPTIONS_TYPE } from "@/types/common"
 import { getViteUrl } from "@/utils/tools"
 import ServiceImg from "@/assets/images/service.png"
 import api_frontend from "@/api/api_frontend"
+import storage from "@/utils/storage"
+import _caches from "@/config/_caches"
 
 export default function Index() {
     const [konwledges, setKonwledges] = useState<OPTIONS_TYPE[]>([])
@@ -73,12 +75,14 @@ export default function Index() {
         const chatBox = chatBoxRef.current
         try {
             abortController.current = new AbortController();
+            const token = storage.get(_caches.AUTH_INFO)?.access_token
             const response: any = await fetch(fetchUrl, {
                 method: 'POST',
                 signal: abortController.current?.signal,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'text/event-stream'
+                    'Accept': 'text/event-stream',
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     space_id,
