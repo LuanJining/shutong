@@ -76,7 +76,7 @@ export default function Index() {
                                     key={v}
                                     className="flex al-center space-between mgB24">
                                     <div className="news-title elli">集团举办“党建引领帮扶工作”资源大讲堂</div>
-                                    <div className="news-txt flex primary-gray">
+                                    <div className="news-txt white-nowrap flex primary-gray">
                                         <div className="mgR24">张某</div>
                                         <div className="mgL24">2025-09</div>
                                     </div>
@@ -145,7 +145,7 @@ export default function Index() {
                                         key={v}
                                         className="flex al-center space-between mgB24">
                                         <div className="news-title elli">集团举办“党建引领帮扶工作”资源大讲堂</div>
-                                        <div className="news-txt flex primary-gray">
+                                        <div className="news-txt white-nowrap flex primary-gray">
                                             <div className="mgR24">张某</div>
                                             <div className="mgL24">2025-09</div>
                                         </div>
