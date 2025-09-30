@@ -43,7 +43,6 @@ func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, workfl
 			documents.POST("/upload", middleware.FetchUserFromHeader(db), documentHandler.UploadDocument)
 			// 文档预览和下载
 			documents.GET("/:id/preview", documentHandler.PreviewDocument)
-			documents.GET("/:id/download", documentHandler.DownloadDocument)
 
 			documents.DELETE("/:id", documentHandler.DeleteDocument)
 

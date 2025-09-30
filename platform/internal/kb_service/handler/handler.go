@@ -32,7 +32,10 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 	// 获取上传的文件
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get uploaded file"})
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Failed to get uploaded file",
+		})
 		return
 	}
 	defer file.Close()
@@ -40,31 +43,75 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 	// 获取其他参数
 	fileName := c.PostForm("file_name")
 	spaceIDStr := c.PostForm("space_id")
-	visibility := c.PostForm("visibility")
-	urgency := c.PostForm("urgency")
+	subSpaceIDStr := c.PostForm("sub_space_id")
+	classIDStr := c.PostForm("class_id")
 	tags := c.PostForm("tags")
 	summary := c.PostForm("summary")
 	department := c.PostForm("department")
 	needApprovalStr := c.PostForm("need_approval")
+	version := c.PostForm("version")
+	useType := c.PostForm("use_type")
 	// 默认需要审批
 	needApproval := true
 	if needApprovalStr != "" {
 		needApproval, err = strconv.ParseBool(needApprovalStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid need_approval"})
+			c.JSON(http.StatusBadRequest, &model.APIResponse{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid need_approval",
+			})
 			return
 		}
 	}
 
 	// 验证必需参数
 	if spaceIDStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "space_id is required"})
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "space_id is required",
+		})
+		return
+	}
+
+	if subSpaceIDStr == "" {
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "sub_space_id is required",
+		})
 		return
 	}
 
 	spaceID, err := strconv.ParseUint(spaceIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid space_id"})
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid space_id",
+		})
+		return
+	}
+
+	subSpaceID, err := strconv.ParseUint(subSpaceIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid sub_space_id",
+		})
+		return
+	}
+	if classIDStr == "" {
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "class_id is required",
+		})
+		return
+	}
+
+	classID, err := strconv.ParseUint(classIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid class_id",
+		})
 		return
 	}
 
@@ -83,7 +130,10 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 
 	user, exists := c.Get("user")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		c.JSON(http.StatusUnauthorized, &model.APIResponse{
+			Code:    http.StatusUnauthorized,
+			Message: "User not found",
+		})
 		return
 	}
 
@@ -94,24 +144,33 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 		FileSize:        actualSize,
 		ContentType:     header.Header.Get("Content-Type"),
 		SpaceID:         uint(spaceID),
-		Visibility:      visibility,
-		Urgency:         urgency,
+		SubSpaceID:      uint(subSpaceID),
+		ClassID:         uint(classID),
 		Tags:            tags,
 		Summary:         summary,
 		CreatedBy:       user.(*model.User).ID,
 		CreatorNickName: user.(*model.User).Nickname,
 		Department:      department,
 		NeedApproval:    needApproval,
+		Version:         version,
+		UseType:         model.UseType(useType),
 	}
 
 	// 调用服务层
-	resp, err := h.documentService.UploadDocument(c.Request.Context(), req)
+	document, err := h.documentService.UploadDocument(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, &model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to upload document: " + err.Error(),
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, &model.APIResponse{
+		Code:    http.StatusOK,
+		Message: "Document uploaded successfully",
+		Data:    document,
+	})
 }
 
 // GetDocument 获取文档详情
@@ -119,21 +178,34 @@ func (h *DocumentHandler) GetDocument(c *gin.Context) {
 	documentIDStr := c.Param("id")
 	documentID, err := strconv.ParseUint(documentIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document ID"})
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid document ID",
+		})
 		return
 	}
 
 	document, err := h.documentService.GetDocument(c.Request.Context(), uint(documentID))
 	if err != nil {
 		if err.Error() == "document not found" {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Document not found"})
+			c.JSON(http.StatusNotFound, &model.APIResponse{
+				Code:    http.StatusNotFound,
+				Message: "Document not found",
+			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, &model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to get document: " + err.Error(),
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, document)
+	c.JSON(http.StatusOK, &model.APIResponse{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    document,
+	})
 }
 
 // GetDocumentsBySpaceId 获取空间下的文档
@@ -141,7 +213,10 @@ func (h *DocumentHandler) GetDocumentsBySpaceId(c *gin.Context) {
 	spaceIDStr := c.Param("id")
 	spaceID, err := strconv.ParseUint(spaceIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid space ID"})
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid space ID",
+		})
 		return
 	}
 
@@ -160,68 +235,18 @@ func (h *DocumentHandler) GetDocumentsBySpaceId(c *gin.Context) {
 
 	documents, err := h.documentService.GetDocumentsBySpaceId(c.Request.Context(), uint(spaceID), page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, &model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to get documents: " + err.Error(),
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, documents)
-}
-
-// DownloadDocument 下载文档
-func (h *DocumentHandler) DownloadDocument(c *gin.Context) {
-	documentIDStr := c.Param("id")
-	documentID, err := strconv.ParseUint(documentIDStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document ID"})
-		return
-	}
-
-	// 获取文档信息
-	document, err := h.documentService.GetDocument(c.Request.Context(), uint(documentID))
-	if err != nil {
-		if err.Error() == "document not found" {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Document not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	// 设置响应头
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", document.FileName))
-	c.Header("Content-Type", document.MimeType)
-	c.Header("Content-Length", fmt.Sprintf("%d", document.FileSize))
-
-	// 添加调试信息
-	fmt.Printf("Starting download: %s (%.2f KB)\n", document.FileName, float64(document.FileSize)/1024)
-
-	// 下载文件
-	fileReader, err := h.documentService.DownloadDocument(c.Request.Context(), uint(documentID))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	defer fileReader.Close()
-
-	// 使用CopyBuffer提高性能，添加错误处理
-	buffer := make([]byte, 64*1024) // 64KB buffer for better performance
-	_, err = io.CopyBuffer(c.Writer, fileReader, buffer)
-	if err != nil {
-		// 检查是否是客户端取消或连接断开
-		if err == io.EOF {
-			// 正常结束
-			return
-		}
-		// 检查context是否被取消
-		select {
-		case <-c.Request.Context().Done():
-			// 客户端取消请求，不记录错误
-			return
-		default:
-			// 其他错误
-			fmt.Printf("Error copying file: %v\n", err)
-		}
-	}
+	c.JSON(http.StatusOK, &model.APIResponse{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    documents,
+	})
 }
 
 // PreviewDocument 预览文档（支持浏览器内嵌显示）
@@ -229,17 +254,26 @@ func (h *DocumentHandler) PreviewDocument(c *gin.Context) {
 	documentIDStr := c.Param("id")
 	documentID, err := strconv.ParseUint(documentIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document ID"})
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid document ID",
+		})
 		return
 	}
 
 	document, err := h.documentService.GetDocument(c.Request.Context(), uint(documentID))
 	if err != nil {
 		if err.Error() == "document not found" {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Document not found"})
+			c.JSON(http.StatusNotFound, &model.APIResponse{
+				Code:    http.StatusNotFound,
+				Message: "Document not found",
+			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, &model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to get document: " + err.Error(),
+		})
 		return
 	}
 
@@ -269,7 +303,10 @@ func (h *DocumentHandler) PreviewDocument(c *gin.Context) {
 
 	fileReader, err := h.documentService.DownloadDocument(c.Request.Context(), uint(documentID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, &model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to download document: " + err.Error(),
+		})
 		return
 	}
 	defer fileReader.Close()
@@ -300,30 +337,45 @@ func (h *DocumentHandler) SubmitDocument(c *gin.Context) {
 	documentIDStr := c.Param("id")
 	documentID, err := strconv.ParseUint(documentIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document ID"})
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid document ID",
+		})
 		return
 	}
 
 	document, err := h.documentService.GetDocument(c.Request.Context(), uint(documentID))
 	if err != nil {
 		if err.Error() == "document not found" {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Document not found"})
+			c.JSON(http.StatusNotFound, &model.APIResponse{
+				Code:    http.StatusNotFound,
+				Message: "Document not found",
+			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, &model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to get document: " + err.Error(),
+		})
 		return
 	}
 
 	// TODO 不需要审批 直接OCR然后向量化，最后发布
 	if !document.NeedApproval {
-		c.JSON(http.StatusOK, gin.H{"TODO": "Document does not need approval"})
+		c.JSON(http.StatusOK, &model.APIResponse{
+			Code:    http.StatusOK,
+			Message: "Document does not need approval",
+		})
 		return
 	}
 
 	// 需要审批 创建审批流程
 	document, err = h.documentService.CreateWorkflow(c.Request.Context(), document)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, &model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to create workflow: " + err.Error(),
+		})
 		return
 	}
 	c.JSON(http.StatusOK, document)
@@ -334,18 +386,27 @@ func (h *DocumentHandler) PublishDocument(c *gin.Context) {
 	documentIDStr := c.Param("id")
 	documentID, err := strconv.ParseUint(documentIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document ID"})
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid document ID",
+		})
 		return
 	}
 
 	document, err := h.documentService.GetDocument(c.Request.Context(), uint(documentID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, &model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to get document: " + err.Error(),
+		})
 		return
 	}
 
 	if document.Status != model.DocumentStatusPendingApproval {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Document is not pending approval"})
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Document is not pending approval",
+		})
 		return
 	}
 
@@ -354,11 +415,17 @@ func (h *DocumentHandler) PublishDocument(c *gin.Context) {
 	status, err := h.documentService.CheckWorkflowStatus(c.Request.Context(), uint(workflowID))
 	log.Printf("workflowID: %d, status: %s", workflowID, status)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, &model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to check workflow status: " + err.Error(),
+		})
 		return
 	}
 	if status == "pending" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Document is pending approval"})
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Document is pending approval",
+		})
 		return
 	}
 
@@ -375,13 +442,19 @@ func (h *DocumentHandler) ChatDocument(c *gin.Context) {
 	spaceIDStr := c.Param("id")
 	spaceID, err := strconv.ParseUint(spaceIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid space ID"})
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid space ID",
+		})
 		return
 	}
 
 	var chatReq model.ChatDocumentRequest
 	if err := c.ShouldBindJSON(&chatReq); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid request body",
+		})
 		return
 	}
 
@@ -389,13 +462,25 @@ func (h *DocumentHandler) ChatDocument(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, model.ErrEmptyChatQuestion):
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, &model.APIResponse{
+				Code:    http.StatusBadRequest,
+				Message: "Empty chat question",
+			})
 		case errors.Is(err, model.ErrNoDocumentsAvailable):
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			c.JSON(http.StatusNotFound, &model.APIResponse{
+				Code:    http.StatusNotFound,
+				Message: "No documents available for chat",
+			})
 		case errors.Is(err, model.ErrOpenAIClientNotConfigured):
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, &model.APIResponse{
+				Code:    http.StatusInternalServerError,
+				Message: "OpenAI client not configured: " + err.Error(),
+			})
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, &model.APIResponse{
+				Code:    http.StatusInternalServerError,
+				Message: "Failed to chat document: " + err.Error(),
+			})
 		}
 		return
 	}
@@ -407,13 +492,19 @@ func (h *DocumentHandler) ChatDocumentStream(c *gin.Context) {
 	spaceIDStr := c.Param("id")
 	spaceID, err := strconv.ParseUint(spaceIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid space ID"})
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid space ID",
+		})
 		return
 	}
 
 	var chatReq model.ChatDocumentRequest
 	if err := c.ShouldBindJSON(&chatReq); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid request body",
+		})
 		return
 	}
 
@@ -421,13 +512,25 @@ func (h *DocumentHandler) ChatDocumentStream(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, model.ErrEmptyChatQuestion):
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, &model.APIResponse{
+				Code:    http.StatusBadRequest,
+				Message: "Empty chat question",
+			})
 		case errors.Is(err, model.ErrNoDocumentsAvailable):
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			c.JSON(http.StatusNotFound, &model.APIResponse{
+				Code:    http.StatusNotFound,
+				Message: "No documents available for chat",
+			})
 		case errors.Is(err, model.ErrOpenAIClientNotConfigured):
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, &model.APIResponse{
+				Code:    http.StatusInternalServerError,
+				Message: "OpenAI client not configured: " + err.Error(),
+			})
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, &model.APIResponse{
+				Code:    http.StatusInternalServerError,
+				Message: "Failed to chat document: " + err.Error(),
+			})
 		}
 		return
 	}
@@ -435,7 +538,10 @@ func (h *DocumentHandler) ChatDocumentStream(c *gin.Context) {
 	writer := c.Writer
 	flusher, ok := writer.(http.Flusher)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "streaming not supported"})
+		c.JSON(http.StatusInternalServerError, &model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Streaming not supported",
+		})
 		return
 	}
 
@@ -539,24 +645,36 @@ func (h *DocumentHandler) DeleteDocument(c *gin.Context) {
 	documentIDStr := c.Param("id")
 	documentID, err := strconv.ParseUint(documentIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document ID"})
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid document ID",
+		})
 		return
 	}
 
 	err = h.documentService.DeleteDocument(c.Request.Context(), uint(documentID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, &model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to delete document: " + err.Error(),
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Document deleted successfully"})
+	c.JSON(http.StatusOK, &model.APIResponse{
+		Code:    http.StatusNoContent,
+		Message: "Document deleted successfully",
+	})
 }
 
 func (h *DocumentHandler) ApproveDocument(c *gin.Context) {
 	documentIDStr := c.Param("id")
 	documentID, err := strconv.ParseUint(documentIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document ID"})
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid document ID",
+		})
 		return
 	}
 	log.Printf("documentID: %d", documentID)

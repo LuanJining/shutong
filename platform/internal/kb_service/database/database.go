@@ -50,6 +50,5 @@ func autoMigrate(db *gorm.DB) error {
 	// 注意：Space表由IAM服务管理，这里不创建
 	return db.AutoMigrate(
 		&model.Document{},
-		&model.DocumentChunk{},
 	)
 }

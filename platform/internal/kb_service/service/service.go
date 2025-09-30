@@ -43,14 +43,8 @@ func NewDocumentService(db *gorm.DB, minioClient *client.S3Client, workflowClien
 }
 
 // UploadDocument 上传文档
-func (s *DocumentService) UploadDocument(ctx context.Context, req *model.UploadDocumentRequest) (*model.UploadDocumentResponse, error) {
+func (s *DocumentService) UploadDocument(ctx context.Context, req *model.UploadDocumentRequest) (*model.Document, error) {
 	// 设置默认值
-	if req.Visibility == "" {
-		req.Visibility = "private"
-	}
-	if req.Urgency == "" {
-		req.Urgency = "normal"
-	}
 	if req.CreatedBy == 0 {
 		req.CreatedBy = 1 // 默认系统用户ID
 	}
@@ -62,21 +56,24 @@ func (s *DocumentService) UploadDocument(ctx context.Context, req *model.UploadD
 
 	// 创建文档记录
 	document := &model.Document{
-		Title:        strings.TrimSuffix(req.FileName, fileExt),
-		FileName:     req.FileName,
-		FilePath:     filePath,
-		FileSize:     req.FileSize,
-		FileType:     fileExt,
-		MimeType:     req.ContentType,
-		Status:       model.DocumentStatusUploading,
-		Visibility:   model.DocumentVisibility(req.Visibility),
-		Urgency:      model.DocumentUrgency(req.Urgency),
-		SpaceID:      req.SpaceID,
-		CreatedBy:    req.CreatedBy,
-		Department:   req.Department,
-		Tags:         req.Tags,
-		Summary:      req.Summary,
-		NeedApproval: req.NeedApproval,
+		Title:           strings.TrimSuffix(req.FileName, fileExt),
+		FileName:        req.FileName,
+		FilePath:        filePath,
+		FileSize:        req.FileSize,
+		MimeType:        req.ContentType,
+		FileType:        fileExt,
+		Status:          model.DocumentStatusUploading,
+		SpaceID:         req.SpaceID,
+		SubSpaceID:      req.SubSpaceID,
+		ClassID:         req.ClassID,
+		CreatedBy:       req.CreatedBy,
+		CreatorNickName: req.CreatorNickName,
+		Department:      req.Department,
+		Tags:            req.Tags,
+		Summary:         req.Summary,
+		NeedApproval:    req.NeedApproval,
+		Version:         req.Version,
+		UseType:         req.UseType,
 	}
 	// 上传文件到MinIO
 	uploadedSize, err := s.minioClient.UploadFile(ctx, filePath, req.File, req.FileSize, req.ContentType)
@@ -112,11 +109,7 @@ func (s *DocumentService) UploadDocument(ctx context.Context, req *model.UploadD
 		document.Status = model.DocumentStatusPendingPublish
 	}
 
-	return &model.UploadDocumentResponse{
-		DocumentID: document.ID,
-		Status:     document.Status,
-		Message:    "Document uploaded successfully",
-	}, nil
+	return document, nil
 }
 
 // GetDocument 获取文档详情
