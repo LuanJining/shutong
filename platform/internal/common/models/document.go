@@ -128,18 +128,19 @@ type ChatDocumentSource struct {
 
 // UploadDocumentRequest 上传文档请求
 type UploadDocumentRequest struct {
-	File         io.Reader
-	FileName     string
-	FileSize     int64
-	ContentType  string
-	SpaceID      uint
-	Visibility   string
-	Urgency      string
-	Tags         string
-	Summary      string
-	CreatedBy    uint
-	Department   string
-	NeedApproval bool
+	File            io.Reader
+	FileName        string
+	FileSize        int64
+	ContentType     string
+	SpaceID         uint
+	Visibility      string
+	Urgency         string
+	Tags            string
+	Summary         string
+	CreatedBy       uint
+	CreatorNickName string
+	Department      string
+	NeedApproval    bool
 }
 
 // UploadDocumentResponse 上传文档响应

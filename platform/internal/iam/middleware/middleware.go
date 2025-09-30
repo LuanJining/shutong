@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -79,13 +80,27 @@ func FetchUserFromHeader(db *gorm.DB) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+
 		var user model.User
 		if err := db.Preload("Roles").First(&user, uint(userID)).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "用户不存在"})
+			// 区分记录不存在和其他数据库错误
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "数据库查询失败"})
+			}
 			c.Abort()
 			return
 		}
-		c.Set("user", user)
+
+		// 检查用户状态
+		if user.Status != 1 {
+			c.JSON(http.StatusForbidden, gin.H{"error": "用户已被禁用"})
+			c.Abort()
+			return
+		}
+
+		c.Set("user", &user)
 		c.Next()
 	}
 }

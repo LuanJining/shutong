@@ -4,6 +4,7 @@ import (
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/client"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/config"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/handler"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/middleware"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/service"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -39,16 +40,19 @@ func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, workfl
 		// 文档相关路由
 		documents := api.Group("/documents")
 		{
-			documents.POST("/upload", documentHandler.UploadDocument)
+			documents.POST("/upload", middleware.FetchUserFromHeader(db), documentHandler.UploadDocument)
 			// 文档预览和下载
 			documents.GET("/:id/preview", documentHandler.PreviewDocument)
 			documents.GET("/:id/download", documentHandler.DownloadDocument)
+
+			documents.DELETE("/:id", documentHandler.DeleteDocument)
 
 			documents.POST("/:id/submit", documentHandler.SubmitDocument)
 
 			documents.GET("/:id/info", documentHandler.GetDocument)
 			documents.GET(":id/space", documentHandler.GetDocumentsBySpaceId)
 
+			documents.POST("/:id/approve", documentHandler.ApproveDocument)
 			documents.POST("/:id/publish", documentHandler.PublishDocument)
 
 			documents.POST("/:id/chat", documentHandler.ChatDocument)              // space_id
