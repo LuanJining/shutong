@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -323,14 +324,15 @@ func (s *DocumentService) CreateWorkflow(ctx context.Context, document *model.Do
 		return nil, fmt.Errorf("failed to parse workflow ID: %w", err)
 	}
 
-	s.db.Model(document).Update("workflow_id", workflowID)
-
 	// 更新workflow对象的ID，用于启动工作流
 	workflow.ID = uint(workflowID)
 	_, err = s.workflowClient.StartWorkflow(ctx, &workflow, document.CreatedBy, document.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start workflow: %w", err)
 	}
+	s.db.Model(document).Updates(map[string]any{
+		"workflow_id": workflowID,
+	})
 	return document, nil
 }
 
@@ -340,4 +342,26 @@ func (s *DocumentService) CheckWorkflowStatus(ctx context.Context, workflowID ui
 		return "", fmt.Errorf("failed to check workflow status: %w", err)
 	}
 	return status, nil
+}
+
+func (s *DocumentService) DeleteDocument(ctx context.Context, documentID uint) error {
+	var document model.Document
+	if err := s.db.First(&document, documentID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("document not found")
+		}
+		return fmt.Errorf("failed to get document: %w", err)
+	}
+
+	// minio先删
+	err := s.minioClient.DeleteFile(ctx, document.FilePath)
+	if err != nil {
+		return fmt.Errorf("failed to delete file: %w", err)
+	}
+
+	err = s.db.Delete(&model.Document{}, documentID).Error
+	if err != nil {
+		return fmt.Errorf("failed to delete document: %w", err)
+	}
+	return nil
 }

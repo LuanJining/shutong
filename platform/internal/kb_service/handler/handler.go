@@ -44,7 +44,6 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 	urgency := c.PostForm("urgency")
 	tags := c.PostForm("tags")
 	summary := c.PostForm("summary")
-	createdByStr := c.PostForm("created_by")
 	department := c.PostForm("department")
 	needApprovalStr := c.PostForm("need_approval")
 	// 默认需要审批
@@ -69,17 +68,6 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 		return
 	}
 
-	// 解析created_by
-	var createdBy uint
-	if createdByStr != "" {
-		createdByUint, err := strconv.ParseUint(createdByStr, 10, 32)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid created_by"})
-			return
-		}
-		createdBy = uint(createdByUint)
-	}
-
 	// 获取实际文件大小
 	var actualSize int64
 	if seeker, ok := file.(io.Seeker); ok {
@@ -93,20 +81,27 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 		actualSize = header.Size
 	}
 
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		return
+	}
+
 	// 构建服务请求
 	req := &model.UploadDocumentRequest{
-		File:         file,
-		FileName:     fileName,
-		FileSize:     actualSize,
-		ContentType:  header.Header.Get("Content-Type"),
-		SpaceID:      uint(spaceID),
-		Visibility:   visibility,
-		Urgency:      urgency,
-		Tags:         tags,
-		Summary:      summary,
-		CreatedBy:    createdBy,
-		Department:   department,
-		NeedApproval: needApproval,
+		File:            file,
+		FileName:        fileName,
+		FileSize:        actualSize,
+		ContentType:     header.Header.Get("Content-Type"),
+		SpaceID:         uint(spaceID),
+		Visibility:      visibility,
+		Urgency:         urgency,
+		Tags:            tags,
+		Summary:         summary,
+		CreatedBy:       user.(*model.User).ID,
+		CreatorNickName: user.(*model.User).Nickname,
+		Department:      department,
+		NeedApproval:    needApproval,
 	}
 
 	// 调用服务层
@@ -538,4 +533,31 @@ func writeSSE(w http.ResponseWriter, flusher http.Flusher, event string, payload
 
 	flusher.Flush()
 	return nil
+}
+
+func (h *DocumentHandler) DeleteDocument(c *gin.Context) {
+	documentIDStr := c.Param("id")
+	documentID, err := strconv.ParseUint(documentIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document ID"})
+		return
+	}
+
+	err = h.documentService.DeleteDocument(c.Request.Context(), uint(documentID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Document deleted successfully"})
+}
+
+func (h *DocumentHandler) ApproveDocument(c *gin.Context) {
+	documentIDStr := c.Param("id")
+	documentID, err := strconv.ParseUint(documentIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document ID"})
+		return
+	}
+	log.Printf("documentID: %d", documentID)
 }
