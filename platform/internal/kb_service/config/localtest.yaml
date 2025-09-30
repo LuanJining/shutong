@@ -43,5 +43,5 @@ ocr:
 
 
 openai:
-  url: https://api.deepseek.com/v1
+  url: https://api.deepseek.com/v3.1_terminus_expires_on_20251015
   api_key: sk-bd26f4335716448889f4be844fb8e4a3

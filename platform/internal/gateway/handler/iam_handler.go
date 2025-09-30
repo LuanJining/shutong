@@ -144,7 +144,13 @@ func (h *IamHandler) ValidateToken(c *gin.Context) (*model.User, error) {
 		return nil, errors.New("缺少Authorization头")
 	}
 
-	user, err := h.iamClient.ValidateToken(token)
+	tokenParts := strings.SplitN(token, " ", 2)
+	if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "无效的token格式"})
+		return nil, errors.New("无效的token格式")
+	}
+
+	user, err := h.iamClient.ValidateToken(tokenParts[1])
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "无效的token"})
 		return nil, errors.New("无效的token")

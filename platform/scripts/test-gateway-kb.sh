@@ -28,6 +28,20 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# 2. 通过Gateway登录
+echo -e "\n2. 通过Gateway登录..."
+LOGIN_RESPONSE=$(curl -s -X POST "$GATEWAY_URL/api/v1/iam/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "login": "admin",
+    "password": "admin123"
+  }')
+
+echo "$LOGIN_RESPONSE" | jq .
+
+# 提取token
+TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.data.access_token')
+
 # 检查服务是否运行
 check_services() {
     print_info "检查服务是否运行..."
@@ -97,7 +111,7 @@ test_preview_proxy() {
     print_info "测试通过Gateway预览文档，文档ID: $DOCUMENT_ID"
     
     # 通过Gateway预览文档
-    response=$(curl -s "$GATEWAY_URL/api/v1/kb/$DOCUMENT_ID/preview")
+    response=$(curl -s "$GATEWAY_URL/api/v1/kb/$DOCUMENT_ID/preview" -H "Authorization: Bearer $TOKEN")
     
     # 检查响应
     if [ ${#response} -gt 100 ]; then
@@ -119,7 +133,7 @@ test_download_proxy() {
     print_info "测试通过Gateway下载文档，文档ID: $DOCUMENT_ID"
     
     # 通过Gateway下载文档
-    response=$(curl -s -o "downloaded-via-gateway.pdf" "$GATEWAY_URL/api/v1/kb/$DOCUMENT_ID/download")
+    response=$(curl -s -o "downloaded-via-gateway.pdf" "$GATEWAY_URL/api/v1/kb/$DOCUMENT_ID/download" -H "Authorization: Bearer $TOKEN")
     
     # 检查文件是否下载成功
     if [ -f "downloaded-via-gateway.pdf" ]; then
@@ -144,7 +158,7 @@ test_direct_vs_proxy() {
     direct_size=${#direct_response}
     
     # 通过Gateway代理访问
-    proxy_response=$(curl -s "$GATEWAY_URL/api/v1/kb/$DOCUMENT_ID/preview")
+    proxy_response=$(curl -s "$GATEWAY_URL/api/v1/kb/$DOCUMENT_ID/preview" -H "Authorization: Bearer $TOKEN")
     proxy_size=${#proxy_response}
     
     print_info "直接访问响应大小: $direct_size 字符"

@@ -42,6 +42,7 @@ func Setup(cfg *configs.Config) *gin.Engine {
 
 			// 用户管理路由
 			users := iam.Group("/users")
+			users.Use(middleware.AuthRequired(iamHandler))
 			{
 				users.GET("", iamHandler.ProxyToIamClient)
 				users.GET("/:id", iamHandler.ProxyToIamClient)
@@ -53,6 +54,7 @@ func Setup(cfg *configs.Config) *gin.Engine {
 
 			// 角色管理路由
 			roles := iam.Group("/roles")
+			roles.Use(middleware.AuthRequired(iamHandler))
 			{
 				roles.GET("", iamHandler.ProxyToIamClient)
 				roles.GET("/:id", iamHandler.ProxyToIamClient)
@@ -64,6 +66,7 @@ func Setup(cfg *configs.Config) *gin.Engine {
 
 			// 权限管理路由
 			permissions := iam.Group("/permissions")
+			permissions.Use(middleware.AuthRequired(iamHandler))
 			{
 				permissions.GET("", iamHandler.ProxyToIamClient)
 				permissions.GET("/:id", iamHandler.ProxyToIamClient)
@@ -72,6 +75,7 @@ func Setup(cfg *configs.Config) *gin.Engine {
 
 			// 空间管理路由
 			spaces := iam.Group("/spaces")
+			spaces.Use(middleware.AuthRequired(iamHandler))
 			{
 				spaces.GET("", iamHandler.ProxyToIamClient)
 				spaces.GET("/:id", iamHandler.ProxyToIamClient)
@@ -85,6 +89,7 @@ func Setup(cfg *configs.Config) *gin.Engine {
 		}
 
 		workflow := api.Group("/workflow")
+		workflow.Use(middleware.AuthRequired(iamHandler))
 		{
 			// 工作流定义管理
 			workflow.GET("", workflowHandler.ProxyToWorkflowClient)
@@ -115,6 +120,7 @@ func Setup(cfg *configs.Config) *gin.Engine {
 		}
 
 		kb := api.Group("/kb")
+		kb.Use(middleware.AuthRequired(iamHandler))
 		{
 			kb.POST("/upload", kbHandler.ProxyToKbClient)
 			kb.GET("/:id/preview", kbHandler.ProxyToKbClient)

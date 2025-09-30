@@ -2,6 +2,7 @@ package client
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -34,6 +35,10 @@ func (c *IamClient) ValidateToken(token string) (*model.User, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("无效的token: " + resp.Status)
+	}
 
 	var user model.User
 	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
