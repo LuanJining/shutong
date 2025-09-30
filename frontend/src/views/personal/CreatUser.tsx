@@ -8,22 +8,16 @@ interface IProps {
     open: boolean, setOpen: Function, callback: Function
 }
 
-
 export default function CreatUser({ open, setOpen, callback }: IProps) {
     const [form] = useForm()
 
     const onFinish = async (values: Par_Users) => {
-        try {
-            utils.setLoading(true)
-            await api_frontend.createUser(values)
-            message.success('创建成功')
-            utils.setLoading(false)
-            setOpen(false)
-            callback()
-        } catch (e){
-            utils.setLoading(false)
-            throw(e)
-        }
+        utils.setLoading(true)
+        await api_frontend.createUser(values)
+        message.success('创建成功')
+        utils.setLoading(false)
+        setOpen(false)
+        callback()
     }
 
     return (

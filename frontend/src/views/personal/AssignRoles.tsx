@@ -21,18 +21,12 @@ export default function AssignRoles({ open, setOpen, callback, userId }: IProps)
             message.success('请先选中需要分配的角色')
             return
         }
-
-        try {
-            utils.setLoading(true)
-            await api_frontend.assignRoles({ userId, role_id: choosed })
-            message.success('分配成功')
-            utils.setLoading(false)
-            setOpen('')
-            callback()
-        } catch (e) {
-            utils.setLoading(false)
-            throw (e)
-        }
+        utils.setLoading(true)
+        await api_frontend.assignRoles({ userId, role_id: choosed })
+        message.success('分配成功')
+        utils.setLoading(false)
+        setOpen('')
+        callback()
     }
 
     return (
