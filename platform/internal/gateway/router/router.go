@@ -1,10 +1,11 @@
 package router
 
 import (
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/middleware"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/client"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/configs"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/handler"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/middleware"
+	gw_middleware "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/middleware"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -13,8 +14,8 @@ import (
 func Setup(cfg *configs.Config) *gin.Engine {
 	gin.SetMode(cfg.Gin.Mode)
 	r := gin.New()
-	r.Use(gin.Logger())
-	r.Use(gin.Recovery())
+	r.Use(middleware.Logger())
+	r.Use(middleware.Recovery())
 	r.Use(middleware.CORS())
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
@@ -38,13 +39,13 @@ func Setup(cfg *configs.Config) *gin.Engine {
 				auth.POST("/logout", iamHandler.ProxyToIamClient)
 				auth.POST("/refresh", iamHandler.ProxyToIamClient)
 				auth.PATCH("/change-password",
-					middleware.AuthRequired(iamHandler),
+					gw_middleware.AuthRequired(iamHandler),
 					iamHandler.ProxyToIamClient)
 			}
 
 			// 用户管理路由
 			users := iam.Group("/users")
-			users.Use(middleware.AuthRequired(iamHandler))
+			users.Use(gw_middleware.AuthRequired(iamHandler))
 			{
 				users.GET("", iamHandler.ProxyToIamClient)
 				users.GET("/:id", iamHandler.ProxyToIamClient)
@@ -56,7 +57,7 @@ func Setup(cfg *configs.Config) *gin.Engine {
 
 			// 角色管理路由
 			roles := iam.Group("/roles")
-			roles.Use(middleware.AuthRequired(iamHandler))
+			roles.Use(gw_middleware.AuthRequired(iamHandler))
 			{
 				roles.GET("", iamHandler.ProxyToIamClient)
 				roles.GET("/:id", iamHandler.ProxyToIamClient)
@@ -68,7 +69,7 @@ func Setup(cfg *configs.Config) *gin.Engine {
 
 			// 权限管理路由
 			permissions := iam.Group("/permissions")
-			permissions.Use(middleware.AuthRequired(iamHandler))
+			permissions.Use(gw_middleware.AuthRequired(iamHandler))
 			{
 				permissions.GET("", iamHandler.ProxyToIamClient)
 				permissions.GET("/:id", iamHandler.ProxyToIamClient)
@@ -77,7 +78,7 @@ func Setup(cfg *configs.Config) *gin.Engine {
 
 			// 空间管理路由
 			spaces := iam.Group("/spaces")
-			spaces.Use(middleware.AuthRequired(iamHandler))
+			spaces.Use(gw_middleware.AuthRequired(iamHandler))
 			{
 				spaces.GET("", iamHandler.ProxyToIamClient)
 				spaces.GET("/:id", iamHandler.ProxyToIamClient)
@@ -91,7 +92,7 @@ func Setup(cfg *configs.Config) *gin.Engine {
 		}
 
 		workflow := api.Group("/workflow")
-		workflow.Use(middleware.AuthRequired(iamHandler))
+		workflow.Use(gw_middleware.AuthRequired(iamHandler))
 		{
 			// 工作流定义管理
 			workflow.GET("", workflowHandler.ProxyToWorkflowClient)
@@ -122,7 +123,7 @@ func Setup(cfg *configs.Config) *gin.Engine {
 		}
 
 		kb := api.Group("/kb")
-		kb.Use(middleware.AuthRequired(iamHandler))
+		kb.Use(gw_middleware.AuthRequired(iamHandler))
 		{
 			kb.POST("/upload", kbHandler.ProxyToKbClient)
 			kb.GET("/:id/preview", kbHandler.ProxyToKbClient)

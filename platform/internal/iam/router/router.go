@@ -1,10 +1,9 @@
 package router
 
 import (
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/middleware"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/config"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/handler"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/middleware"
-
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/service"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -21,7 +20,6 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 	// 添加中间件
 	r.Use(middleware.Logger())
 	r.Use(middleware.Recovery())
-	// r.Use(middleware.CORS())
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
 
 	// 创建服务
