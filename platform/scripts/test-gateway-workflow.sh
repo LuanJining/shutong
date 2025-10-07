@@ -68,8 +68,8 @@ CREATE_RESPONSE=$(curl -s -X POST "$GATEWAY_URL/api/v1/workflow" \
       {
         "name": "初审",
         "description": "内容初审",
-        "approver_type": "role",
-        "approver_value": "content_reviewer",
+        "approver_type": "space_role",
+        "approver_value": "admin",
         "approval_strategy": "any",
         "step_order": 1,
         "timeout_hours": 24
@@ -77,8 +77,8 @@ CREATE_RESPONSE=$(curl -s -X POST "$GATEWAY_URL/api/v1/workflow" \
       {
         "name": "终审",
         "description": "内容终审",
-        "approver_type": "role", 
-        "approver_value": "space_admin",
+        "approver_type": "space_role", 
+        "approver_value": "owner",
         "approval_strategy": "any",
         "step_order": 2,
         "timeout_hours": 48

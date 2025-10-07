@@ -21,14 +21,10 @@ description = EXCLUDED.description,
 resource = EXCLUDED.resource,
 action = EXCLUDED.action;
 
--- 插入基础角色数据
+-- 插入基础角色数据（仅全局角色）
 INSERT INTO roles (name, display_name, description) VALUES
 ('super_admin', '超级管理员', '拥有系统最高权限'),
-('corp_admin', '企业管理员', '负责日常运维、空间管理、用户权限分配'),
-('space_admin', '空间管理员', '在特定知识空间内拥有完全控制权'),
-('content_reviewer', '内容审核员', '负责审阅和发布重要文档'),
-('content_editor', '内容编辑者', '可创建、编辑、删除本空间内的文档内容'),
-('read_only_user', '只读用户', '仅能查看、应用知识内容，不能修改')
+('corp_admin', '企业管理员', '负责日常运维、空间管理、用户权限分配')
 ON CONFLICT (name) DO UPDATE SET
 display_name = EXCLUDED.display_name,
 description = EXCLUDED.description;
@@ -40,39 +36,11 @@ FROM roles r, permissions p
 WHERE r.name = 'super_admin'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
--- 为企业管理员角色分配所有权限（不包含日志查看权限和用户管理权限）
+-- 为企业管理员角色分配管理权限（不包含用户管理权限）
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id
 FROM roles r, permissions p
-WHERE r.name = 'corp_admin' AND p.name NOT IN ('view_operation_log', 'manage_users')
-ON CONFLICT (role_id, permission_id) DO NOTHING;
-
--- 为空间管理员角色分配所有权限（不包含日志查看权限和用户管理权限和导出全部数据权限）
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id
-FROM roles r, permissions p
-WHERE r.name = 'space_admin' AND p.name NOT IN ('view_operation_log', 'manage_users', 'export_all_data')
-ON CONFLICT (role_id, permission_id) DO NOTHING;
-
--- 内容审核员只包含查看所有内容和设置文档权限和导出数据权限
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id
-FROM roles r, permissions p
-WHERE r.name = 'content_reviewer' AND p.name IN ('view_all_content', 'set_doc_permission', 'export_data')
-ON CONFLICT (role_id, permission_id) DO NOTHING;
-
--- 内容编辑员只包含查看所有内容和创建文档和删除文档和移动文档权限和设置文档权限和导出数据权限
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id
-FROM roles r, permissions p
-WHERE r.name = 'content_editor' AND p.name IN ('view_all_content', 'create_doc', 'delete_doc', 'move_doc', 'set_doc_permission', 'export_data')
-ON CONFLICT (role_id, permission_id) DO NOTHING;
-
--- 只读用户只包含查看所有内容和导出数据权限
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id
-FROM roles r, permissions p
-WHERE r.name = 'read_only_user' AND p.name IN ('view_all_content', 'export_data')
+WHERE r.name = 'corp_admin' AND p.name NOT IN ('manage_users')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- 创建超级管理员用户（密码：admin123）

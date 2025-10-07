@@ -19,6 +19,15 @@ type ServerConfig struct {
 	Host string `mapstructure:"host"`
 	Port string `mapstructure:"port"`
 }
+
+func (c *ServerConfig) GetHost() string {
+	return c.Host
+}
+
+func (c *ServerConfig) GetPort() string {
+	return c.Port
+}
+
 type GinConfig struct {
 	Mode string `mapstructure:"mode"`
 }

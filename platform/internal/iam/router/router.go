@@ -55,6 +55,7 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			// 查看所有内容 - 所有认证用户都可以
 			users.GET("", h.GetUsers)
 			users.GET("/:id", h.GetUser)
+			users.GET("/:rid/role/:sid/space", h.GetUserByRoleIdAndSpaceId)
 
 			// 更新用户 - 先检查角色，再检查权限
 			users.PUT("/:id", h.UpdateUser)
@@ -76,15 +77,6 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			roles.GET("", h.GetRoles)
 			roles.GET("/:id", h.GetRole)
 			roles.GET("/:id/permissions", h.GetRolePermissions)
-
-			// 角色管理 - 超级管理员、企业管理员
-			roles.POST("", h.CreateRole)
-			roles.PUT("/:id", h.UpdateRole)
-			roles.DELETE("/:id", h.DeleteRole)
-
-			// 角色权限管理 - 超级管理员、企业管理员
-			roles.POST("/:id/permissions", h.AssignRolePermission)
-			roles.DELETE("/:id/permissions/:permission_id", h.RemoveRolePermission)
 		}
 
 		// 权限管理路由
@@ -113,10 +105,7 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 
 			// 空间成员管理 - 先检查空间成员，再检查角色权限
 			spaces.GET("/:id/members", h.GetSpaceMembers)
-			spaces.POST("/:id/members", h.AddSpaceMember)
-			spaces.DELETE("/:id/members/:user_id", h.RemoveSpaceMember)
-			spaces.PUT("/:id/members/:user_id", h.UpdateSpaceMemberRole)
-			spaces.GET("/:id/members/:role_id", h.GetSpaceMembersByRole)
+			spaces.GET("/:id/members/role/:role", h.GetSpaceMembersByRole)
 		}
 
 		// 二级知识库管理路由

@@ -191,6 +191,20 @@ func (h *Handler) GetUser(c *gin.Context) {
 	})
 }
 
+func (h *Handler) GetUserByRoleIdAndSpaceId(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	var user model.User
+	if err := h.db.Preload("Roles").First(&user, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+}
+
 func (h *Handler) CreateUser(c *gin.Context) {
 	var req service.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -321,72 +335,6 @@ func (h *Handler) GetRole(c *gin.Context) {
 		"message": "获取角色信息成功",
 		"data":    role,
 	})
-}
-
-func (h *Handler) CreateRole(c *gin.Context) {
-	var role model.Role
-	if err := c.ShouldBindJSON(&role); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if err := h.db.Create(&role).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "创建角色成功",
-		"data":    role,
-	})
-}
-
-func (h *Handler) UpdateRole(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色ID"})
-		return
-	}
-
-	var role model.Role
-	if err := h.db.First(&role, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "角色不存在"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	if err := c.ShouldBindJSON(&role); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if err := h.db.Save(&role).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "更新角色成功",
-		"data":    role,
-	})
-}
-
-func (h *Handler) DeleteRole(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色ID"})
-		return
-	}
-
-	if err := h.db.Delete(&model.Role{}, id).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "删除角色成功"})
 }
 
 // 权限管理处理器
@@ -617,17 +565,10 @@ func (h *Handler) CreateSpace(c *gin.Context) {
 		return
 	}
 
-	// 将创建者添加为空间管理员
-	spaceMember := model.SpaceMember{
-		SpaceID: space.ID,
-		UserID:  userModel.ID,
-		Role:    "admin",
-	}
-	h.db.Create(&spaceMember)
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "创建空间成功",
-		"data":    space,
+	c.JSON(http.StatusOK, model.APIResponse{
+		Code:    http.StatusOK,
+		Message: "创建空间成功",
+		Data:    space,
 	})
 }
 
@@ -822,250 +763,6 @@ func (h *Handler) GetSpaceMembers(c *gin.Context) {
 	})
 }
 
-// @Summary 添加空间成员
-// @Description 将用户添加到指定空间
-// @Tags Spaces
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "空间ID"
-// @Param member body map[string]interface{} true "成员信息"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]string
-// @Router /api/v1/spaces/{id}/members [post]
-func (h *Handler) AddSpaceMember(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的空间ID"})
-		return
-	}
-
-	var req struct {
-		UserID uint   `json:"user_id" binding:"required"`
-		Role   string `json:"role" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// 检查用户是否已经在空间中
-	var existingMember model.SpaceMember
-	if err := h.db.Where("space_id = ? AND user_id = ?", id, req.UserID).First(&existingMember).Error; err == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "用户已在该空间中"})
-		return
-	}
-
-	// 添加成员
-	member := model.SpaceMember{
-		SpaceID: uint(id),
-		UserID:  req.UserID,
-		Role:    req.Role,
-	}
-
-	if err := h.db.Create(&member).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "添加空间成员成功",
-		"data":    member,
-	})
-}
-
-// @Summary 移除空间成员
-// @Description 从指定空间中移除用户
-// @Tags Spaces
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "空间ID"
-// @Param user_id path int true "用户ID"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Router /api/v1/spaces/{id}/members/{user_id} [delete]
-func (h *Handler) RemoveSpaceMember(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的空间ID"})
-		return
-	}
-
-	userID, err := strconv.Atoi(c.Param("user_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
-		return
-	}
-
-	if err := h.db.Where("space_id = ? AND user_id = ?", id, userID).Delete(&model.SpaceMember{}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "移除空间成员成功"})
-}
-
-// @Summary 更新空间成员角色
-// @Description 更新用户在空间中的角色
-// @Tags Spaces
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "空间ID"
-// @Param user_id path int true "用户ID"
-// @Param role body map[string]string true "新角色"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Router /api/v1/spaces/{id}/members/{user_id} [put]
-func (h *Handler) UpdateSpaceMemberRole(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的空间ID"})
-		return
-	}
-
-	userID, err := strconv.Atoi(c.Param("user_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
-		return
-	}
-
-	var req struct {
-		Role string `json:"role" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	var member model.SpaceMember
-	if err := h.db.Where("space_id = ? AND user_id = ?", id, userID).First(&member).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "用户不在该空间中"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	member.Role = req.Role
-	if err := h.db.Save(&member).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "更新空间成员角色成功",
-		"data":    member,
-	})
-}
-
-// 角色权限管理处理器
-
-// @Summary 分配角色权限
-// @Description 为角色分配权限
-// @Tags Roles
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param Authorization header string true "Bearer token"
-// @Param id path int true "角色ID"
-// @Param permission body map[string]interface{} true "权限信息"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Router /api/v1/roles/{id}/permissions [post]
-func (h *Handler) AssignRolePermission(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色ID"})
-		return
-	}
-
-	var req struct {
-		PermissionID uint `json:"permission_id" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// 检查角色是否存在
-	var role model.Role
-	if err := h.db.First(&role, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "角色不存在"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	// 检查权限是否存在
-	var permission model.Permission
-	if err := h.db.First(&permission, req.PermissionID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "权限不存在"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	// 分配权限
-	rolePermission := model.RolePermission{
-		RoleID:       uint(id),
-		PermissionID: req.PermissionID,
-	}
-
-	if err := h.db.Create(&rolePermission).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "分配角色权限成功"})
-}
-
-// @Summary 移除角色权限
-// @Description 从角色中移除权限
-// @Tags Roles
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param Authorization header string true "Bearer token"
-// @Param id path int true "角色ID"
-// @Param permission_id path int true "权限ID"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Router /api/v1/roles/{id}/permissions/{permission_id} [delete]
-func (h *Handler) RemoveRolePermission(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色ID"})
-		return
-	}
-
-	permissionID, err := strconv.Atoi(c.Param("permission_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的权限ID"})
-		return
-	}
-
-	if err := h.db.Where("role_id = ? AND permission_id = ?", id, permissionID).Delete(&model.RolePermission{}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "移除角色权限成功"})
-}
-
 // @Summary 获取角色权限列表
 // @Description 获取角色的所有权限
 // @Tags Roles
@@ -1221,7 +918,7 @@ func (h *Handler) RemoveUserRole(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Failure 404 {object} map[string]string
-// @Router /api/v1/spaces/{id}/members/{role_id} [get]
+// @Router /api/v1/spaces/{id}/members/{role} [get]
 func (h *Handler) GetSpaceMembersByRole(c *gin.Context) {
 	spaceID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -1229,14 +926,14 @@ func (h *Handler) GetSpaceMembersByRole(c *gin.Context) {
 		return
 	}
 
-	roleID, err := strconv.Atoi(c.Param("role_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色ID"})
+	role := c.Param("role")
+	if role == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "角色不能为空"})
 		return
 	}
 
 	var members []model.SpaceMember
-	if err := h.db.Where("space_id = ? AND role_id = ?", spaceID, roleID).Find(&members).Error; err != nil {
+	if err := h.db.Preload("User").Where("space_id = ? AND role = ?", spaceID, role).Find(&members).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

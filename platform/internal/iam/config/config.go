@@ -21,6 +21,14 @@ type ServerConfig struct {
 	Port string `mapstructure:"port"`
 }
 
+func (c *ServerConfig) GetHost() string {
+	return c.Host
+}
+
+func (c *ServerConfig) GetPort() string {
+	return c.Port
+}
+
 type DatabaseConfig struct {
 	Host     string `mapstructure:"host"`
 	Port     string `mapstructure:"port"`

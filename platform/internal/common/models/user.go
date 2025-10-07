@@ -30,7 +30,7 @@ type User struct {
 // Role 角色模型
 type Role struct {
 	ID          uint           `json:"id" gorm:"primaryKey"`
-	Name        string         `json:"name" gorm:"uniqueIndex;not null;size:50"`
+	Name        RoleName       `json:"name" gorm:"uniqueIndex;not null;size:50"`
 	DisplayName string         `json:"display_name" gorm:"size:100"`
 	Description string         `json:"description" gorm:"size:255"`
 	Status      int            `json:"status" gorm:"default:1;comment:1-正常 0-禁用"`
@@ -39,14 +39,13 @@ type Role struct {
 	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// 关联关系
-	Users       []User       `json:"users" gorm:"many2many:user_roles;"`
 	Permissions []Permission `json:"permissions" gorm:"many2many:role_permissions;"`
 }
 
 // Permission 权限模型
 type Permission struct {
 	ID          uint           `json:"id" gorm:"primaryKey"`
-	Name        string         `json:"name" gorm:"uniqueIndex;not null;size:50"`
+	Name        PermissionName `json:"name" gorm:"uniqueIndex;not null;size:50"`
 	DisplayName string         `json:"display_name" gorm:"size:100"`
 	Description string         `json:"description" gorm:"size:255"`
 	Resource    string         `json:"resource" gorm:"size:50;comment:资源类型"`
@@ -71,35 +70,35 @@ type RolePermission struct {
 	PermissionID uint `gorm:"primaryKey"`
 }
 
-// 角色常量定义
+type RoleName string
+
+// 全局角色常量定义（系统级）
 const (
-	RoleSuperAdmin      = "super_admin"
-	RoleEnterpriseAdmin = "enterprise_admin"
-	RoleSpaceAdmin      = "space_admin"
-	RoleContentReviewer = "content_reviewer"
-	RoleContentEditor   = "content_editor"
-	RoleReadOnlyUser    = "read_only_user"
+	RoleSuperAdmin      RoleName = "super_admin" // 超级管理员 - 拥有所有权限
+	RoleEnterpriseAdmin RoleName = "corp_admin"  // 企业管理员 - 企业级管理权限
 )
+
+type PermissionName string
 
 // 权限常量定义
 const (
 	// 内容权限
-	PermissionViewAllContent        = "view_all_content"
-	PermissionCreateDocument        = "create_document"
-	PermissionDeleteDocument        = "delete_document"
-	PermissionMoveDocument          = "move_document"
-	PermissionSetDocumentPermission = "set_document_permission"
+	PermissionViewAllContent        PermissionName = "view_all_content"
+	PermissionCreateDocument        PermissionName = "create_document"
+	PermissionDeleteDocument        PermissionName = "delete_document"
+	PermissionMoveDocument          PermissionName = "move_document"
+	PermissionSetDocumentPermission PermissionName = "set_document_permission"
 
 	// 空间权限
-	PermissionCreateSpace       = "create_space"
-	PermissionManageSpaceMember = "manage_space_member"
+	PermissionCreateSpace       PermissionName = "create_space"
+	PermissionManageSpaceMember PermissionName = "manage_space_member"
 
 	// 审批流权限
-	PermissionConfigureWorkflow = "configure_workflow"
+	PermissionConfigureWorkflow PermissionName = "configure_workflow"
 
 	// 数据权限
-	PermissionExportData       = "export_data"
-	PermissionExportAllData    = "export_all_data"
-	PermissionViewOperationLog = "view_operation_log"
-	PermissionAddDeleteUser    = "add_delete_user"
+	PermissionExportData       PermissionName = "export_data"
+	PermissionExportAllData    PermissionName = "export_all_data"
+	PermissionViewOperationLog PermissionName = "view_operation_log"
+	PermissionAddDeleteUser    PermissionName = "add_delete_user"
 )

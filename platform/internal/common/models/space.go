@@ -57,14 +57,23 @@ type Class struct {
 
 // SpaceMember 空间成员关联表
 type SpaceMember struct {
-	SpaceID uint   `gorm:"primaryKey"`
-	UserID  uint   `gorm:"primaryKey"`
-	Role    string `json:"role" gorm:"size:50;comment:在空间中的角色:space_admin,content_reviewer,content_editor,read_only_user"`
+	SpaceID uint            `json:"space_id" gorm:"primaryKey"`
+	UserID  uint            `json:"user_id" gorm:"primaryKey"`
+	Role    SpaceMemberRole `json:"role" gorm:"not null;size:20;comment:空间角色:owner,admin,editor,viewer"`
 
 	// 关联关系
-	User  User  `json:"user" gorm:"foreignKey:UserID"`
-	Space Space `json:"space" gorm:"foreignKey:SpaceID"`
+	User User `json:"user,omitempty" gorm:"foreignKey:UserID"`
 }
+
+// SpaceMemberRole 空间成员角色
+type SpaceMemberRole string
+
+const (
+	SpaceMemberRoleOwner  SpaceMemberRole = "owner"  // 空间所有者
+	SpaceMemberRoleAdmin  SpaceMemberRole = "admin"  // 空间管理员
+	SpaceMemberRoleEditor SpaceMemberRole = "editor" // 编辑者
+	SpaceMemberRoleViewer SpaceMemberRole = "viewer" // 查看者
+)
 
 // SpaceType 空间类型
 type SpaceType string

@@ -61,8 +61,8 @@ CREATE_WORKFLOW_RESPONSE=$(curl -s -X POST "$BASE_URL/workflows" \
       {
         "step_name": "内容审核",
         "step_order": 1,
-        "approver_type": "space_admin",
-        "approver_id": 0,
+        "approver_type": "space_role",
+        "approver_value": "admin",
         "is_required": true,
         "timeout_hours": 24
       }
