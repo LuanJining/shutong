@@ -5,45 +5,16 @@ import (
 	"os"
 	"strings"
 
+	commonConfig "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/config"
 	"github.com/spf13/viper"
 )
 
+// Config Workflow 服务配置
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Gin      GinConfig      `mapstructure:"gin"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Log      LogConfig      `mapstructure:"log"`
-}
-
-type ServerConfig struct {
-	Host string `mapstructure:"host"`
-	Port string `mapstructure:"port"`
-}
-
-func (c *ServerConfig) GetHost() string {
-	return c.Host
-}
-
-func (c *ServerConfig) GetPort() string {
-	return c.Port
-}
-
-type GinConfig struct {
-	Mode string `mapstructure:"mode"`
-}
-
-type DatabaseConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     string `mapstructure:"port"`
-	User     string `mapstructure:"user"`
-	Password string `mapstructure:"password"`
-	DBName   string `mapstructure:"dbname"`
-	SSLMode  string `mapstructure:"sslmode"`
-}
-
-type LogConfig struct {
-	Level      string `mapstructure:"level"`        // 日志级别: debug, info, warn, error
-	DBLogLevel string `mapstructure:"db_log_level"` // 数据库日志级别: silent, error, warn, info
+	Server   commonConfig.ServerConfig   `mapstructure:"server"`
+	Gin      commonConfig.GinConfig      `mapstructure:"gin"`
+	Database commonConfig.DatabaseConfig `mapstructure:"database"`
+	Log      commonConfig.LogConfig      `mapstructure:"log"`
 }
 
 func Load() (*Config, error) {

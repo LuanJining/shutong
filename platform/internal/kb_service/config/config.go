@@ -5,54 +5,33 @@ import (
 	"os"
 	"strings"
 
+	commonConfig "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/config"
 	"github.com/spf13/viper"
 )
 
+// Config KB Service 配置
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Iam      IamConfig      `mapstructure:"iam"`
-	Workflow WorkflowConfig `mapstructure:"workflow"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Minio    MinioConfig    `mapstructure:"minio"`
-	Gin      GinConfig      `mapstructure:"gin"`
-	Log      LogConfig      `mapstructure:"log"`
-	OpenAI   OpenAIConfig   `mapstructure:"openai"`
+	Server   commonConfig.ServerConfig   `mapstructure:"server"`
+	Iam      IamConfig                   `mapstructure:"iam"`
+	Workflow WorkflowConfig              `mapstructure:"workflow"`
+	Database commonConfig.DatabaseConfig `mapstructure:"database"`
+	Minio    MinioConfig                 `mapstructure:"minio"`
+	Gin      commonConfig.GinConfig      `mapstructure:"gin"`
+	Log      commonConfig.LogConfig      `mapstructure:"log"`
+	OpenAI   OpenAIConfig                `mapstructure:"openai"`
 }
 
-type ServerConfig struct {
-	Host string `mapstructure:"host"`
-	Port string `mapstructure:"port"`
-}
-
-func (c *ServerConfig) GetHost() string {
-	return c.Host
-}
-
-func (c *ServerConfig) GetPort() string {
-	return c.Port
-}
-
+// IamConfig IAM 服务配置（KB Service 特有）
 type IamConfig struct {
 	Url string `mapstructure:"url"`
 }
 
+// WorkflowConfig Workflow 服务配置（KB Service 特有）
 type WorkflowConfig struct {
 	Url string `mapstructure:"url"`
 }
 
-type GinConfig struct {
-	Mode string `mapstructure:"mode"`
-}
-
-type DatabaseConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     string `mapstructure:"port"`
-	User     string `mapstructure:"user"`
-	Password string `mapstructure:"password"`
-	DBName   string `mapstructure:"dbname"`
-	SSLMode  string `mapstructure:"sslmode"`
-}
-
+// MinioConfig Minio 配置（KB Service 特有）
 type MinioConfig struct {
 	Endpoint  string `mapstructure:"endpoint"`
 	AccessKey string `mapstructure:"access_key"`
@@ -60,11 +39,8 @@ type MinioConfig struct {
 	Bucket    string `mapstructure:"bucket"`
 	Region    string `mapstructure:"region"`
 }
-type LogConfig struct {
-	Level      string `mapstructure:"level"`        // 日志级别: debug, info, warn, error
-	DBLogLevel string `mapstructure:"db_log_level"` // 数据库日志级别: silent, error, warn, info
-}
 
+// OpenAIConfig OpenAI 配置（KB Service 特有）
 type OpenAIConfig struct {
 	ApiKey string `mapstructure:"api_key"`
 	Url    string `mapstructure:"url"`
