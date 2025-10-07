@@ -19,8 +19,9 @@ type Space struct {
 	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// 关联关系
-	Creator User   `json:"creator" gorm:"foreignKey:CreatedBy"`
-	Members []User `json:"members" gorm:"many2many:space_members;"`
+	Creator   User       `json:"creator" gorm:"foreignKey:CreatedBy"`
+	Members   []User     `json:"members" gorm:"many2many:space_members;"`
+	SubSpaces []SubSpace `json:"sub_spaces" gorm:"foreignKey:SpaceID"`
 }
 
 // SubSpace 二级知识库模型
@@ -35,8 +36,8 @@ type SubSpace struct {
 	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// 关联关系
-	SpaceID uint  `json:"space_id" gorm:"not null"`
-	Space   Space `json:"space" gorm:"foreignKey:SpaceID"`
+	SpaceID uint    `json:"space_id" gorm:"not null"`
+	Classes []Class `json:"classes" gorm:"foreignKey:SubSpaceID"`
 }
 
 // 知识分类
@@ -45,13 +46,13 @@ type Class struct {
 	Name        string         `json:"name" gorm:"not null;size:100"`
 	Description string         `json:"description" gorm:"size:255"`
 	Status      int            `json:"status" gorm:"default:1;comment:1-正常 0-禁用"`
+	CreatedBy   uint           `json:"created_by" gorm:"not null"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// 关联关系
-	SubSpaceID uint     `json:"sub_space_id" gorm:"not null"`
-	SubSpace   SubSpace `json:"sub_space" gorm:"foreignKey:SubSpaceID"`
+	SubSpaceID uint `json:"sub_space_id" gorm:"not null"`
 }
 
 // SpaceMember 空间成员关联表
@@ -73,3 +74,15 @@ const (
 	SpaceTypeProject    SpaceType = "project"
 	SpaceTypeTeam       SpaceType = "team"
 )
+
+type CreateSubSpaceRequest struct {
+	SpaceID     uint   `json:"space_id" binding:"required"`
+	Name        string `json:"name" binding:"required"`
+	Description string `json:"description"`
+}
+
+type CreateClassRequest struct {
+	SubSpaceID  uint   `json:"sub_space_id" binding:"required"`
+	Name        string `json:"name" binding:"required"`
+	Description string `json:"description"`
+}

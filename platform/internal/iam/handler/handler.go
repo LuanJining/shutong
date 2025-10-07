@@ -515,7 +515,11 @@ func (h *Handler) GetSpaces(c *gin.Context) {
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
 	offset := (page - 1) * pageSize
 
-	if err := h.db.Preload("Creator").Offset(offset).Limit(pageSize).Find(&spaces).Error; err != nil {
+	if err := h.db.
+		Preload("Creator").
+		Preload("SubSpaces").
+		Preload("SubSpaces.Classes").
+		Offset(offset).Limit(pageSize).Find(&spaces).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -555,7 +559,12 @@ func (h *Handler) GetSpace(c *gin.Context) {
 	}
 
 	var space model.Space
-	if err := h.db.Preload("Creator").Preload("Members").First(&space, id).Error; err != nil {
+	if err := h.db.
+		Preload("Creator").
+		Preload("Members").
+		Preload("SubSpaces").
+		Preload("SubSpaces.Classes").
+		First(&space, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "空间不存在"})
 			return
@@ -619,6 +628,96 @@ func (h *Handler) CreateSpace(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "创建空间成功",
 		"data":    space,
+	})
+}
+
+func (h *Handler) CreateSubSpace(c *gin.Context) {
+	// 获取当前用户
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, model.APIResponse{
+			Code:    http.StatusUnauthorized,
+			Message: "用户未认证",
+		})
+		return
+	}
+
+	userModel, ok := user.(*model.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "用户信息格式错误",
+		})
+		return
+	}
+
+	var req model.CreateSubSpaceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "请求参数错误: " + err.Error(),
+		})
+		return
+	}
+
+	subSpace, err := h.authService.CreateSubSpace(&req, userModel.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "创建二级知识库失败: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, model.APIResponse{
+		Code:    http.StatusOK,
+		Message: "创建二级知识库成功",
+		Data:    subSpace,
+	})
+}
+
+func (h *Handler) CreateClass(c *gin.Context) {
+	// 获取当前用户
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, model.APIResponse{
+			Code:    http.StatusUnauthorized,
+			Message: "用户未认证",
+		})
+		return
+	}
+
+	userModel, ok := user.(*model.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "用户信息格式错误",
+		})
+		return
+	}
+
+	var req model.CreateClassRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "请求参数错误: " + err.Error(),
+		})
+		return
+	}
+
+	class, err := h.authService.CreateClass(&req, userModel.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "创建知识分类失败: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, model.APIResponse{
+		Code:    http.StatusOK,
+		Message: "创建知识分类成功",
+		Data:    class,
 	})
 }
 

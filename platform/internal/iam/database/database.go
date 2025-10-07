@@ -54,5 +54,7 @@ func autoMigrate(db *gorm.DB) error {
 		&model.RolePermission{},
 		&model.Space{},
 		&model.SpaceMember{},
+		&model.SubSpace{},
+		&model.Class{},
 	)
 }

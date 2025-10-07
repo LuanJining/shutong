@@ -118,6 +118,20 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			spaces.PUT("/:id/members/:user_id", h.UpdateSpaceMemberRole)
 			spaces.GET("/:id/members/:role_id", h.GetSpaceMembersByRole)
 		}
+
+		// 二级知识库管理路由
+		subSpaces := api.Group("/subspaces")
+		subSpaces.Use(middleware.FetchUserFromHeader(db))
+		{
+			subSpaces.POST("", h.CreateSubSpace)
+		}
+
+		// 知识分类管理路由
+		classes := api.Group("/classes")
+		classes.Use(middleware.FetchUserFromHeader(db))
+		{
+			classes.POST("", h.CreateClass)
+		}
 	}
 
 	return r

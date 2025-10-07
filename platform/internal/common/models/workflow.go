@@ -5,13 +5,13 @@ type Workflow struct {
 	Name          string         `json:"name" binding:"required"`
 	Description   string         `json:"description"`
 	SpaceID       uint           `json:"space_id" binding:"required"`
-	Steps         []Step         `json:"steps" binding:"required"`
 	Status        WorkflowStatus `json:"status" binding:"required"`
 	CurrentStepID uint           `json:"current_step_id" gorm:"foreignKey:StepID"` // 当前步骤ID
 
 	// 关联字段
 	CreatedBy       uint   `json:"created_by" gorm:"foreignKey:UserID"`
 	CreatorNickName string `json:"creator_nick_name" gorm:"foreignKey:NickName"`
+	Steps           []Step `json:"steps" gorm:"foreignKey:StepID"`
 }
 
 type Step struct {
