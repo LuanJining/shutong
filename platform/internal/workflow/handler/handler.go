@@ -79,3 +79,48 @@ func (h *Handler) CreateWorkflow(c *gin.Context) {
 		Data:    workflow,
 	})
 }
+
+func (h *Handler) StartWorkflow(c *gin.Context) {
+	var req model.StartWorkflowRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, model.APIResponse{
+			Code:    400,
+			Message: "请求参数错误: " + err.Error(),
+		})
+		return
+	}
+
+	// 从上下文获取用户信息（需要中间件设置）
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, model.APIResponse{
+			Code:    401,
+			Message: "用户未认证",
+		})
+		return
+	}
+
+	userModel, ok := user.(*model.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
+			Code:    500,
+			Message: "用户信息格式错误",
+		})
+		return
+	}
+
+	workflow, err := h.workflowService.StartWorkflow(&req, userModel)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
+			Code:    500,
+			Message: "启动工作流失败: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, model.APIResponse{
+		Code:    200,
+		Message: "工作流启动成功",
+		Data:    workflow,
+	})
+}

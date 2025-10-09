@@ -15,6 +15,7 @@ type Config struct {
 	Gin      commonConfig.GinConfig      `mapstructure:"gin"`
 	Database commonConfig.DatabaseConfig `mapstructure:"database"`
 	Log      commonConfig.LogConfig      `mapstructure:"log"`
+	Iam      commonConfig.IamConfig      `mapstructure:"iam"`
 }
 
 func Load() (*Config, error) {

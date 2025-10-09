@@ -63,9 +63,9 @@ type TaskStatus string
 const (
 	TaskStatusProcessing      TaskStatus = "processing"
 	TaskStatusApproved        TaskStatus = "approved"
-	TaskStatusApprovedByOther TaskStatus = "approved_by_other"
+	TaskStatusApprovedByOther TaskStatus = "approved_by_others"
 	TaskStatusRejected        TaskStatus = "rejected"
-	TaskStatusRejectedByOther TaskStatus = "rejected_by_other"
+	TaskStatusRejectedByOther TaskStatus = "rejected_by_others"
 )
 
 type CreateWorkflowRequest struct {
@@ -74,4 +74,8 @@ type CreateWorkflowRequest struct {
 	SpaceID     uint   `json:"space_id" binding:"required"`
 	Priority    int    `json:"priority"`
 	Steps       []Step `json:"steps" binding:"required"`
+}
+
+type StartWorkflowRequest struct {
+	WorkflowID uint `json:"workflow_id" binding:"required"`
 }

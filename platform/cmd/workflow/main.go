@@ -9,6 +9,7 @@ import (
 	"time"
 
 	_ "gitee.com/sichuan-shutong-zhihui-data/k-base/api/workflow/openapi"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/client"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/database"
 	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/server"
@@ -46,8 +47,11 @@ func main() {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 
+	// 初始化IAM客户端
+	iamClient := client.NewIamClient(&cfg.Iam)
+
 	// 初始化路由
-	r := router.Setup(cfg, db)
+	r := router.Setup(cfg, db, iamClient)
 
 	// 启动服务器
 	srv := server.New(&cfg.Server, r)

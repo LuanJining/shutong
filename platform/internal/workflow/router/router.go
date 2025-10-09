@@ -1,6 +1,7 @@
 package router
 
 import (
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/client"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/middleware"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/config"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/workflow/handler"
@@ -11,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
+func Setup(cfg *config.Config, db *gorm.DB, iamClient *client.IamClient) *gin.Engine {
 	gin.SetMode(cfg.Gin.Mode)
 	r := gin.New()
 	r.Use(middleware.Logger())
@@ -21,7 +22,7 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
 
 	// 初始化服务
-	workflowService := service.NewWorkflowService(db)
+	workflowService := service.NewWorkflowService(db, iamClient)
 	handler := handler.NewHandler(db, workflowService)
 
 	// API路由组
@@ -40,6 +41,9 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			{
 				workflows.POST("", middleware.FetchUserFromHeader(db),
 					handler.CreateWorkflow) // 创建流程
+
+				workflows.POST("/:id/start", middleware.FetchUserFromHeader(db),
+					handler.StartWorkflow) // 启动流程
 			}
 		}
 	}

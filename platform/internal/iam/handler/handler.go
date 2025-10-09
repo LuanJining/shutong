@@ -1134,8 +1134,6 @@ func (h *Handler) RemoveUserRole(c *gin.Context) {
 // @Tags Spaces
 // @Accept json
 // @Produce json
-// @Security BearerAuth
-// @Param Authorization header string true "Bearer token"
 // @Param id path int true "空间ID"
 // @Param role_id path int true "角色ID"
 // @Success 200 {object} map[string]interface{}
@@ -1145,37 +1143,60 @@ func (h *Handler) RemoveUserRole(c *gin.Context) {
 func (h *Handler) GetSpaceMembersByRole(c *gin.Context) {
 	spaceID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的空间ID"})
+		c.JSON(http.StatusBadRequest, model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "无效的空间ID",
+		})
 		return
 	}
 
 	role := c.Param("role")
 	if role == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "角色不能为空"})
+		c.JSON(http.StatusBadRequest, model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "角色不能为空",
+		})
 		return
 	}
 
 	var members []model.SpaceMember
 	if err := h.db.Preload("User").Where("space_id = ? AND role = ?", spaceID, role).Find(&members).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "获取空间成员失败: " + err.Error(),
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "获取空间成员成功", "data": members})
+	c.JSON(http.StatusOK, model.APIResponse{
+		Code:    http.StatusOK,
+		Message: "获取空间成员成功",
+		Data:    members,
+	})
 }
 
 func (h *Handler) ValidateToken(c *gin.Context) {
 	token := c.GetHeader("Authorization")
 	if token == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "缺少Authorization头"})
+		c.JSON(http.StatusUnauthorized, model.APIResponse{
+			Code:    http.StatusUnauthorized,
+			Message: "缺少Authorization头",
+		})
 		return
 	}
 
 	user, err := h.authService.ValidateToken(token)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "无效的token"})
+		c.JSON(http.StatusUnauthorized, model.APIResponse{
+			Code:    http.StatusUnauthorized,
+			Message: "无效的token",
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "token有效", "data": user})
+	c.JSON(http.StatusOK, model.APIResponse{
+		Code:    http.StatusOK,
+		Message: "token有效",
+		Data:    user,
+	})
 }

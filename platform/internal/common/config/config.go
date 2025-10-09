@@ -50,6 +50,11 @@ type LoaderOptions struct {
 	DefaultEnv  string   // 默认环境，默认 "localtest"
 }
 
+// IamConfig IAM 服务配置（通用）
+type IamConfig struct {
+	Url string `mapstructure:"url"`
+}
+
 // Load 通用配置加载函数
 // configPaths: 配置文件搜索路径，例如 ["./internal/iam/config", "./config", "."]
 // cfg: 配置结构体指针
@@ -124,6 +129,9 @@ func BindCommonEnvVars(v *viper.Viper) {
 
 	// Gin配置
 	v.BindEnv("gin.mode", "KBASE_GIN_MODE", "GIN_MODE")
+
+	// IAM配置
+	v.BindEnv("iam.url", "KBASE_IAM_URL", "IAM_URL")
 }
 
 // SetCommonDefaults 设置通用默认值
@@ -146,4 +154,7 @@ func SetCommonDefaults(v *viper.Viper, serverPort string) {
 
 	// Gin默认配置
 	v.SetDefault("gin.mode", "debug")
+
+	// IAM默认配置
+	v.SetDefault("iam.url", "http://localhost:8081")
 }
