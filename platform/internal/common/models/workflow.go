@@ -36,10 +36,13 @@ type Task struct {
 	Status           TaskStatus `json:"status" binding:"required"`
 	ApproverID       uint       `json:"approver_id"`
 	ApproverNickName string     `json:"approver_nick_name"`
+	Comment          string     `json:"comment"`
 
 	// 关联字段
-	WorkflowID uint `json:"workflow_id"`
-	StepID     uint `json:"step_id"`
+	WorkflowID uint     `json:"workflow_id"`
+	StepID     uint     `json:"step_id"`
+	Workflow   Workflow `json:"workflow" gorm:"foreignKey:WorkflowID"` // 关联的工作流
+	Step       Step     `json:"step" gorm:"foreignKey:StepID"`         // 关联的步骤
 }
 
 type WorkflowStatus string
@@ -78,4 +81,10 @@ type CreateWorkflowRequest struct {
 
 type StartWorkflowRequest struct {
 	WorkflowID uint `json:"workflow_id" binding:"required"`
+}
+
+type ApproveTaskRequest struct {
+	TaskID  uint       `json:"task_id" binding:"required"`
+	Comment string     `json:"comment"`
+	Status  TaskStatus `json:"status" binding:"required"`
 }

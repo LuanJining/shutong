@@ -45,6 +45,14 @@ func Setup(cfg *config.Config, db *gorm.DB, iamClient *client.IamClient) *gin.En
 				workflows.POST("/:id/start", middleware.FetchUserFromHeader(db),
 					handler.StartWorkflow) // 启动流程
 			}
+
+			tasks := workflow.Group("/tasks")
+			{
+				tasks.GET("", middleware.FetchUserFromHeader(db),
+					handler.GetTasks) // 获取任务
+				tasks.POST("/:id/approve", middleware.FetchUserFromHeader(db),
+					handler.ApproveTask) // 审批任务
+			}
 		}
 	}
 

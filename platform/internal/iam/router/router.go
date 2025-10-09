@@ -52,8 +52,8 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 		{
 			// 查看所有内容 - 所有认证用户都可以
 			users.GET("", h.GetUsers)
+			users.GET("/by-role/:rid/space/:sid", h.GetUserByRoleIdAndSpaceId)
 			users.GET("/:id", h.GetUser)
-			users.GET("/:rid/role/:sid/space", h.GetUserByRoleIdAndSpaceId)
 
 			// 更新用户 - 先检查角色，再检查权限
 			users.PUT("/:id", h.UpdateUser)
