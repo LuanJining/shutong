@@ -763,6 +763,229 @@ func (h *Handler) GetSpaceMembers(c *gin.Context) {
 	})
 }
 
+// @Summary 添加空间成员
+// @Description 将用户添加到指定空间
+// @Tags Spaces
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "空间ID"
+// @Param member body object true "成员信息 {user_id: uint, role: string}"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Router /api/v1/spaces/{id}/members [post]
+func (h *Handler) AddSpaceMember(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的空间ID"})
+		return
+	}
+
+	var req struct {
+		UserID uint                  `json:"user_id" binding:"required"`
+		Role   model.SpaceMemberRole `json:"role" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 验证角色是否有效
+	validRoles := []model.SpaceMemberRole{
+		model.SpaceMemberRoleOwner,
+		model.SpaceMemberRoleAdmin,
+		model.SpaceMemberRoleEditor,
+		model.SpaceMemberRoleViewer,
+	}
+	roleValid := false
+	for _, validRole := range validRoles {
+		if req.Role == validRole {
+			roleValid = true
+			break
+		}
+	}
+	if !roleValid {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色类型，支持: owner, admin, editor, viewer"})
+		return
+	}
+
+	// 检查空间是否存在
+	var space model.Space
+	if err := h.db.First(&space, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "空间不存在"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 检查用户是否存在
+	var user model.User
+	if err := h.db.First(&user, req.UserID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 检查用户是否已经在空间中
+	var existingMember model.SpaceMember
+	if err := h.db.Where("space_id = ? AND user_id = ?", id, req.UserID).First(&existingMember).Error; err == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "用户已在该空间中"})
+		return
+	}
+
+	// 添加成员
+	member := model.SpaceMember{
+		SpaceID: uint(id),
+		UserID:  req.UserID,
+		Role:    req.Role,
+	}
+
+	if err := h.db.Create(&member).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 预加载用户信息
+	h.db.Preload("User").First(&member, "space_id = ? AND user_id = ?", id, req.UserID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "添加空间成员成功",
+		"data":    member,
+	})
+}
+
+// @Summary 移除空间成员
+// @Description 从指定空间中移除用户
+// @Tags Spaces
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "空间ID"
+// @Param user_id path int true "用户ID"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /api/v1/spaces/{id}/members/{user_id} [delete]
+func (h *Handler) RemoveSpaceMember(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的空间ID"})
+		return
+	}
+
+	userID, err := strconv.Atoi(c.Param("user_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	// 检查成员是否存在
+	var member model.SpaceMember
+	if err := h.db.Where("space_id = ? AND user_id = ?", id, userID).First(&member).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "用户不在该空间中"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 删除成员
+	if err := h.db.Where("space_id = ? AND user_id = ?", id, userID).Delete(&model.SpaceMember{}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "移除空间成员成功"})
+}
+
+// @Summary 更新空间成员角色
+// @Description 更新用户在空间中的角色
+// @Tags Spaces
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "空间ID"
+// @Param user_id path int true "用户ID"
+// @Param role body object true "新角色 {role: string}"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /api/v1/spaces/{id}/members/{user_id} [put]
+func (h *Handler) UpdateSpaceMemberRole(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的空间ID"})
+		return
+	}
+
+	userID, err := strconv.Atoi(c.Param("user_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	var req struct {
+		Role model.SpaceMemberRole `json:"role" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 验证角色是否有效
+	validRoles := []model.SpaceMemberRole{
+		model.SpaceMemberRoleOwner,
+		model.SpaceMemberRoleAdmin,
+		model.SpaceMemberRoleEditor,
+		model.SpaceMemberRoleViewer,
+	}
+	roleValid := false
+	for _, validRole := range validRoles {
+		if req.Role == validRole {
+			roleValid = true
+			break
+		}
+	}
+	if !roleValid {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色类型，支持: owner, admin, editor, viewer"})
+		return
+	}
+
+	// 检查成员是否存在
+	var member model.SpaceMember
+	if err := h.db.Where("space_id = ? AND user_id = ?", id, userID).First(&member).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "用户不在该空间中"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 更新角色
+	member.Role = req.Role
+	if err := h.db.Save(&member).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 预加载用户信息
+	h.db.Preload("User").First(&member, "space_id = ? AND user_id = ?", id, userID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "更新空间成员角色成功",
+		"data":    member,
+	})
+}
+
 // @Summary 获取角色权限列表
 // @Description 获取角色的所有权限
 // @Tags Roles

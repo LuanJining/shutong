@@ -103,6 +103,9 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 
 			// 空间成员管理 - 先检查空间成员，再检查角色权限
 			spaces.GET("/:id/members", h.GetSpaceMembers)
+			spaces.POST("/:id/members", h.AddSpaceMember)
+			spaces.DELETE("/:id/members/:user_id", h.RemoveSpaceMember)
+			spaces.PUT("/:id/members/:user_id", h.UpdateSpaceMemberRole)
 			spaces.GET("/:id/members/role/:role", h.GetSpaceMembersByRole)
 		}
 
