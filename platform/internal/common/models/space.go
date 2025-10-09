@@ -69,11 +69,18 @@ type SpaceMember struct {
 type SpaceMemberRole string
 
 const (
-	SpaceMemberRoleOwner  SpaceMemberRole = "owner"  // 空间所有者
-	SpaceMemberRoleAdmin  SpaceMemberRole = "admin"  // 空间管理员
-	SpaceMemberRoleEditor SpaceMemberRole = "editor" // 编辑者
-	SpaceMemberRoleViewer SpaceMemberRole = "viewer" // 查看者
+	SpaceMemberRoleAdmin    SpaceMemberRole = "admin"    // 空间管理员
+	SpaceMemberRoleApprover SpaceMemberRole = "approver" // 空间审批者
+	SpaceMemberRoleEditor   SpaceMemberRole = "editor"   // 空间编辑者
+	SpaceMemberRoleReader   SpaceMemberRole = "reader"   // 空间只读者
 )
+
+var SpaceMemberRoleMap = map[SpaceMemberRole]int{
+	SpaceMemberRoleAdmin:    1,
+	SpaceMemberRoleApprover: 2,
+	SpaceMemberRoleEditor:   3,
+	SpaceMemberRoleReader:   4,
+}
 
 // SpaceType 空间类型
 type SpaceType string

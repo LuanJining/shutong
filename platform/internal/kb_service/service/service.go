@@ -292,7 +292,7 @@ func (s *DocumentService) CreateWorkflow(ctx context.Context, document *model.Do
 	step := model.Step{
 		StepName:     "文档发布审批",
 		StepOrder:    1,
-		StepRole:     "content_viewer",
+		StepRole:     string(model.SpaceMemberRoleApprover),
 		IsRequired:   true,
 		TimeoutHours: 24 * 7,
 		Status:       model.StepStatusProcessing,

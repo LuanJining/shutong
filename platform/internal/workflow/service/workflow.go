@@ -97,7 +97,7 @@ func (s *WorkflowService) StartWorkflow(req *model.StartWorkflowRequest, user *m
 	}
 
 	// 创建任务 先通过iam获取有权限的user列表
-	userList, err := s.iamClient.GetSpaceMemebersByRole(user, workflow.SpaceID, string(model.SpaceMemberRoleOwner))
+	userList, err := s.iamClient.GetSpaceMemebersByRole(user, workflow.SpaceID, currentStep.StepRole)
 	if err != nil {
 		return nil, err
 	}

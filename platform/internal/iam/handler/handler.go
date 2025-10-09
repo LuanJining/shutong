@@ -793,10 +793,10 @@ func (h *Handler) AddSpaceMember(c *gin.Context) {
 
 	// 验证角色是否有效
 	validRoles := []model.SpaceMemberRole{
-		model.SpaceMemberRoleOwner,
+		model.SpaceMemberRoleApprover,
 		model.SpaceMemberRoleAdmin,
 		model.SpaceMemberRoleEditor,
-		model.SpaceMemberRoleViewer,
+		model.SpaceMemberRoleReader,
 	}
 	roleValid := false
 	for _, validRole := range validRoles {
@@ -806,7 +806,7 @@ func (h *Handler) AddSpaceMember(c *gin.Context) {
 		}
 	}
 	if !roleValid {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色类型，支持: owner, admin, editor, viewer"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色类型，支持: admin, approver, editor, reader"})
 		return
 	}
 
@@ -942,10 +942,10 @@ func (h *Handler) UpdateSpaceMemberRole(c *gin.Context) {
 
 	// 验证角色是否有效
 	validRoles := []model.SpaceMemberRole{
-		model.SpaceMemberRoleOwner,
 		model.SpaceMemberRoleAdmin,
+		model.SpaceMemberRoleApprover,
 		model.SpaceMemberRoleEditor,
-		model.SpaceMemberRoleViewer,
+		model.SpaceMemberRoleReader,
 	}
 	roleValid := false
 	for _, validRole := range validRoles {
@@ -955,7 +955,7 @@ func (h *Handler) UpdateSpaceMemberRole(c *gin.Context) {
 		}
 	}
 	if !roleValid {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色类型，支持: owner, admin, editor, viewer"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色类型，支持: admin, approver, editor, reader"})
 		return
 	}
 
