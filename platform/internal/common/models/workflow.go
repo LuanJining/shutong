@@ -7,6 +7,8 @@ type Workflow struct {
 	SpaceID       uint           `json:"space_id" binding:"required"`
 	Status        WorkflowStatus `json:"status" binding:"required"`
 	CurrentStepID uint           `json:"current_step_id"` // 当前步骤ID
+	ResourceType  string         `json:"resource_type" binding:"required"`
+	ResourceID    uint           `json:"resource_id" binding:"required"`
 
 	// 关联字段
 	CreatedBy       uint   `json:"created_by"`
@@ -72,11 +74,13 @@ const (
 )
 
 type CreateWorkflowRequest struct {
-	Name        string `json:"name" binding:"required"`
-	Description string `json:"description"`
-	SpaceID     uint   `json:"space_id" binding:"required"`
-	Priority    int    `json:"priority"`
-	Steps       []Step `json:"steps" binding:"required"`
+	Name         string `json:"name" binding:"required"`
+	Description  string `json:"description"`
+	ResourceType string `json:"resource_type" binding:"required"`
+	ResourceID   uint   `json:"resource_id" binding:"required"`
+	SpaceID      uint   `json:"space_id" binding:"required"`
+	Priority     int    `json:"priority"`
+	Steps        []Step `json:"steps" binding:"required"`
 }
 
 type StartWorkflowRequest struct {

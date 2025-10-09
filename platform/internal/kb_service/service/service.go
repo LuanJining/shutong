@@ -298,10 +298,12 @@ func (s *DocumentService) CreateWorkflow(ctx context.Context, document *model.Do
 		Status:       model.StepStatusProcessing,
 	}
 	workflow := model.Workflow{
-		Name:        "文档发布审批流程",
-		Description: "用于文档发布的审批流程",
-		SpaceID:     document.SpaceID,
-		Steps:       []model.Step{step},
+		Name:         "文档发布审批流程",
+		Description:  "用于文档发布的审批流程",
+		SpaceID:      document.SpaceID,
+		Steps:        []model.Step{step},
+		ResourceType: "document",
+		ResourceID:   document.ID,
 	}
 
 	workflowID, err := s.workflowClient.CreateWorkflow(ctx, &workflow, document.CreatedBy)

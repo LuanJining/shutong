@@ -41,6 +41,8 @@ func (s *WorkflowService) CreateWorkflow(req *model.CreateWorkflowRequest, user 
 		Status:          model.WorkflowStatusProcessing,
 		CreatedBy:       user.ID,
 		CreatorNickName: user.Nickname,
+		ResourceType:    req.ResourceType,
+		ResourceID:      req.ResourceID,
 	}
 	if err := tx.Create(&result).Error; err != nil {
 		tx.Rollback()
@@ -284,6 +286,20 @@ func (s *WorkflowService) ApproveTask(req *model.ApproveTaskRequest, user *model
 			if err := tx.Save(&task.Workflow).Error; err != nil {
 				tx.Rollback()
 				return nil, err
+			}
+			// 更新资源状态
+			if task.Workflow.ResourceType == "document" {
+				doc := &model.Document{}
+				err := tx.Where("id = ?", task.Workflow.ResourceID).First(doc).Error
+				if err != nil {
+					tx.Rollback()
+					return nil, err
+				}
+				doc.Status = model.DocumentStatusPendingPublish
+				if err := tx.Save(doc).Error; err != nil {
+					tx.Rollback()
+					return nil, err
+				}
 			}
 		}
 	} else {
