@@ -40,7 +40,6 @@ type Document struct {
 	ClassID         uint   `json:"class_id" gorm:"foreignKey:ClassID"`        // 所属分类ID
 	CreatedBy       uint   `json:"created_by" gorm:"foreignKey:UserID"`       // 创建人ID (关联IAM用户)
 	CreatorNickName string `json:"creator_nick_name" gorm:"size:100"`         // 创建人昵称
-	Approver        uint   `json:"approver" gorm:"foreignKey:UserID"`         // 审批人ID (关联IAM用户)
 	Department      string `json:"department" gorm:"size:100"`                // 所属部门
 	WorkflowID      uint   `json:"workflow_id"`                               // 工作流ID （关联workflow表，上传后为0表示没有，无需审批也为0，需要审批提交后为对应的workflow_id）
 
@@ -57,6 +56,9 @@ type Document struct {
 	ParseError  string     `json:"parse_error" gorm:"type:text"`  // 解析错误信息
 	ProcessedAt *time.Time `json:"processed_at"`                  // 处理完成时间
 	VectorCount int        `json:"vector_count" gorm:"default:0"` // 向量数量
+
+	// 关联实体
+	Workflow Workflow `json:"workflow" gorm:"foreignKey:WorkflowID"`
 }
 
 var (

@@ -99,9 +99,10 @@ func (s *DocumentService) UploadDocument(ctx context.Context, req *model.UploadD
 		if err != nil {
 			return nil, fmt.Errorf("failed to create workflow: %w", err)
 		}
-		// 设置状态为待审批
-		s.db.Model(document).Update("status", model.DocumentStatusPendingApproval)
-		document.Status = model.DocumentStatusPendingApproval
+		document, err = s.StartWorkflow(ctx, document)
+		if err != nil {
+			return nil, fmt.Errorf("failed to start workflow: %w", err)
+		}
 	} else {
 		// 不需要审批，直接设置为已发布
 		s.db.Model(document).Update("status", model.DocumentStatusPendingPublish)
@@ -114,7 +115,7 @@ func (s *DocumentService) UploadDocument(ctx context.Context, req *model.UploadD
 // GetDocument 获取文档详情
 func (s *DocumentService) GetDocument(ctx context.Context, documentID uint) (*model.Document, error) {
 	var document model.Document
-	if err := s.db.First(&document, documentID).Error; err != nil {
+	if err := s.db.Preload("Workflow").First(&document, documentID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("document not found")
 		}
@@ -138,7 +139,7 @@ func (s *DocumentService) GetDocumentsBySpaceId(ctx context.Context, spaceID uin
 
 	// 分页查询
 	offset := (page - 1) * pageSize
-	if err := query.Order("created_at DESC").
+	if err := query.Preload("Workflow").Order("created_at DESC").
 		Offset(offset).
 		Limit(pageSize).
 		Find(&documents).Error; err != nil {
@@ -312,6 +313,19 @@ func (s *DocumentService) CreateWorkflow(ctx context.Context, document *model.Do
 		"workflow_id": workflowID,
 	})
 
+	return document, nil
+}
+
+func (s *DocumentService) StartWorkflow(ctx context.Context, document *model.Document) (*model.Document, error) {
+	_, err := s.workflowClient.StartWorkflow(ctx, document.WorkflowID, document.CreatedBy)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start workflow: %w", err)
+	}
+
+	s.db.Model(document).Updates(map[string]any{
+		"status":     model.DocumentStatusPendingApproval,
+		"updated_at": time.Now(),
+	})
 	return document, nil
 }
 

@@ -6,12 +6,12 @@ type Workflow struct {
 	Description   string         `json:"description"`
 	SpaceID       uint           `json:"space_id" binding:"required"`
 	Status        WorkflowStatus `json:"status" binding:"required"`
-	CurrentStepID uint           `json:"current_step_id" gorm:"foreignKey:StepID"` // 当前步骤ID
+	CurrentStepID uint           `json:"current_step_id"` // 当前步骤ID
 
 	// 关联字段
-	CreatedBy       uint   `json:"created_by" gorm:"foreignKey:UserID"`
-	CreatorNickName string `json:"creator_nick_name" gorm:"foreignKey:NickName"`
-	Steps           []Step `json:"steps" gorm:"foreignKey:StepID"`
+	CreatedBy       uint   `json:"created_by"`
+	CreatorNickName string `json:"creator_nick_name"`
+	Steps           []Step `json:"steps" gorm:"foreignKey:WorkflowID"` // 一对多关联
 }
 
 type Step struct {
@@ -21,11 +21,11 @@ type Step struct {
 	StepRole     string     `json:"step_role" binding:"required"`
 	IsRequired   bool       `json:"is_required" binding:"required"`
 	TimeoutHours int        `json:"timeout_hours" binding:"required"`
-	Tasks        []Task     `json:"tasks"`
+	Tasks        []Task     `json:"tasks" gorm:"foreignKey:StepID"` // 一对多关联
 	Status       StepStatus `json:"status" binding:"required"`
 
 	// 关联字段
-	WorkflowID uint `json:"workflow_id" gorm:"foreignKey:WorkflowID"`
+	WorkflowID uint `json:"workflow_id"`
 }
 
 type Task struct {
@@ -34,12 +34,12 @@ type Task struct {
 	IsRequired       bool       `json:"is_required" binding:"required"`
 	TimeoutHours     int        `json:"timeout_hours" binding:"required"`
 	Status           TaskStatus `json:"status" binding:"required"`
-	ApproverID       uint       `json:"approver_id" gorm:"foreignKey:UserID"`
-	ApproverNickName string     `json:"approver_nick_name" gorm:"foreignKey:NickName"`
+	ApproverID       uint       `json:"approver_id"`
+	ApproverNickName string     `json:"approver_nick_name"`
 
 	// 关联字段
-	WorkflowID uint `json:"workflow_id" gorm:"foreignKey:WorkflowID"`
-	StepID     uint `json:"step_id" gorm:"foreignKey:StepID"`
+	WorkflowID uint `json:"workflow_id"`
+	StepID     uint `json:"step_id"`
 }
 
 type WorkflowStatus string
