@@ -39,8 +39,6 @@ func (c *WorkflowClient) CreateWorkflow(ctx context.Context, workflow *model.Wor
 	if err != nil {
 		return 0, fmt.Errorf("failed to marshal workflow: %w", err)
 	}
-	// 调试日志
-	log.Printf("Sending to workflow service: %s", string(jsonData))
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", targetURL, bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -61,12 +59,11 @@ func (c *WorkflowClient) CreateWorkflow(ctx context.Context, workflow *model.Wor
 		return 0, fmt.Errorf("workflow service returned status %d", resp.StatusCode)
 	}
 
-	// 读取响应体用于调试
+	// 读取响应体
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return 0, fmt.Errorf("failed to read response body: %w", err)
 	}
-	log.Printf("Workflow service response: %s", string(bodyBytes))
 
 	// 解析响应
 	var response model.APIResponse

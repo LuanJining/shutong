@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"log"
 
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/client"
 	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
@@ -99,13 +98,6 @@ func (s *WorkflowService) StartWorkflow(req *model.StartWorkflowRequest, user *m
 		return nil, err
 	}
 
-	log.Println("currentStep", currentStep)
-	log.Println("workflow", workflow)
-	log.Println("user", user)
-	log.Println("workflow.SpaceID", workflow.SpaceID)
-	log.Println("currentStep.StepRole", currentStep.StepRole)
-	log.Println("user.ID", user.ID)
-
 	// 创建任务 先通过iam获取有权限的user列表
 	userList, err := s.iamClient.GetSpaceMemebersByRole(user, workflow.SpaceID, currentStep.StepRole)
 	if err != nil {
@@ -114,8 +106,6 @@ func (s *WorkflowService) StartWorkflow(req *model.StartWorkflowRequest, user *m
 
 	tasks := make([]model.Task, len(userList))
 	for i, approver := range userList {
-		log.Println("approver", approver)
-		log.Println("approver.ID", approver.ID)
 		tasks[i] = model.Task{
 			WorkflowID:       req.WorkflowID,
 			StepID:           currentStep.ID,
