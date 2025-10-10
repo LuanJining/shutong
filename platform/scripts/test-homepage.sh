@@ -2,8 +2,21 @@
 
 BASE_URL="http://localhost:8080/api/v1"
 
+LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/iam/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "login": "admin",
+    "password": "admin123"
+  }')
+
+echo "$LOGIN_RESPONSE" | jq .
+
+# 提取token
+TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.data.access_token')
+
+
 echo "=== 测试首页文档接口 ==="
-HOMEPAGE_RESPONSE=$(curl -s -X GET "$BASE_URL/documents/homepage")
+HOMEPAGE_RESPONSE=$(curl -s -X GET "$BASE_URL/kb/homepage" -H "Authorization: Bearer $TOKEN")
 echo "$HOMEPAGE_RESPONSE" | jq .
 
 # 统计返回的数据

@@ -1,5 +1,5 @@
 BASE_URL="http://localhost:8080/api/v1"
-TEST_FILE="/Users/gideonzy/Downloads/evaluation_report2.pdf"
+TEST_FILE="./test.txt"
 
 # 登录管理员账户
 LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/iam/auth/login" \
@@ -132,7 +132,7 @@ echo "=== 上传文档 ==="
 UPLOAD_DOC_RESPONSE=$(curl -s -X POST "$BASE_URL/kb/upload" \
   -H "Authorization: Bearer $UPLOAD_TOKEN" \
   -F "file=@$TEST_FILE" \
-  -F "file_name=测试文档.pdf" \
+  -F "file_name=test.txt" \
   -F "space_id=$SPACE_ID" \
   -F "sub_space_id=$SUBSPACE_ID" \
   -F "class_id=$CLASS_ID" \

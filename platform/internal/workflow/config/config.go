@@ -83,6 +83,9 @@ func bindEnvVars(v *viper.Viper) {
 	// 日志配置
 	v.BindEnv("log.level", "KBASE_LOG_LEVEL", "LOG_LEVEL")
 	v.BindEnv("log.db_log_level", "KBASE_DB_LOG_LEVEL", "DB_LOG_LEVEL")
+
+	// IAM配置
+	v.BindEnv("iam.url", "KBASE_IAM_URL", "IAM_URL")
 }
 
 func setDefaults(v *viper.Viper) {
@@ -97,4 +100,5 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("database.sslmode", "disable")
 	v.SetDefault("log.level", "info")
 	v.SetDefault("log.db_log_level", "warn")
+	v.SetDefault("iam.url", "http://localhost:8081")
 }

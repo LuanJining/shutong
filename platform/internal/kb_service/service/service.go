@@ -10,6 +10,7 @@ import (
 	"log"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -34,6 +35,14 @@ type DocumentService struct {
 }
 
 var errUnsupportedFileType = errors.New("unsupported file type for text extraction")
+
+type chunkSearchResult struct {
+	Document *model.Document
+	ChunkID  uint
+	Content  string
+	Score    float64
+	FileName string
+}
 
 type ChatDocumentStreamResult struct {
 	Stream  *ssestream.Stream[openai.ChatCompletionChunk]
@@ -261,6 +270,55 @@ func (s *DocumentService) prepareChatDocument(ctx context.Context, spaceID uint,
 		limit = 10
 	}
 
+	if len(req.DocumentIDs) > 0 || s.vectorClient == nil {
+		return s.prepareChatDocumentFromFiles(ctx, spaceID, question, req, limit)
+	}
+
+	chunks, err := s.searchChunks(ctx, spaceID, question, 0, 0, limit)
+	if err != nil {
+		if errors.Is(err, model.ErrVectorClientNotConfigured) {
+			return s.prepareChatDocumentFromFiles(ctx, spaceID, question, req, limit)
+		}
+		return "", nil, nil, err
+	}
+
+	if len(chunks) == 0 {
+		return "", nil, nil, model.ErrNoDocumentsAvailable
+	}
+
+	fileContents := make([]string, 0, len(chunks))
+	sources := make([]model.ChatDocumentSource, 0)
+	seenDocuments := make(map[uint]struct{})
+
+	for _, chunk := range chunks {
+		if chunk.Document == nil {
+			continue
+		}
+		content := strings.TrimSpace(chunk.Content)
+		if content == "" {
+			continue
+		}
+		formatted := fmt.Sprintf("标题: %s\n文件: %s\n相关片段:\n%s", chunk.Document.Title, chunk.FileName, content)
+		fileContents = append(fileContents, formatted)
+
+		if _, exists := seenDocuments[chunk.Document.ID]; !exists {
+			sources = append(sources, model.ChatDocumentSource{
+				DocumentID: chunk.Document.ID,
+				Title:      chunk.Document.Title,
+				FilePath:   chunk.Document.FilePath,
+			})
+			seenDocuments[chunk.Document.ID] = struct{}{}
+		}
+	}
+
+	if len(fileContents) == 0 {
+		return "", nil, nil, model.ErrNoDocumentsAvailable
+	}
+
+	return question, fileContents, sources, nil
+}
+
+func (s *DocumentService) prepareChatDocumentFromFiles(ctx context.Context, spaceID uint, question string, req *model.ChatDocumentRequest, limit int) (string, []string, []model.ChatDocumentSource, error) {
 	query := s.db.WithContext(ctx).
 		Where("space_id = ?", spaceID)
 
@@ -275,8 +333,6 @@ func (s *DocumentService) prepareChatDocument(ctx context.Context, spaceID uint,
 		Find(&documents).Error; err != nil {
 		return "", nil, nil, fmt.Errorf("failed to load documents: %w", err)
 	}
-
-	log.Println("documents", documents)
 
 	if len(documents) == 0 {
 		return "", nil, nil, model.ErrNoDocumentsAvailable
@@ -301,14 +357,10 @@ func (s *DocumentService) prepareChatDocument(ctx context.Context, spaceID uint,
 		return "", nil, nil, model.ErrNoDocumentsAvailable
 	}
 
-	log.Println("objectNames", objectNames)
-
 	fileContents, err := s.openaiClient.ExtractMinioFileContents(ctx, s.minioClient, objectNames)
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("failed to load file contents: %w", err)
 	}
-
-	log.Println("fileContents loaded", len(fileContents))
 
 	return question, fileContents, sources, nil
 }
@@ -438,7 +490,6 @@ func (s *DocumentService) GetHomepageDocuments(ctx context.Context) (*model.Home
 			if err := s.db.WithContext(ctx).
 				Where("sub_space_id = ? AND status IN ?", subSpace.ID, []model.DocumentStatus{
 					model.DocumentStatusPublished,
-					model.DocumentStatusPendingPublish,
 				}).
 				Order("created_at DESC").
 				Limit(6).
@@ -560,6 +611,173 @@ func (s *DocumentService) GetTagCloud(ctx context.Context, spaceID, subSpaceID u
 	}
 
 	return items, nil
+}
+
+// SearchKnowledge 基于向量的知识搜索
+func (s *DocumentService) SearchKnowledge(ctx context.Context, spaceID uint, req *model.KnowledgeSearchRequest) (*model.KnowledgeSearchResponse, error) {
+	if req == nil {
+		return nil, errors.New("search request is nil")
+	}
+
+	query := strings.TrimSpace(req.Query)
+	if query == "" {
+		return nil, fmt.Errorf("query is required")
+	}
+
+	limit := req.Limit
+	if limit <= 0 {
+		limit = 5
+	}
+	if limit > 20 {
+		limit = 20
+	}
+
+	chunks, err := s.searchChunks(ctx, spaceID, query, req.SubSpaceID, req.ClassID, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]model.KnowledgeSearchResult, 0, len(chunks))
+	for _, chunk := range chunks {
+		if chunk.Document == nil {
+			continue
+		}
+		content := strings.TrimSpace(chunk.Content)
+		if content == "" {
+			continue
+		}
+
+		results = append(results, model.KnowledgeSearchResult{
+			DocumentID: chunk.Document.ID,
+			ChunkID:    chunk.ChunkID,
+			Title:      chunk.Document.Title,
+			Content:    content,
+			Snippet:    buildSnippet(content, 200),
+			Score:      chunk.Score,
+			FileName:   chunk.FileName,
+		})
+	}
+
+	return &model.KnowledgeSearchResponse{
+		Items: results,
+	}, nil
+}
+
+func (s *DocumentService) searchChunks(ctx context.Context, spaceID uint, query string, subSpaceID, classID uint, limit int) ([]chunkSearchResult, error) {
+	if s.vectorClient == nil {
+		return nil, model.ErrVectorClientNotConfigured
+	}
+	vector := simpleEmbedding(query)
+	vector = ensureVectorSize(vector, s.vectorClient.VectorSize())
+
+	filter := &client.QdrantFilter{
+		Must: []client.QdrantCondition{
+			{
+				Key:   "space_id",
+				Match: client.QdrantMatch{Value: spaceID},
+			},
+		},
+	}
+	if subSpaceID > 0 {
+		filter.Must = append(filter.Must, client.QdrantCondition{
+			Key:   "sub_space_id",
+			Match: client.QdrantMatch{Value: subSpaceID},
+		})
+	}
+	if classID > 0 {
+		filter.Must = append(filter.Must, client.QdrantCondition{
+			Key:   "class_id",
+			Match: client.QdrantMatch{Value: classID},
+		})
+	}
+
+	results, err := s.vectorClient.SearchPoints(ctx, vector, limit, filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search vector database: %w", err)
+	}
+	if len(results) == 0 {
+		return []chunkSearchResult{}, nil
+	}
+
+	type rawChunk struct {
+		docID    uint
+		chunkID  uint
+		content  string
+		fileName string
+		score    float64
+	}
+
+	rawChunks := make([]rawChunk, 0, len(results))
+	docIDSet := make(map[uint]struct{})
+
+	for _, res := range results {
+		docID, ok := payloadUint(res.Payload["document_id"])
+		if !ok || docID == 0 {
+			continue
+		}
+		chunkID, ok := payloadUint(res.Payload["chunk_id"])
+		if !ok {
+			continue
+		}
+		content := payloadString(res.Payload["content"])
+		if strings.TrimSpace(content) == "" {
+			continue
+		}
+		fileName := payloadString(res.Payload["file_name"])
+
+		rawChunks = append(rawChunks, rawChunk{
+			docID:    docID,
+			chunkID:  chunkID,
+			content:  content,
+			fileName: fileName,
+			score:    res.Score,
+		})
+		docIDSet[docID] = struct{}{}
+	}
+
+	if len(rawChunks) == 0 {
+		return []chunkSearchResult{}, nil
+	}
+
+	docIDs := make([]uint, 0, len(docIDSet))
+	for id := range docIDSet {
+		docIDs = append(docIDs, id)
+	}
+
+	var documents []model.Document
+	if err := s.db.WithContext(ctx).
+		Where("id IN ?", docIDs).
+		Where("space_id = ?", spaceID).
+		Where("status IN ?", []model.DocumentStatus{
+			model.DocumentStatusPublished,
+			model.DocumentStatusPendingPublish,
+		}).
+		Find(&documents).Error; err != nil {
+		return nil, fmt.Errorf("failed to load documents: %w", err)
+	}
+
+	docMap := make(map[uint]*model.Document, len(documents))
+	for i := range documents {
+		doc := &documents[i]
+		docMap[doc.ID] = doc
+	}
+
+	resultsChunks := make([]chunkSearchResult, 0, len(rawChunks))
+	for _, chunk := range rawChunks {
+		doc, ok := docMap[chunk.docID]
+		if !ok {
+			continue
+		}
+		resultsChunks = append(resultsChunks, chunkSearchResult{
+			Document: doc,
+			ChunkID:  chunk.chunkID,
+			Content:  chunk.content,
+			Score:    chunk.score,
+			FileName: chunk.fileName,
+		})
+	}
+
+	return resultsChunks, nil
 }
 
 // ProcessDocument 执行文档OCR与向量化处理
@@ -764,10 +982,7 @@ func splitIntoChunks(text string, chunkSize int, overlap int) []string {
 	start := 0
 
 	for start < len(runes) {
-		end := start + chunkSize
-		if end > len(runes) {
-			end = len(runes)
-		}
+		end := min(start+chunkSize, len(runes))
 
 		chunk := strings.TrimSpace(string(runes[start:end]))
 		if chunk != "" {
@@ -778,10 +993,7 @@ func splitIntoChunks(text string, chunkSize int, overlap int) []string {
 			break
 		}
 
-		start = end - overlap
-		if start < 0 {
-			start = 0
-		}
+		start = max(end-overlap, 0)
 	}
 
 	return chunks
@@ -858,4 +1070,88 @@ func stripHTMLTags(input string) string {
 		}
 	}
 	return output.String()
+}
+
+func ensureVectorSize(vec []float64, size int) []float64 {
+	if size <= 0 {
+		return vec
+	}
+	if len(vec) == size {
+		return vec
+	}
+	result := make([]float64, size)
+	copyCount := len(vec)
+	if copyCount > size {
+		copyCount = size
+	}
+	copy(result, vec[:copyCount])
+	return result
+}
+
+func payloadUint(value any) (uint, bool) {
+	switch v := value.(type) {
+	case float64:
+		if v < 0 {
+			return 0, false
+		}
+		return uint(v + 0.5), true
+	case int:
+		if v < 0 {
+			return 0, false
+		}
+		return uint(v), true
+	case int32:
+		if v < 0 {
+			return 0, false
+		}
+		return uint(v), true
+	case int64:
+		if v < 0 {
+			return 0, false
+		}
+		return uint(v), true
+	case uint:
+		return v, true
+	case uint32:
+		return uint(v), true
+	case uint64:
+		return uint(v), true
+	case json.Number:
+		if i, err := v.Int64(); err == nil && i >= 0 {
+			return uint(i), true
+		}
+	case string:
+		if strings.TrimSpace(v) == "" {
+			return 0, false
+		}
+		if num, err := strconv.ParseUint(v, 10, 64); err == nil {
+			return uint(num), true
+		}
+	}
+	return 0, false
+}
+
+func payloadString(value any) string {
+	switch v := value.(type) {
+	case string:
+		return v
+	case []byte:
+		return string(v)
+	case fmt.Stringer:
+		return v.String()
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
+func buildSnippet(content string, maxRunes int) string {
+	trimmed := strings.TrimSpace(content)
+	if maxRunes <= 0 {
+		return trimmed
+	}
+	runes := []rune(trimmed)
+	if len(runes) <= maxRunes {
+		return trimmed
+	}
+	return strings.TrimSpace(string(runes[:maxRunes])) + "..."
 }

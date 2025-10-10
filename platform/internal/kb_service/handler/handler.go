@@ -315,6 +315,51 @@ func (h *DocumentHandler) GetTagCloud(c *gin.Context) {
 	})
 }
 
+// SearchKnowledge 知识检索
+func (h *DocumentHandler) SearchKnowledge(c *gin.Context) {
+	spaceIDStr := c.Param("id")
+	spaceID, err := strconv.ParseUint(spaceIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid space ID",
+		})
+		return
+	}
+
+	var req model.KnowledgeSearchRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid request body",
+		})
+		return
+	}
+
+	results, err := h.documentService.SearchKnowledge(c.Request.Context(), uint(spaceID), &req)
+	if err != nil {
+		switch {
+		case errors.Is(err, model.ErrVectorClientNotConfigured):
+			c.JSON(http.StatusInternalServerError, &model.APIResponse{
+				Code:    http.StatusInternalServerError,
+				Message: "Vector search not configured",
+			})
+		default:
+			c.JSON(http.StatusInternalServerError, &model.APIResponse{
+				Code:    http.StatusInternalServerError,
+				Message: "Failed to search knowledge: " + err.Error(),
+			})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, &model.APIResponse{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    results,
+	})
+}
+
 // PreviewDocument 预览文档（支持浏览器内嵌显示）
 func (h *DocumentHandler) PreviewDocument(c *gin.Context) {
 	documentIDStr := c.Param("id")
