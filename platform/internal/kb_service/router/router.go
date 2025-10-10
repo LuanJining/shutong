@@ -40,21 +40,16 @@ func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, workfl
 		documents := api.Group("/documents")
 		{
 			documents.POST("/upload", middleware.FetchUserFromHeader(db), documentHandler.UploadDocument)
-			// 文档预览和下载
 			documents.GET("/:id/preview", documentHandler.PreviewDocument)
-
-			documents.DELETE("/:id", documentHandler.DeleteDocument)
-
-			documents.POST("/:id/submit", documentHandler.SubmitDocument)
-
 			documents.GET("/:id/info", documentHandler.GetDocument)
-			documents.GET(":id/space", documentHandler.GetDocumentsBySpaceId)
+			documents.GET("/:id/space", documentHandler.GetDocumentsBySpaceId)
+			documents.DELETE("/:id", middleware.FetchUserFromHeader(db), documentHandler.DeleteDocument)
 
-			documents.POST("/:id/approve", documentHandler.ApproveDocument)
-			documents.POST("/:id/publish", documentHandler.PublishDocument)
+			documents.POST("/:id/publish", middleware.FetchUserFromHeader(db), documentHandler.PublishDocument)
 
-			documents.POST("/:id/chat", documentHandler.ChatDocument)              // space_id
-			documents.POST("/:id/chat/stream", documentHandler.ChatDocumentStream) // space_id
+			// 文档对话
+			documents.POST("/:id/chat", documentHandler.ChatDocument)
+			documents.POST("/:id/chat/stream", documentHandler.ChatDocumentStream)
 		}
 	}
 

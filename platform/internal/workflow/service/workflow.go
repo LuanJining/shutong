@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"log"
 
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/client"
 	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
@@ -98,6 +99,13 @@ func (s *WorkflowService) StartWorkflow(req *model.StartWorkflowRequest, user *m
 		return nil, err
 	}
 
+	log.Println("currentStep", currentStep)
+	log.Println("workflow", workflow)
+	log.Println("user", user)
+	log.Println("workflow.SpaceID", workflow.SpaceID)
+	log.Println("currentStep.StepRole", currentStep.StepRole)
+	log.Println("user.ID", user.ID)
+
 	// 创建任务 先通过iam获取有权限的user列表
 	userList, err := s.iamClient.GetSpaceMemebersByRole(user, workflow.SpaceID, currentStep.StepRole)
 	if err != nil {
@@ -106,6 +114,8 @@ func (s *WorkflowService) StartWorkflow(req *model.StartWorkflowRequest, user *m
 
 	tasks := make([]model.Task, len(userList))
 	for i, approver := range userList {
+		log.Println("approver", approver)
+		log.Println("approver.ID", approver.ID)
 		tasks[i] = model.Task{
 			WorkflowID:       req.WorkflowID,
 			StepID:           currentStep.ID,
@@ -287,11 +297,11 @@ func (s *WorkflowService) ApproveTask(req *model.ApproveTaskRequest, user *model
 				tx.Rollback()
 				return nil, err
 			}
+
 			// 更新资源状态
 			if task.Workflow.ResourceType == "document" {
 				doc := &model.Document{}
-				err := tx.Where("id = ?", task.Workflow.ResourceID).First(doc).Error
-				if err != nil {
+				if err := tx.Where("id = ?", task.Workflow.ResourceID).First(doc).Error; err != nil {
 					tx.Rollback()
 					return nil, err
 				}
@@ -323,6 +333,20 @@ func (s *WorkflowService) ApproveTask(req *model.ApproveTaskRequest, user *model
 		if err := tx.Save(&task.Workflow).Error; err != nil {
 			tx.Rollback()
 			return nil, err
+		}
+
+		// 更新资源状态为失败
+		if task.Workflow.ResourceType == "document" {
+			doc := &model.Document{}
+			if err := tx.Where("id = ?", task.Workflow.ResourceID).First(doc).Error; err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+			doc.Status = model.DocumentStatusFailed
+			if err := tx.Save(doc).Error; err != nil {
+				tx.Rollback()
+				return nil, err
+			}
 		}
 	}
 

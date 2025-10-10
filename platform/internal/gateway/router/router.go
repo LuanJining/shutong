@@ -48,6 +48,7 @@ func Setup(cfg *configs.Config) *gin.Engine {
 			users.Use(gw_middleware.AuthRequired(iamHandler))
 			{
 				users.GET("", iamHandler.ProxyToIamClient)
+				users.GET("/by-role/:rid/space/:sid", iamHandler.ProxyToIamClient) // 根据角色和空间获取用户
 				users.GET("/:id", iamHandler.ProxyToIamClient)
 				users.POST("", iamHandler.ProxyToIamClient)
 				users.POST("/:id/roles", iamHandler.ProxyToIamClient)
@@ -88,38 +89,33 @@ func Setup(cfg *configs.Config) *gin.Engine {
 				spaces.GET("/:id/members", iamHandler.ProxyToIamClient)
 				spaces.POST("/:id/members", iamHandler.ProxyToIamClient)
 				spaces.DELETE("/:id/members/:user_id", iamHandler.ProxyToIamClient)
+				spaces.PUT("/:id/members/:user_id", iamHandler.ProxyToIamClient)
+				spaces.GET("/:id/members/role/:role", iamHandler.ProxyToIamClient) // 根据角色获取成员
+
+				spaces.POST("/subspaces", iamHandler.ProxyToIamClient)
+
+				spaces.POST("/classes", iamHandler.ProxyToIamClient)
+
 			}
+
 		}
 
 		workflow := api.Group("/workflow")
 		workflow.Use(gw_middleware.AuthRequired(iamHandler))
 		{
-			// 工作流定义管理
-			workflow.GET("", workflowHandler.ProxyToWorkflowClient)
-			workflow.GET("/workflows/:id", workflowHandler.ProxyToWorkflowClient)
-			workflow.POST("", workflowHandler.ProxyToWorkflowClient)
-			workflow.PUT("/:id", workflowHandler.ProxyToWorkflowClient)
-			workflow.DELETE("/:id", workflowHandler.ProxyToWorkflowClient)
+			// 工作流管理
+			workflows := workflow.Group("/workflows")
+			{
+				workflows.POST("", workflowHandler.ProxyToWorkflowClient)           // 创建工作流
+				workflows.POST("/:id/start", workflowHandler.ProxyToWorkflowClient) // 启动工作流
+			}
 
-			// 工作流步骤管理
-			workflow.POST("/:id/steps", workflowHandler.ProxyToWorkflowClient)
-			workflow.PUT("/:id/steps/:step_id", workflowHandler.ProxyToWorkflowClient)
-			workflow.DELETE("/:id/steps/:step_id", workflowHandler.ProxyToWorkflowClient)
-
-			// 工作流实例管理
-			workflow.POST("/:id/instances", workflowHandler.ProxyToWorkflowClient)
-			workflow.GET("/instances", workflowHandler.ProxyToWorkflowClient)
-			workflow.GET("/instances/:instance_id", workflowHandler.ProxyToWorkflowClient)
-			workflow.PUT("/instances/:instance_id/cancel", workflowHandler.ProxyToWorkflowClient)
-			workflow.GET("/instances/user", workflowHandler.ProxyToWorkflowClient)
 			// 任务管理
-			workflow.GET("/tasks", workflowHandler.ProxyToWorkflowClient)
-			workflow.POST("/tasks/:task_id/approve", workflowHandler.ProxyToWorkflowClient)
-			workflow.PUT("/tasks/:task_id/reject", workflowHandler.ProxyToWorkflowClient)
-			workflow.PUT("/tasks/:task_id/transfer", workflowHandler.ProxyToWorkflowClient)
-
-			// 状态查询
-			workflow.GET("/instances/:instance_id/status", workflowHandler.ProxyToWorkflowClient)
+			tasks := workflow.Group("/tasks")
+			{
+				tasks.GET("", workflowHandler.ProxyToWorkflowClient)              // 获取任务列表
+				tasks.POST("/:id/approve", workflowHandler.ProxyToWorkflowClient) // 审批任务
+			}
 		}
 
 		kb := api.Group("/kb")
@@ -127,11 +123,16 @@ func Setup(cfg *configs.Config) *gin.Engine {
 		{
 			kb.POST("/upload", kbHandler.ProxyToKbClient)
 			kb.GET("/:id/preview", kbHandler.ProxyToKbClient)
-			kb.GET("/:id/download", kbHandler.ProxyToKbClient)
-
 			kb.GET("/:id/info", kbHandler.ProxyToKbClient)
 			kb.GET("/:id/space", kbHandler.ProxyToKbClient)
+			kb.DELETE("/:id", kbHandler.ProxyToKbClient)
 
+			// 文档流程相关
+			kb.POST("/:id/submit", kbHandler.ProxyToKbClient)
+			kb.POST("/:id/approve", kbHandler.ProxyToKbClient)
+			kb.POST("/:id/publish", kbHandler.ProxyToKbClient)
+
+			// 文档对话
 			kb.POST("/:id/chat", kbHandler.ProxyToKbClient)
 			kb.POST("/:id/chat/stream", kbHandler.ProxyToKbClient)
 		}

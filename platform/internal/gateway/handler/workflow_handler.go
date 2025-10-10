@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/configs"
 	"github.com/gin-gonic/gin"
 )
@@ -53,6 +54,12 @@ func (h *WorkflowHandler) ProxyToWorkflowClient(c *gin.Context) {
 		for _, value := range values {
 			req.Header.Add(key, value)
 		}
+	}
+
+	user, _ := c.Get("user")
+
+	if user != nil {
+		req.Header.Add("X-User-ID", fmt.Sprintf("%d", user.(*model.User).ID))
 	}
 
 	// 发送请求

@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -37,6 +39,9 @@ func (c *WorkflowClient) CreateWorkflow(ctx context.Context, workflow *model.Wor
 	if err != nil {
 		return 0, fmt.Errorf("failed to marshal workflow: %w", err)
 	}
+	// 调试日志
+	log.Printf("Sending to workflow service: %s", string(jsonData))
+
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", targetURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return 0, fmt.Errorf("failed to create request: %w", err)
@@ -51,12 +56,21 @@ func (c *WorkflowClient) CreateWorkflow(ctx context.Context, workflow *model.Wor
 
 	// 检查HTTP状态码
 	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		log.Printf("Workflow service returned status %d, body: %s", resp.StatusCode, string(bodyBytes))
 		return 0, fmt.Errorf("workflow service returned status %d", resp.StatusCode)
 	}
 
+	// 读取响应体用于调试
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, fmt.Errorf("failed to read response body: %w", err)
+	}
+	log.Printf("Workflow service response: %s", string(bodyBytes))
+
 	// 解析响应
 	var response model.APIResponse
-	err = json.NewDecoder(resp.Body).Decode(&response)
+	err = json.Unmarshal(bodyBytes, &response)
 	if err != nil {
 		return 0, fmt.Errorf("failed to decode response: %w", err)
 	}

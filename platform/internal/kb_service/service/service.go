@@ -301,10 +301,15 @@ func (s *DocumentService) CreateWorkflow(ctx context.Context, document *model.Do
 		Name:         "文档发布审批流程",
 		Description:  "用于文档发布的审批流程",
 		SpaceID:      document.SpaceID,
+		Status:       model.WorkflowStatusProcessing,
 		Steps:        []model.Step{step},
 		ResourceType: "document",
 		ResourceID:   document.ID,
 	}
+
+	// 调试日志
+	log.Printf("Creating workflow: %+v", workflow)
+	log.Printf("Steps: %+v", workflow.Steps)
 
 	workflowID, err := s.workflowClient.CreateWorkflow(ctx, &workflow, document.CreatedBy)
 	if err != nil {
