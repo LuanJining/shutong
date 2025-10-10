@@ -307,10 +307,6 @@ func (s *DocumentService) CreateWorkflow(ctx context.Context, document *model.Do
 		ResourceID:   document.ID,
 	}
 
-	// 调试日志
-	log.Printf("Creating workflow: %+v", workflow)
-	log.Printf("Steps: %+v", workflow.Steps)
-
 	workflowID, err := s.workflowClient.CreateWorkflow(ctx, &workflow, document.CreatedBy)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create workflow: %w", err)
