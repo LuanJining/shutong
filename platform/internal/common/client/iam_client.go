@@ -46,12 +46,16 @@ func (c *IamClient) GetSpaceMemebersByRole(user *model.User, spaceID uint, role 
 	}
 
 	var response struct {
-		Code    int          `json:"code"`
-		Message string       `json:"message"`
-		Data    []model.User `json:"data"`
+		Code    int                 `json:"code"`
+		Message string              `json:"message"`
+		Data    []model.SpaceMember `json:"data"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return nil, errors.New("获取空间成员失败: " + err.Error())
 	}
-	return response.Data, nil
+	var users []model.User
+	for _, member := range response.Data {
+		users = append(users, member.User)
+	}
+	return users, nil
 }

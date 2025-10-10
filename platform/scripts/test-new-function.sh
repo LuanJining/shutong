@@ -171,10 +171,11 @@ echo "=== 审核员审批任务 ==="
 APPROVE_RESPONSE=$(curl -s -X POST "$BASE_URL/workflow/tasks/$TASK_ID/approve" \
   -H "Authorization: Bearer $AUDIT_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "status": "approved",
-    "comment": "审批通过"
-  }')
+  -d "{
+    \"task_id\": $TASK_ID,
+    \"status\": \"approved\",
+    \"comment\": \"审批通过\"
+  }")
 echo "$APPROVE_RESPONSE" | jq .
 
 # 上传文档的账号查看文档状态是否为待发布（审批完成）
