@@ -40,9 +40,12 @@ func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, workfl
 		documents := api.Group("/documents")
 		{
 			documents.POST("/upload", middleware.FetchUserFromHeader(db), documentHandler.UploadDocument)
+
 			documents.GET("/:id/preview", documentHandler.PreviewDocument)
 			documents.GET("/:id/info", documentHandler.GetDocument)
 			documents.GET("/:id/space", documentHandler.GetDocumentsBySpaceId)
+			documents.GET("/homepage", documentHandler.GetHomepageDocuments) // 展示5个知识库，3个二级知识库，每个二级知识库展示6个文档
+
 			documents.DELETE("/:id", middleware.FetchUserFromHeader(db), documentHandler.DeleteDocument)
 
 			documents.POST("/:id/publish", middleware.FetchUserFromHeader(db), documentHandler.PublishDocument)

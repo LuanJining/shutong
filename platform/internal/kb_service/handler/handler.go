@@ -679,3 +679,20 @@ func (h *DocumentHandler) ApproveDocument(c *gin.Context) {
 	}
 	log.Printf("documentID: %d", documentID)
 }
+
+func (h *DocumentHandler) GetHomepageDocuments(c *gin.Context) {
+	documents, err := h.documentService.GetHomepageDocuments(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, &model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to get homepage documents: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, &model.APIResponse{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    documents,
+	})
+}

@@ -125,6 +125,7 @@ func Setup(cfg *configs.Config) *gin.Engine {
 			kb.GET("/:id/preview", kbHandler.ProxyToKbClient)
 			kb.GET("/:id/info", kbHandler.ProxyToKbClient)
 			kb.GET("/:id/space", kbHandler.ProxyToKbClient)
+			kb.GET("/homepage", kbHandler.ProxyToKbClient)
 			kb.DELETE("/:id", kbHandler.ProxyToKbClient)
 
 			// 文档流程相关

@@ -365,3 +365,88 @@ func (s *DocumentService) DeleteDocument(ctx context.Context, documentID uint) e
 	}
 	return nil
 }
+
+// GetHomepageDocuments 获取首页展示的文档
+// 返回5个知识库，每个知识库包含3个二级知识库，每个二级知识库包含6个文档
+func (s *DocumentService) GetHomepageDocuments(ctx context.Context) (*model.HomepageResponse, error) {
+	// 获取5个知识库（按创建时间倒序）
+	var spaces []model.Space
+	if err := s.db.WithContext(ctx).
+		Where("status = ?", 1).
+		Order("created_at DESC").
+		Limit(5).
+		Find(&spaces).Error; err != nil {
+		return nil, fmt.Errorf("failed to get spaces: %w", err)
+	}
+
+	response := &model.HomepageResponse{
+		Spaces: make([]model.HomepageSpace, 0, len(spaces)),
+	}
+
+	// 遍历每个知识库
+	for _, space := range spaces {
+		homepageSpace := model.HomepageSpace{
+			ID:          space.ID,
+			Name:        space.Name,
+			Description: space.Description,
+			SubSpaces:   make([]model.HomepageSubSpace, 0, 3),
+		}
+
+		// 获取该知识库下的3个二级知识库
+		var subSpaces []model.SubSpace
+		if err := s.db.WithContext(ctx).
+			Where("space_id = ? AND status = ?", space.ID, 1).
+			Order("created_at DESC").
+			Limit(3).
+			Find(&subSpaces).Error; err != nil {
+			log.Printf("failed to get subspaces for space %d: %v", space.ID, err)
+			continue
+		}
+
+		// 遍历每个二级知识库
+		for _, subSpace := range subSpaces {
+			homepageSubSpace := model.HomepageSubSpace{
+				ID:          subSpace.ID,
+				Name:        subSpace.Name,
+				Description: subSpace.Description,
+				Documents:   make([]model.HomepageDocument, 0, 6),
+			}
+
+			// 获取该二级知识库下的6个文档（只获取已发布的文档）
+			var documents []model.Document
+			if err := s.db.WithContext(ctx).
+				Where("sub_space_id = ? AND status IN ?", subSpace.ID, []model.DocumentStatus{
+					model.DocumentStatusPublished,
+					model.DocumentStatusPendingPublish,
+				}).
+				Order("created_at DESC").
+				Limit(6).
+				Find(&documents).Error; err != nil {
+				log.Printf("failed to get documents for subspace %d: %v", subSpace.ID, err)
+				continue
+			}
+
+			// 将文档转换为首页文档结构
+			for _, doc := range documents {
+				homepageSubSpace.Documents = append(homepageSubSpace.Documents, model.HomepageDocument{
+					ID:              doc.ID,
+					Title:           doc.Title,
+					FileName:        doc.FileName,
+					FileSize:        doc.FileSize,
+					FileType:        doc.FileType,
+					Status:          doc.Status,
+					CreatorNickName: doc.CreatorNickName,
+					Summary:         doc.Summary,
+					CreatedAt:       doc.CreatedAt,
+					UpdatedAt:       doc.UpdatedAt,
+				})
+			}
+
+			homepageSpace.SubSpaces = append(homepageSpace.SubSpaces, homepageSubSpace)
+		}
+
+		response.Spaces = append(response.Spaces, homepageSpace)
+	}
+
+	return response, nil
+}

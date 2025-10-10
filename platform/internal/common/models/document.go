@@ -122,3 +122,38 @@ const (
 	UseTypeViewable   UseType = "viewable"
 	UseTypeApplicable UseType = "applicable"
 )
+
+// HomepageResponse 首页响应结构
+type HomepageResponse struct {
+	Spaces []HomepageSpace `json:"spaces"`
+}
+
+// HomepageSpace 首页知识库结构
+type HomepageSpace struct {
+	ID          uint               `json:"id"`
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+	SubSpaces   []HomepageSubSpace `json:"sub_spaces"`
+}
+
+// HomepageSubSpace 首页二级知识库结构
+type HomepageSubSpace struct {
+	ID          uint               `json:"id"`
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+	Documents   []HomepageDocument `json:"documents"`
+}
+
+// HomepageDocument 首页文档结构
+type HomepageDocument struct {
+	ID              uint           `json:"id"`
+	Title           string         `json:"title"`
+	FileName        string         `json:"file_name"`
+	FileSize        int64          `json:"file_size"`
+	FileType        string         `json:"file_type"`
+	Status          DocumentStatus `json:"status"`
+	CreatorNickName string         `json:"creator_nick_name"`
+	Summary         string         `json:"summary"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
+}
