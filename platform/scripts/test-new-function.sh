@@ -1,5 +1,5 @@
 BASE_URL="http://localhost:8080/api/v1"
-TEST_FILE="/Users/gideonzy/Downloads/evaluation_report2.pdf"
+TEST_FILE="./test.txt"
 
 # 登录管理员账户
 LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/iam/auth/login" \

@@ -39,6 +39,7 @@ func main() {
 	// KB Service 需要迁移的模型
 	db, err := database.Init(dbCfg, logCfg,
 		&model.Document{},
+		&model.DocumentChunk{},
 	)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
@@ -51,9 +52,18 @@ func main() {
 	workflowClient := client.NewWorkflowClient(&cfg.Workflow)
 	// 初始化OpenAI客户端
 	openAIClient := client.NewOpenAIClient(&cfg.OpenAI)
+	// 初始化 PaddleOCR
+	ocrClient := client.NewPaddleOCRClient(&cfg.OCR)
+	// 初始化 Qdrant 客户端
+	vectorClient := client.NewQdrantClient(&cfg.Vector)
+	if vectorClient != nil {
+		if err := vectorClient.EnsureCollection(context.Background()); err != nil {
+			log.Fatalf("Failed to ensure Qdrant collection: %v", err)
+		}
+	}
 
 	// 初始化路由
-	r := router.Setup(cfg, db, minioClient, workflowClient, openAIClient)
+	r := router.Setup(cfg, db, minioClient, workflowClient, openAIClient, ocrClient, vectorClient)
 
 	// 启动服务器
 	srv := server.New(&cfg.Server, r)

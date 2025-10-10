@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, workflowClient *client.WorkflowClient, openaiClient *client.OpenAIClient) *gin.Engine {
+func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, workflowClient *client.WorkflowClient, openaiClient *client.OpenAIClient, ocrClient *client.PaddleOCRClient, vectorClient *client.QdrantClient) *gin.Engine {
 	// 设置Gin模式
 	gin.SetMode(cfg.Gin.Mode)
 
@@ -24,7 +24,7 @@ func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, workfl
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
 
 	// 创建服务层
-	documentService := service.NewDocumentService(db, minioClient, workflowClient, openaiClient)
+	documentService := service.NewDocumentService(db, minioClient, workflowClient, openaiClient, ocrClient, vectorClient)
 
 	// 创建处理器
 	documentHandler := handler.NewDocumentHandler(documentService)
@@ -40,6 +40,7 @@ func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, workfl
 		documents := api.Group("/documents")
 		{
 			documents.POST("/upload", middleware.FetchUserFromHeader(db), documentHandler.UploadDocument)
+			documents.GET("/tag-cloud", documentHandler.GetTagCloud)
 
 			documents.GET("/:id/preview", documentHandler.PreviewDocument)
 			documents.GET("/:id/info", documentHandler.GetDocument)

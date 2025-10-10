@@ -19,6 +19,8 @@ type Config struct {
 	Gin      commonConfig.GinConfig      `mapstructure:"gin"`
 	Log      commonConfig.LogConfig      `mapstructure:"log"`
 	OpenAI   OpenAIConfig                `mapstructure:"openai"`
+	OCR      PaddleOCRConfig             `mapstructure:"ocr"`
+	Vector   QdrantConfig                `mapstructure:"vector"`
 }
 
 // IamConfig IAM 服务配置（KB Service 特有）
@@ -44,6 +46,23 @@ type MinioConfig struct {
 type OpenAIConfig struct {
 	ApiKey string `mapstructure:"api_key"`
 	Url    string `mapstructure:"url"`
+}
+
+// PaddleOCRConfig PaddleOCR 服务配置
+type PaddleOCRConfig struct {
+	BaseURL        string `mapstructure:"base_url"`
+	TimeoutSeconds int    `mapstructure:"timeout_seconds"`
+	Language       string `mapstructure:"language"`
+}
+
+// QdrantConfig Qdrant 向量数据库配置
+type QdrantConfig struct {
+	BaseURL        string `mapstructure:"base_url"`
+	APIKey         string `mapstructure:"api_key"`
+	Collection     string `mapstructure:"collection"`
+	VectorSize     int    `mapstructure:"vector_size"`
+	Distance       string `mapstructure:"distance"`
+	TimeoutSeconds int    `mapstructure:"timeout_seconds"`
 }
 
 func Load() (*Config, error) {
@@ -126,6 +145,19 @@ func bindEnvVars(v *viper.Viper) {
 	v.BindEnv("openai.api_key", "KBASE_OPENAI_API_KEY", "OPENAI_API_KEY")
 	v.BindEnv("openai.url", "KBASE_OPENAI_URL", "OPENAI_URL")
 
+	// OCR配置
+	v.BindEnv("ocr.base_url", "KBASE_OCR_BASE_URL", "OCR_BASE_URL")
+	v.BindEnv("ocr.timeout_seconds", "KBASE_OCR_TIMEOUT_SECONDS", "OCR_TIMEOUT_SECONDS")
+	v.BindEnv("ocr.language", "KBASE_OCR_LANGUAGE", "OCR_LANGUAGE")
+
+	// 向量数据库配置
+	v.BindEnv("vector.base_url", "KBASE_VECTOR_BASE_URL", "VECTOR_BASE_URL")
+	v.BindEnv("vector.api_key", "KBASE_VECTOR_API_KEY", "VECTOR_API_KEY")
+	v.BindEnv("vector.collection", "KBASE_VECTOR_COLLECTION", "VECTOR_COLLECTION")
+	v.BindEnv("vector.vector_size", "KBASE_VECTOR_SIZE", "VECTOR_SIZE")
+	v.BindEnv("vector.distance", "KBASE_VECTOR_DISTANCE", "VECTOR_DISTANCE")
+	v.BindEnv("vector.timeout_seconds", "KBASE_VECTOR_TIMEOUT_SECONDS", "VECTOR_TIMEOUT_SECONDS")
+
 	// Workflow配置
 	v.BindEnv("workflow.url", "KBASE_WORKFLOW_URL", "WORKFLOW_URL")
 
@@ -158,4 +190,17 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("log.db_log_level", "warn")
 	v.SetDefault("openai.api_key", "")
 	v.SetDefault("openai.url", "https://api.deepseek.com/v1")
+
+	// 默认 OCR 配置（可选）
+	v.SetDefault("ocr.base_url", "")
+	v.SetDefault("ocr.timeout_seconds", 30)
+	v.SetDefault("ocr.language", "ch")
+
+	// 默认向量数据库配置
+	v.SetDefault("vector.base_url", "")
+	v.SetDefault("vector.api_key", "")
+	v.SetDefault("vector.collection", "kb_documents")
+	v.SetDefault("vector.vector_size", 7)
+	v.SetDefault("vector.distance", "Cosine")
+	v.SetDefault("vector.timeout_seconds", 30)
 }

@@ -157,3 +157,14 @@ type HomepageDocument struct {
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
 }
+
+// TagCloudItem 标签云项
+type TagCloudItem struct {
+	Tag   string `json:"tag"`
+	Count int    `json:"count"`
+}
+
+// TagCloudResponse 标签云响应
+type TagCloudResponse struct {
+	Items []TagCloudItem `json:"items"`
+}

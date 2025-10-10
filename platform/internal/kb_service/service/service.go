@@ -1,15 +1,20 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
+	"unicode"
 
+	"github.com/google/uuid"
 	openai "github.com/openai/openai-go/v2"
 	"github.com/openai/openai-go/v2/packages/ssestream"
 
@@ -24,7 +29,11 @@ type DocumentService struct {
 	minioClient    *client.S3Client
 	workflowClient *client.WorkflowClient
 	openaiClient   *client.OpenAIClient
+	ocrClient      *client.PaddleOCRClient
+	vectorClient   *client.QdrantClient
 }
+
+var errUnsupportedFileType = errors.New("unsupported file type for text extraction")
 
 type ChatDocumentStreamResult struct {
 	Stream  *ssestream.Stream[openai.ChatCompletionChunk]
@@ -32,12 +41,21 @@ type ChatDocumentStreamResult struct {
 }
 
 // NewDocumentService 创建文档服务
-func NewDocumentService(db *gorm.DB, minioClient *client.S3Client, workflowClient *client.WorkflowClient, openaiClient *client.OpenAIClient) *DocumentService {
+func NewDocumentService(
+	db *gorm.DB,
+	minioClient *client.S3Client,
+	workflowClient *client.WorkflowClient,
+	openaiClient *client.OpenAIClient,
+	ocrClient *client.PaddleOCRClient,
+	vectorClient *client.QdrantClient,
+) *DocumentService {
 	return &DocumentService{
 		db:             db,
 		minioClient:    minioClient,
 		workflowClient: workflowClient,
 		openaiClient:   openaiClient,
+		ocrClient:      ocrClient,
+		vectorClient:   vectorClient,
 	}
 }
 
@@ -108,6 +126,13 @@ func (s *DocumentService) UploadDocument(ctx context.Context, req *model.UploadD
 		s.db.Model(document).Update("status", model.DocumentStatusPendingPublish)
 		document.Status = model.DocumentStatusPendingPublish
 	}
+
+	// 异步处理文档（OCR/向量化）
+	go func(docID uint) {
+		if err := s.ProcessDocument(context.Background(), docID); err != nil {
+			log.Printf("failed to process document %d: %v", docID, err)
+		}
+	}(document.ID)
 
 	return document, nil
 }
@@ -445,4 +470,392 @@ func (s *DocumentService) GetHomepageDocuments(ctx context.Context) (*model.Home
 	}
 
 	return response, nil
+}
+
+// GetTagCloud 聚合标签云
+func (s *DocumentService) GetTagCloud(ctx context.Context, spaceID, subSpaceID uint, limit int) ([]model.TagCloudItem, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+
+	query := s.db.WithContext(ctx).
+		Model(&model.Document{}).
+		Where("tags IS NOT NULL AND tags <> ''").
+		Where("status IN ?", []model.DocumentStatus{
+			model.DocumentStatusPublished,
+			model.DocumentStatusPendingPublish,
+		})
+
+	if spaceID > 0 {
+		query = query.Where("space_id = ?", spaceID)
+	}
+
+	if subSpaceID > 0 {
+		query = query.Where("sub_space_id = ?", subSpaceID)
+	}
+
+	var tagStrings []string
+	if err := query.Pluck("tags", &tagStrings).Error; err != nil {
+		return nil, fmt.Errorf("failed to fetch document tags: %w", err)
+	}
+
+	if len(tagStrings) == 0 {
+		return []model.TagCloudItem{}, nil
+	}
+
+	tagCounts := make(map[string]int)
+	for _, raw := range tagStrings {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+
+		tags := make([]string, 0)
+		if err := json.Unmarshal([]byte(raw), &tags); err != nil {
+			// 尝试以逗号分隔的字符串解析
+			for _, tag := range strings.Split(raw, ",") {
+				tag = strings.TrimSpace(tag)
+				tag = strings.Trim(tag, "\"'")
+				if tag != "" {
+					tags = append(tags, tag)
+				}
+			}
+		}
+
+		if len(tags) == 0 {
+			continue
+		}
+
+		seen := make(map[string]struct{}, len(tags))
+		for _, tag := range tags {
+			tag = strings.TrimSpace(tag)
+			if tag == "" {
+				continue
+			}
+			if _, exists := seen[tag]; exists {
+				continue
+			}
+			seen[tag] = struct{}{}
+			tagCounts[tag]++
+		}
+	}
+
+	items := make([]model.TagCloudItem, 0, len(tagCounts))
+	for tag, count := range tagCounts {
+		items = append(items, model.TagCloudItem{
+			Tag:   tag,
+			Count: count,
+		})
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Count == items[j].Count {
+			return items[i].Tag < items[j].Tag
+		}
+		return items[i].Count > items[j].Count
+	})
+
+	if limit < len(items) {
+		items = items[:limit]
+	}
+
+	return items, nil
+}
+
+// ProcessDocument 执行文档OCR与向量化处理
+func (s *DocumentService) ProcessDocument(ctx context.Context, documentID uint) error {
+	if s.minioClient == nil {
+		return errors.New("minio client is not configured")
+	}
+
+	var document model.Document
+	if err := s.db.WithContext(ctx).First(&document, documentID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return fmt.Errorf("document %d not found", documentID)
+		}
+		return fmt.Errorf("failed to load document %d: %w", documentID, err)
+	}
+
+	reader, err := s.minioClient.DownloadFile(ctx, document.FilePath)
+	if err != nil {
+		s.markDocumentProcessingError(document.ID, fmt.Errorf("failed to download file: %w", err))
+		return err
+	}
+	defer reader.Close()
+
+	fileBytes, err := io.ReadAll(reader)
+	if err != nil {
+		s.markDocumentProcessingError(document.ID, fmt.Errorf("failed to read file: %w", err))
+		return err
+	}
+
+	text, err := extractPlainText(document.FileType, fileBytes)
+	if err != nil {
+		if errors.Is(err, errUnsupportedFileType) {
+			if s.ocrClient == nil {
+				err = fmt.Errorf("unsupported file type %s and OCR client not configured", document.FileType)
+				s.markDocumentProcessingError(document.ID, err)
+				return err
+			}
+			text, err = s.ocrClient.Recognize(ctx, document.FileName, fileBytes)
+			if err != nil {
+				err = fmt.Errorf("ocr recognition failed: %w", err)
+				s.markDocumentProcessingError(document.ID, err)
+				return err
+			}
+		} else {
+			s.markDocumentProcessingError(document.ID, err)
+			return err
+		}
+	}
+
+	if strings.TrimSpace(text) == "" {
+		err = errors.New("empty text extracted from document")
+		s.markDocumentProcessingError(document.ID, err)
+		return err
+	}
+
+	chunks := splitIntoChunks(text, 800, 120)
+
+	if err := s.storeChunks(ctx, &document, chunks); err != nil {
+		s.markDocumentProcessingError(document.ID, err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *DocumentService) storeChunks(ctx context.Context, document *model.Document, chunks []string) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("document_id = ?", document.ID).Delete(&model.DocumentChunk{}).Error; err != nil {
+			return fmt.Errorf("failed to clear existing chunks: %w", err)
+		}
+
+		metadataJSON, err := json.Marshal(map[string]any{
+			"space_id":     document.SpaceID,
+			"sub_space_id": document.SubSpaceID,
+			"class_id":     document.ClassID,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to marshal chunk metadata: %w", err)
+		}
+
+		points := make([]client.QdrantPoint, 0, len(chunks))
+		createdChunks := 0
+		for idx, content := range chunks {
+			if strings.TrimSpace(content) == "" {
+				continue
+			}
+
+			embeddingVector := simpleEmbedding(content)
+			vectorID := uuid.NewString()
+
+			chunk := model.DocumentChunk{
+				DocumentID: document.ID,
+				Index:      idx,
+				Content:    content,
+				TokenCount: countTokens(content),
+				Metadata:   string(metadataJSON),
+				VectorID:   vectorID,
+			}
+
+			if err := tx.Create(&chunk).Error; err != nil {
+				return fmt.Errorf("failed to create chunk: %w", err)
+			}
+			createdChunks++
+
+			if s.vectorClient != nil {
+				payload := map[string]any{
+					"document_id":  document.ID,
+					"chunk_id":     chunk.ID,
+					"space_id":     document.SpaceID,
+					"sub_space_id": document.SubSpaceID,
+					"class_id":     document.ClassID,
+					"created_at":   chunk.CreatedAt,
+					"title":        document.Title,
+					"file_name":    document.FileName,
+					"content":      content,
+				}
+
+				points = append(points, client.QdrantPoint{
+					ID:      vectorID,
+					Vector:  embeddingVector,
+					Payload: payload,
+				})
+			}
+		}
+
+		if s.vectorClient != nil && len(points) > 0 {
+			if err := s.vectorClient.UpsertPoints(ctx, points); err != nil {
+				return fmt.Errorf("failed to upsert document vectors: %w", err)
+			}
+		}
+
+		processedAt := time.Now()
+		updateData := map[string]any{
+			"processed_at": &processedAt,
+			"parse_error":  "",
+			"vector_count": createdChunks,
+		}
+
+		if err := tx.Model(&model.Document{}).Where("id = ?", document.ID).Updates(updateData).Error; err != nil {
+			return fmt.Errorf("failed to update document meta: %w", err)
+		}
+
+		return nil
+	})
+}
+
+func (s *DocumentService) markDocumentProcessingError(documentID uint, procErr error) {
+	if procErr == nil {
+		return
+	}
+
+	updateData := map[string]any{
+		"parse_error":  procErr.Error(),
+		"vector_count": 0,
+		"processed_at": nil,
+	}
+
+	if err := s.db.Model(&model.Document{}).Where("id = ?", documentID).Updates(updateData).Error; err != nil {
+		log.Printf("failed to update document %d after processing error: %v", documentID, err)
+	}
+}
+
+func extractPlainText(fileType string, data []byte) (string, error) {
+	switch strings.ToLower(fileType) {
+	case ".txt", ".md", ".csv", ".log":
+		return string(data), nil
+	case ".json":
+		var buf bytes.Buffer
+		if err := json.Indent(&buf, data, "", "  "); err == nil {
+			return buf.String(), nil
+		}
+		return string(data), nil
+	case ".html", ".htm":
+		result := stripHTMLTags(string(data))
+		if strings.TrimSpace(result) == "" {
+			return "", fmt.Errorf("html content is empty after stripping tags")
+		}
+		return result, nil
+	default:
+		return "", fmt.Errorf("%w: %s", errUnsupportedFileType, fileType)
+	}
+}
+
+func splitIntoChunks(text string, chunkSize int, overlap int) []string {
+	clean := strings.TrimSpace(text)
+	if clean == "" {
+		return []string{}
+	}
+
+	if chunkSize <= 0 {
+		chunkSize = 800
+	}
+	if overlap < 0 {
+		overlap = 0
+	}
+	if overlap >= chunkSize {
+		overlap = chunkSize / 2
+	}
+
+	runes := []rune(clean)
+	var chunks []string
+	start := 0
+
+	for start < len(runes) {
+		end := start + chunkSize
+		if end > len(runes) {
+			end = len(runes)
+		}
+
+		chunk := strings.TrimSpace(string(runes[start:end]))
+		if chunk != "" {
+			chunks = append(chunks, chunk)
+		}
+
+		if end == len(runes) {
+			break
+		}
+
+		start = end - overlap
+		if start < 0 {
+			start = 0
+		}
+	}
+
+	return chunks
+}
+
+func countTokens(content string) int {
+	return len(strings.Fields(content))
+}
+
+func simpleEmbedding(content string) []float64 {
+	words := strings.Fields(content)
+	wordCount := len(words)
+
+	uniqueWords := make(map[string]struct{}, wordCount)
+	var totalWordLen int
+	var digitCount, upperCount int
+
+	for _, w := range words {
+		uniqueWords[strings.ToLower(w)] = struct{}{}
+		totalWordLen += len(w)
+	}
+
+	for _, r := range content {
+		if unicode.IsDigit(r) {
+			digitCount++
+		}
+		if unicode.IsUpper(r) {
+			upperCount++
+		}
+	}
+
+	var avgWordLen float64
+	if wordCount > 0 {
+		avgWordLen = float64(totalWordLen) / float64(wordCount)
+	}
+
+	return []float64{
+		float64(len(content)),            // 文本长度
+		float64(wordCount),               // 单词数
+		float64(len(uniqueWords)),        // 去重单词数
+		float64(digitCount),              // 数字字符数
+		float64(upperCount),              // 大写字母数
+		avgWordLen,                       // 平均词长度
+		float64(countSentences(content)), // 句子数
+	}
+}
+
+func countSentences(content string) int {
+	count := 0
+	for _, ch := range content {
+		if ch == '.' || ch == '!' || ch == '?' || ch == '。' || ch == '！' || ch == '？' {
+			count++
+		}
+	}
+	if count == 0 && strings.TrimSpace(content) != "" {
+		return 1
+	}
+	return count
+}
+
+func stripHTMLTags(input string) string {
+	var output strings.Builder
+	inTag := false
+	for _, r := range input {
+		switch r {
+		case '<':
+			inTag = true
+		case '>':
+			inTag = false
+		default:
+			if !inTag {
+				output.WriteRune(r)
+			}
+		}
+	}
+	return output.String()
 }

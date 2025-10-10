@@ -249,6 +249,72 @@ func (h *DocumentHandler) GetDocumentsBySpaceId(c *gin.Context) {
 	})
 }
 
+// GetTagCloud 获取标签云
+func (h *DocumentHandler) GetTagCloud(c *gin.Context) {
+	spaceIDStr := c.Query("space_id")
+	subSpaceIDStr := c.Query("sub_space_id")
+	limitStr := c.DefaultQuery("limit", "50")
+
+	var (
+		spaceID    uint64
+		subSpaceID uint64
+		err        error
+	)
+
+	if spaceIDStr != "" {
+		spaceID, err = strconv.ParseUint(spaceIDStr, 10, 32)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, &model.APIResponse{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid space_id",
+			})
+			return
+		}
+	}
+
+	if subSpaceIDStr != "" {
+		subSpaceID, err = strconv.ParseUint(subSpaceIDStr, 10, 32)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, &model.APIResponse{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid sub_space_id",
+			})
+			return
+		}
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid limit",
+		})
+		return
+	}
+
+	items, err := h.documentService.GetTagCloud(
+		c.Request.Context(),
+		uint(spaceID),
+		uint(subSpaceID),
+		limit,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, &model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to get tag cloud: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, &model.APIResponse{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data: model.TagCloudResponse{
+			Items: items,
+		},
+	})
+}
+
 // PreviewDocument 预览文档（支持浏览器内嵌显示）
 func (h *DocumentHandler) PreviewDocument(c *gin.Context) {
 	documentIDStr := c.Param("id")
