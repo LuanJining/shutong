@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -10,12 +11,49 @@ import (
 	"gorm.io/gorm"
 )
 
+// Logger 日志中间件
+func Logger() gin.HandlerFunc {
+	return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+		// 状态码颜色
+		statusColor := param.StatusCodeColor()
+		methodColor := param.MethodColor()
+		resetColor := param.ResetColor()
+
+		// 根据状态码选择日志级别
+		var level string
+		if param.StatusCode >= 500 {
+			level = "ERROR"
+		} else if param.StatusCode >= 400 {
+			level = "WARN"
+		} else {
+			level = "INFO"
+		}
+
+		// 格式化日志输出
+		return fmt.Sprintf("[%s] %s %s %s%s%s %s %s%d%s %s %s\n",
+			level,
+			param.TimeStamp.Format("2006/01/02 15:04:05"),
+			param.ClientIP,
+			methodColor, param.Method, resetColor,
+			param.Path,
+			statusColor, param.StatusCode, resetColor,
+			param.Latency,
+			param.Request.UserAgent(),
+		)
+	})
+}
+
+// Recovery 恢复中间件
+func Recovery() gin.HandlerFunc {
+	return gin.Recovery()
+}
+
 // CORS 跨域中间件
 func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-User-ID")
 		c.Header("Access-Control-Allow-Credentials", "true")
 
 		if c.Request.Method == "OPTIONS" {
@@ -27,6 +65,8 @@ func CORS() gin.HandlerFunc {
 	}
 }
 
+// FetchUserFromHeader 从请求头中获取用户信息
+// Gateway 会在请求头中设置 X-User-ID，下游服务从中获取用户信息
 func FetchUserFromHeader(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userIDStr := c.GetHeader("X-User-ID")

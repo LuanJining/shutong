@@ -1,10 +1,10 @@
 package router
 
 import (
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/middleware"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/client"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/config"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/handler"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/middleware"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/service"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -12,20 +12,19 @@ import (
 	"gorm.io/gorm"
 )
 
-func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, workflowClient *client.WorkflowClient, openaiClient *client.OpenAIClient) *gin.Engine {
+func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, workflowClient *client.WorkflowClient, openaiClient *client.OpenAIClient, ocrClient *client.PaddleOCRClient, vectorClient *client.QdrantClient) *gin.Engine {
 	// 设置Gin模式
 	gin.SetMode(cfg.Gin.Mode)
 
 	r := gin.New()
 
 	// 添加中间件
-	r.Use(gin.Logger())
-	r.Use(gin.Recovery())
-	// r.Use(middleware.CORS())
+	r.Use(middleware.Logger())
+	r.Use(middleware.Recovery())
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
 
 	// 创建服务层
-	documentService := service.NewDocumentService(db, minioClient, workflowClient, openaiClient)
+	documentService := service.NewDocumentService(db, minioClient, workflowClient, openaiClient, ocrClient, vectorClient)
 
 	// 创建处理器
 	documentHandler := handler.NewDocumentHandler(documentService)
@@ -41,22 +40,20 @@ func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, workfl
 		documents := api.Group("/documents")
 		{
 			documents.POST("/upload", middleware.FetchUserFromHeader(db), documentHandler.UploadDocument)
-			// 文档预览和下载
+			documents.GET("/tag-cloud", documentHandler.GetTagCloud)
+
 			documents.GET("/:id/preview", documentHandler.PreviewDocument)
-			documents.GET("/:id/download", documentHandler.DownloadDocument)
-
-			documents.DELETE("/:id", documentHandler.DeleteDocument)
-
-			documents.POST("/:id/submit", documentHandler.SubmitDocument)
-
 			documents.GET("/:id/info", documentHandler.GetDocument)
-			documents.GET(":id/space", documentHandler.GetDocumentsBySpaceId)
+			documents.GET("/:id/space", documentHandler.GetDocumentsBySpaceId)
+			documents.GET("/homepage", documentHandler.GetHomepageDocuments) // 展示5个知识库，3个二级知识库，每个二级知识库展示6个文档
 
-			documents.POST("/:id/approve", documentHandler.ApproveDocument)
-			documents.POST("/:id/publish", documentHandler.PublishDocument)
+			documents.DELETE("/:id", middleware.FetchUserFromHeader(db), documentHandler.DeleteDocument)
 
-			documents.POST("/:id/chat", documentHandler.ChatDocument)              // space_id
-			documents.POST("/:id/chat/stream", documentHandler.ChatDocumentStream) // space_id
+			documents.POST("/:id/publish", middleware.FetchUserFromHeader(db), documentHandler.PublishDocument)
+
+			// 文档对话
+			documents.POST("/:id/chat", documentHandler.ChatDocument)
+			documents.POST("/:id/chat/stream", documentHandler.ChatDocumentStream)
 		}
 	}
 

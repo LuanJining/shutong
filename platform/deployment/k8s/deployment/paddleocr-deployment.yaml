@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paddleocr-service
+  namespace: kb-platform
+  labels:
+    app: paddleocr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: paddleocr-service
+  template:
+    metadata:
+      labels:
+        app: paddleocr-service
+    spec:
+      containers:
+        - name: paddleocr
+          image: harbor.kunxiangtech.com:8443/kb-platform/paddleocr:v1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8500
+              name: http
+          env:
+            - name: PADDLE_LANG
+              value: ch
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 15
+      imagePullSecrets: []
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: paddleocr-service
+  namespace: kb-platform
+  labels:
+    app: paddleocr-service
+spec:
+  selector:
+    app: paddleocr-service
+  ports:
+    - name: http
+      port: 8500
+      targetPort: http
+      protocol: TCP

@@ -1,10 +1,9 @@
 package router
 
 import (
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/middleware"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/config"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/handler"
-	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/middleware"
-
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/iam/service"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -21,7 +20,6 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 	// 添加中间件
 	r.Use(middleware.Logger())
 	r.Use(middleware.Recovery())
-	// r.Use(middleware.CORS())
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
 
 	// 创建服务
@@ -54,6 +52,7 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 		{
 			// 查看所有内容 - 所有认证用户都可以
 			users.GET("", h.GetUsers)
+			users.GET("/by-role/:rid/space/:sid", h.GetUserByRoleIdAndSpaceId)
 			users.GET("/:id", h.GetUser)
 
 			// 更新用户 - 先检查角色，再检查权限
@@ -76,15 +75,6 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			roles.GET("", h.GetRoles)
 			roles.GET("/:id", h.GetRole)
 			roles.GET("/:id/permissions", h.GetRolePermissions)
-
-			// 角色管理 - 超级管理员、企业管理员
-			roles.POST("", h.CreateRole)
-			roles.PUT("/:id", h.UpdateRole)
-			roles.DELETE("/:id", h.DeleteRole)
-
-			// 角色权限管理 - 超级管理员、企业管理员
-			roles.POST("/:id/permissions", h.AssignRolePermission)
-			roles.DELETE("/:id/permissions/:permission_id", h.RemoveRolePermission)
 		}
 
 		// 权限管理路由
@@ -116,7 +106,9 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			spaces.POST("/:id/members", h.AddSpaceMember)
 			spaces.DELETE("/:id/members/:user_id", h.RemoveSpaceMember)
 			spaces.PUT("/:id/members/:user_id", h.UpdateSpaceMemberRole)
-			spaces.GET("/:id/members/:role_id", h.GetSpaceMembersByRole)
+			spaces.GET("/:id/members/role/:role", h.GetSpaceMembersByRole)
+			spaces.POST("/subspaces", h.CreateSubSpace)
+			spaces.POST("/classes", h.CreateClass)
 		}
 	}
 

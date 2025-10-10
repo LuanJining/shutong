@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/gateway/configs"
 	"github.com/gin-gonic/gin"
 )
@@ -50,6 +51,13 @@ func (h *KbHandler) ProxyToKbClient(c *gin.Context) {
 
 	// 复制请求头
 	h.copyHeaders(c.Request.Header, proxyReq.Header)
+
+	// 添加用户ID到请求头（从 Gateway 的 AuthRequired 中间件获取）
+	user, _ := c.Get("user")
+
+	if user != nil {
+		proxyReq.Header.Add("X-User-ID", fmt.Sprintf("%d", user.(*model.User).ID))
+	}
 
 	// 发送请求
 	resp, err := h.client.Do(proxyReq)

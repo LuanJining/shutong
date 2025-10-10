@@ -2,9 +2,8 @@ package service
 
 import (
 	"errors"
-	"fmt"
-	"time"
 
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/client"
 	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gorm.io/gorm"
 )
@@ -16,15 +15,16 @@ type User struct {
 }
 
 type WorkflowService struct {
-	db *gorm.DB
+	db        *gorm.DB
+	iamClient *client.IamClient
 }
 
-func NewWorkflowService(db *gorm.DB) *WorkflowService {
-	return &WorkflowService{db: db}
+func NewWorkflowService(db *gorm.DB, iamClient *client.IamClient) *WorkflowService {
+	return &WorkflowService{db: db, iamClient: iamClient}
 }
 
 // CreateWorkflow 创建审批流程
-func (s *WorkflowService) CreateWorkflow(req *model.CreateWorkflowRequest, createdBy uint) (*model.WorkflowDefinition, error) {
+func (s *WorkflowService) CreateWorkflow(req *model.CreateWorkflowRequest, user *model.User) (*model.Workflow, error) {
 	// 开始事务
 	tx := s.db.Begin()
 	defer func() {
@@ -33,502 +33,145 @@ func (s *WorkflowService) CreateWorkflow(req *model.CreateWorkflowRequest, creat
 		}
 	}()
 
-	// 创建流程定义
-	workflow := &model.WorkflowDefinition{
-		Name:        req.Name,
-		Description: req.Description,
-		SpaceID:     req.SpaceID,
-		Priority:    req.Priority,
-		CreatedBy:   createdBy,
-		IsActive:    true,
+	// 创建主工作流记录
+	result := model.Workflow{
+		Name:            req.Name,
+		Description:     req.Description,
+		SpaceID:         req.SpaceID,
+		Status:          model.WorkflowStatusProcessing,
+		CreatedBy:       user.ID,
+		CreatorNickName: user.Nickname,
+		ResourceType:    req.ResourceType,
+		ResourceID:      req.ResourceID,
 	}
-
-	if err := tx.Create(workflow).Error; err != nil {
+	if err := tx.Create(&result).Error; err != nil {
 		tx.Rollback()
-		return nil, fmt.Errorf("failed to create workflow: %w", err)
+		return nil, err
 	}
 
-	// 创建流程步骤
-	for _, stepReq := range req.Steps {
-		// 设置默认审批策略
-		approvalStrategy := stepReq.ApprovalStrategy
-		if approvalStrategy == "" {
-			approvalStrategy = model.ApprovalStrategyAny // 默认为任意一人同意
-		}
+	// 创建步骤和任务
+	for stepIndex, step := range req.Steps {
+		// 设置步骤信息
+		step.WorkflowID = result.ID
+		step.Status = model.StepStatusProcessing
 
-		step := &model.WorkflowStep{
-			WorkflowID:       workflow.ID,
-			StepName:         stepReq.StepName,
-			StepOrder:        stepReq.StepOrder,
-			ApproverType:     stepReq.ApproverType,
-			ApproverID:       stepReq.ApproverID,
-			IsRequired:       stepReq.IsRequired,
-			TimeoutHours:     stepReq.TimeoutHours,
-			ApprovalStrategy: approvalStrategy,
-		}
-
-		if err := tx.Create(step).Error; err != nil {
+		// 创建步骤
+		if err := tx.Create(&step).Error; err != nil {
 			tx.Rollback()
-			return nil, fmt.Errorf("failed to create workflow step: %w", err)
+			return nil, err
 		}
+
+		// 更新步骤引用
+		req.Steps[stepIndex] = step
 	}
+
+	// 更新结果中的步骤信息
+	result.Steps = req.Steps
 
 	// 提交事务
 	if err := tx.Commit().Error; err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	// 重新查询包含步骤的完整数据
-	var result model.WorkflowDefinition
-	if err := s.db.Preload("Steps").First(&result, workflow.ID).Error; err != nil {
-		return nil, fmt.Errorf("failed to load workflow with steps: %w", err)
+		return nil, err
 	}
 
 	return &result, nil
 }
 
-// GetWorkflows 获取流程列表
-func (s *WorkflowService) GetWorkflows(spaceID uint, page, pageSize int) (*model.PaginationResponse, error) {
-	var workflows []model.WorkflowDefinition
+func (s *WorkflowService) StartWorkflow(req *model.StartWorkflowRequest, user *model.User) (*model.Workflow, error) {
+	workflow := &model.Workflow{}
+	err := s.db.Where("id = ?", req.WorkflowID).First(workflow).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	if workflow.Status != model.WorkflowStatusProcessing {
+		return nil, errors.New("工作流状态不正确")
+	}
+
+	if workflow.CreatedBy != user.ID {
+		return nil, errors.New("用户无权限启动工作流")
+	}
+
+	currentStep := &model.Step{}
+	err = s.db.Where("workflow_id = ?", req.WorkflowID).Where("step_order = ?", 1).First(currentStep).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 创建任务 先通过iam获取有权限的user列表
+	userList, err := s.iamClient.GetSpaceMemebersByRole(user, workflow.SpaceID, currentStep.StepRole)
+	if err != nil {
+		return nil, err
+	}
+
+	tasks := make([]model.Task, len(userList))
+	for i, approver := range userList {
+		tasks[i] = model.Task{
+			WorkflowID:       req.WorkflowID,
+			StepID:           currentStep.ID,
+			ApproverID:       approver.ID,
+			ApproverNickName: approver.Nickname,
+			TaskName:         currentStep.StepName,
+			IsRequired:       currentStep.IsRequired,
+			TimeoutHours:     currentStep.TimeoutHours,
+			Status:           model.TaskStatusProcessing,
+		}
+	}
+
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 创建任务
+	if err := tx.Create(&tasks).Error; err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	// 更新工作流
+	workflow.CurrentStepID = currentStep.ID
+	if err := tx.Save(workflow).Error; err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		return nil, err
+	}
+
+	return workflow, nil
+}
+
+func (s *WorkflowService) GetTasks(user *model.User, page int, pageSize int) (model.PaginationResponse, error) {
+	var tasks []model.Task
 	var total int64
 
-	query := s.db.Model(&model.WorkflowDefinition{})
-	if spaceID > 0 {
-		query = query.Where("space_id = ?", spaceID)
-	}
+	// 构建查询条件
+	query := s.db.Where("approver_id = ?", user.ID)
 
 	// 获取总数
-	if err := query.Count(&total).Error; err != nil {
-		return nil, fmt.Errorf("failed to count workflows: %w", err)
+	if err := query.Model(&model.Task{}).Count(&total).Error; err != nil {
+		return model.PaginationResponse{}, err
 	}
 
-	// 分页查询
-	offset := (page - 1) * pageSize
-	if err := query.Preload("Steps").
-		Order("created_at DESC").
-		Offset(offset).
-		Limit(pageSize).
-		Find(&workflows).Error; err != nil {
-		return nil, fmt.Errorf("failed to get workflows: %w", err)
-	}
-
-	totalPages := int((total + int64(pageSize) - 1) / int64(pageSize))
-
-	return &model.PaginationResponse{
-		Items:      workflows,
-		Total:      total,
-		Page:       page,
-		PageSize:   pageSize,
-		TotalPages: totalPages,
-	}, nil
-}
-
-// GetWorkflow 获取流程详情
-func (s *WorkflowService) GetWorkflow(id uint) (*model.WorkflowDefinition, error) {
-	var workflow model.WorkflowDefinition
-	if err := s.db.Preload("Steps").First(&workflow, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("workflow not found")
-		}
-		return nil, fmt.Errorf("failed to get workflow: %w", err)
-	}
-	return &workflow, nil
-}
-
-// UpdateWorkflow 更新审批流程
-func (s *WorkflowService) UpdateWorkflow(id uint, req *model.CreateWorkflowRequest, updatedBy uint) (*model.WorkflowDefinition, error) {
-	// 开始事务
-	tx := s.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// 检查流程是否存在
-	var workflow model.WorkflowDefinition
-	if err := tx.First(&workflow, id).Error; err != nil {
-		tx.Rollback()
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("workflow not found")
-		}
-		return nil, fmt.Errorf("failed to get workflow: %w", err)
-	}
-
-	// 更新流程基本信息
-	workflow.Name = req.Name
-	workflow.Description = req.Description
-	workflow.SpaceID = req.SpaceID
-	workflow.Priority = req.Priority
-	workflow.UpdatedBy = &updatedBy
-
-	if err := tx.Save(&workflow).Error; err != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("failed to update workflow: %w", err)
-	}
-
-	// 删除原有步骤
-	if err := tx.Where("workflow_id = ?", id).Delete(&model.WorkflowStep{}).Error; err != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("failed to delete old steps: %w", err)
-	}
-
-	// 创建新步骤
-	for _, stepReq := range req.Steps {
-		// 设置默认审批策略
-		approvalStrategy := stepReq.ApprovalStrategy
-		if approvalStrategy == "" {
-			approvalStrategy = model.ApprovalStrategyAny // 默认为任意一人同意
-		}
-
-		step := &model.WorkflowStep{
-			WorkflowID:       workflow.ID,
-			StepName:         stepReq.StepName,
-			StepOrder:        stepReq.StepOrder,
-			ApproverType:     stepReq.ApproverType,
-			ApproverID:       stepReq.ApproverID,
-			IsRequired:       stepReq.IsRequired,
-			TimeoutHours:     stepReq.TimeoutHours,
-			ApprovalStrategy: approvalStrategy,
-		}
-
-		if err := tx.Create(step).Error; err != nil {
-			tx.Rollback()
-			return nil, fmt.Errorf("failed to create workflow step: %w", err)
-		}
-	}
-
-	// 提交事务
-	if err := tx.Commit().Error; err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	// 重新查询包含步骤的完整数据
-	var result model.WorkflowDefinition
-	if err := s.db.Preload("Steps").First(&result, workflow.ID).Error; err != nil {
-		return nil, fmt.Errorf("failed to load workflow with steps: %w", err)
-	}
-
-	return &result, nil
-}
-
-// DeleteWorkflow 删除审批流程
-func (s *WorkflowService) DeleteWorkflow(id uint) error {
-	// 开始事务
-	tx := s.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// 检查流程是否存在
-	var workflow model.WorkflowDefinition
-	if err := tx.First(&workflow, id).Error; err != nil {
-		tx.Rollback()
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("workflow not found")
-		}
-		return fmt.Errorf("failed to get workflow: %w", err)
-	}
-
-	// 检查是否有正在进行的实例
-	var count int64
-	if err := tx.Model(&model.WorkflowInstance{}).Where("workflow_id = ? AND status IN (?)", id, []string{model.StatusPending, model.StatusInProgress}).Count(&count).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed to check workflow instances: %w", err)
-	}
-
-	if count > 0 {
-		tx.Rollback()
-		return fmt.Errorf("cannot delete workflow with active instances")
-	}
-
-	// 删除相关数据
-	if err := tx.Where("workflow_id = ?", id).Delete(&model.WorkflowStep{}).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed to delete workflow steps: %w", err)
-	}
-
-	if err := tx.Delete(&workflow).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed to delete workflow: %w", err)
-	}
-
-	// 提交事务
-	if err := tx.Commit().Error; err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	return nil
-}
-
-// StartWorkflow 启动流程实例
-func (s *WorkflowService) StartWorkflow(req *model.StartWorkflowRequest, createdBy uint) (*model.WorkflowInstance, error) {
-	// 开始事务
-	tx := s.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// 检查流程是否存在且启用
-	var workflow model.WorkflowDefinition
-	if err := tx.Preload("Steps", func(db *gorm.DB) *gorm.DB {
-		return db.Order("step_order ASC")
-	}).Where("id = ? AND is_active = ?", req.WorkflowID, true).First(&workflow).Error; err != nil {
-		tx.Rollback()
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("workflow not found or inactive")
-		}
-		return nil, fmt.Errorf("failed to get workflow: %w", err)
-	}
-
-	// 创建流程实例
-	instance := &model.WorkflowInstance{
-		WorkflowID:   req.WorkflowID,
-		Title:        req.Title,
-		Description:  req.Description,
-		ResourceType: req.ResourceType,
-		ResourceID:   req.ResourceID,
-		SpaceID:      req.SpaceID,
-		Priority:     req.Priority,
-		CreatedBy:    createdBy,
-		Status:       model.StatusPending,
-	}
-
-	if err := tx.Create(instance).Error; err != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("failed to create workflow instance: %w", err)
-	}
-
-	// 只为第一步创建审批任务
-	if len(workflow.Steps) > 0 {
-		firstStep := workflow.Steps[0]
-		// 根据审批人类型确定审批人ID列表
-		assigneeIDs, err := s.determineAssigneeIDs(&firstStep, req.SpaceID, tx)
-		if err != nil {
-			tx.Rollback()
-			return nil, fmt.Errorf("failed to determine assignees for step %s: %w", firstStep.StepName, err)
-		}
-
-		if len(assigneeIDs) == 0 {
-			tx.Rollback()
-			return nil, fmt.Errorf("no assignees found for step: %s", firstStep.StepName)
-		}
-
-		// 为每个审批人创建任务
-		for _, assigneeID := range assigneeIDs {
-			task := &model.WorkflowTask{
-				InstanceID: instance.ID,
-				StepID:     firstStep.ID,
-				AssigneeID: assigneeID,
-				Status:     model.StatusPending,
-				AssignedAt: time.Now(),
-			}
-
-			if err := tx.Create(task).Error; err != nil {
-				tx.Rollback()
-				return nil, fmt.Errorf("failed to create workflow task: %w", err)
-			}
-		}
-	}
-
-	// 提交事务
-	if err := tx.Commit().Error; err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	// 重新查询包含任务的完整数据
-	var result model.WorkflowInstance
-	if err := s.db.Preload("Tasks").Preload("Workflow").First(&result, instance.ID).Error; err != nil {
-		return nil, fmt.Errorf("failed to load workflow instance with tasks: %w", err)
-	}
-
-	return &result, nil
-}
-
-// GetInstances 获取流程实例列表
-func (s *WorkflowService) GetInstances(workflowID uint, spaceID uint, status string, page, pageSize int) (*model.PaginationResponse, error) {
-	var instances []model.WorkflowInstance
-	var total int64
-
-	query := s.db.Model(&model.WorkflowInstance{})
-	if workflowID > 0 {
-		query = query.Where("workflow_id = ?", workflowID)
-	}
-	if spaceID > 0 {
-		query = query.Where("space_id = ?", spaceID)
-	}
-	if status != "" {
-		query = query.Where("status = ?", status)
-	}
-
-	// 获取总数
-	if err := query.Count(&total).Error; err != nil {
-		return nil, fmt.Errorf("failed to count instances: %w", err)
-	}
-
-	// 分页查询
+	// 分页查询，预加载关联的 Workflow
 	offset := (page - 1) * pageSize
 	if err := query.Preload("Workflow").
-		Preload("Tasks").
-		Order("created_at DESC").
-		Offset(offset).
-		Limit(pageSize).
-		Find(&instances).Error; err != nil {
-		return nil, fmt.Errorf("failed to get instances: %w", err)
-	}
-
-	totalPages := int((total + int64(pageSize) - 1) / int64(pageSize))
-
-	return &model.PaginationResponse{
-		Items:      instances,
-		Total:      total,
-		Page:       page,
-		PageSize:   pageSize,
-		TotalPages: totalPages,
-	}, nil
-}
-
-// GetInstance 获取流程实例详情
-func (s *WorkflowService) GetInstance(id uint) (*model.WorkflowInstance, error) {
-	var instance model.WorkflowInstance
-	if err := s.db.Preload("Workflow").
-		Preload("Tasks").
-		Preload("Tasks.Step").
-		First(&instance, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("instance not found")
-		}
-		return nil, fmt.Errorf("failed to get instance: %w", err)
-	}
-	return &instance, nil
-}
-
-// GetInstanceByUserID 获取用户创建的实例详情
-func (s *WorkflowService) GetInstanceByUserID(userID uint, page, pageSize int) (*model.PaginationResponse, error) {
-	var instances []model.WorkflowInstance
-	var total int64
-
-	query := s.db.Model(&model.WorkflowInstance{}).Where("created_by = ?", userID)
-
-	if err := query.Count(&total).Error; err != nil {
-		return nil, fmt.Errorf("failed to count instances: %w", err)
-	}
-
-	offset := (page - 1) * pageSize
-	if err := query.Preload("Workflow").
-		Preload("Tasks").
-		Order("created_at DESC").
-		Offset(offset).
-		Limit(pageSize).
-		Find(&instances).Error; err != nil {
-		return nil, fmt.Errorf("failed to get instances: %w", err)
-	}
-
-	totalPages := int((total + int64(pageSize) - 1) / int64(pageSize))
-
-	return &model.PaginationResponse{
-		Items:      instances,
-		Total:      total,
-		Page:       page,
-		PageSize:   pageSize,
-		TotalPages: totalPages,
-	}, nil
-}
-
-// CancelInstance 取消流程实例
-func (s *WorkflowService) CancelInstance(id uint, userID uint) error {
-	// 开始事务
-	tx := s.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// 获取实例
-	var instance model.WorkflowInstance
-	if err := tx.First(&instance, id).Error; err != nil {
-		tx.Rollback()
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("instance not found")
-		}
-		return fmt.Errorf("failed to get instance: %w", err)
-	}
-
-	// 检查权限（只有创建者可以取消）
-	if instance.CreatedBy != userID {
-		tx.Rollback()
-		return fmt.Errorf("unauthorized to cancel this instance")
-	}
-
-	// 检查状态
-	if instance.Status != model.StatusPending && instance.Status != model.StatusInProgress {
-		tx.Rollback()
-		return fmt.Errorf("instance cannot be cancelled in current status")
-	}
-
-	// 更新实例状态
-	now := time.Now()
-	if err := tx.Model(&instance).Updates(map[string]any{
-		"status":       model.StatusCancelled,
-		"completed_at": &now,
-	}).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed to update instance: %w", err)
-	}
-
-	// 取消所有待处理的任务
-	if err := tx.Model(&model.WorkflowTask{}).
-		Where("instance_id = ? AND status = ?", id, model.StatusPending).
-		Updates(map[string]any{
-			"status":       model.StatusCancelled,
-			"completed_at": &now,
-		}).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed to cancel tasks: %w", err)
-	}
-
-	// 提交事务
-	if err := tx.Commit().Error; err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	return nil
-}
-
-// GetMyTasks 获取我的待办任务
-func (s *WorkflowService) GetMyTasks(userID uint, page, pageSize int) (*model.PaginationResponse, error) {
-	var tasks []model.WorkflowTask
-	var total int64
-
-	query := s.db.Model(&model.WorkflowTask{}).
-		Where("assignee_id = ? AND workflow_tasks.status = ?", userID, model.StatusPending).
-		Joins("JOIN workflow_instances ON workflow_tasks.instance_id = workflow_instances.id").
-		Where("workflow_instances.status = ?", model.StatusPending)
-
-	// 获取总数
-	if err := query.Count(&total).Error; err != nil {
-		return nil, fmt.Errorf("failed to count tasks: %w", err)
-	}
-
-	// 分页查询
-	offset := (page - 1) * pageSize
-	if err := query.Preload("Instance").
-		Preload("Step").
-		Order("assigned_at ASC").
+		Order("id DESC").
 		Offset(offset).
 		Limit(pageSize).
 		Find(&tasks).Error; err != nil {
-		return nil, fmt.Errorf("failed to get tasks: %w", err)
+		return model.PaginationResponse{}, err
 	}
 
+	// 计算总页数
 	totalPages := int((total + int64(pageSize) - 1) / int64(pageSize))
 
-	return &model.PaginationResponse{
+	return model.PaginationResponse{
 		Items:      tasks,
 		Total:      total,
 		Page:       page,
@@ -537,18 +180,7 @@ func (s *WorkflowService) GetMyTasks(userID uint, page, pageSize int) (*model.Pa
 	}, nil
 }
 
-// ApproveTask 审批通过
-func (s *WorkflowService) ApproveTask(taskID uint, userID uint, comment string) error {
-	return s.processTask(taskID, userID, model.StatusApproved, comment)
-}
-
-// RejectTask 审批拒绝
-func (s *WorkflowService) RejectTask(taskID uint, userID uint, comment string) error {
-	return s.processTask(taskID, userID, model.StatusRejected, comment)
-}
-
-// processTask 处理审批任务
-func (s *WorkflowService) processTask(taskID uint, userID uint, status string, comment string) error {
+func (s *WorkflowService) ApproveTask(req *model.ApproveTaskRequest, user *model.User) (*model.Task, error) {
 	// 开始事务
 	tx := s.db.Begin()
 	defer func() {
@@ -557,340 +189,161 @@ func (s *WorkflowService) processTask(taskID uint, userID uint, status string, c
 		}
 	}()
 
-	// 获取任务
-	var task model.WorkflowTask
-	if err := tx.Preload("Instance").Preload("Step").First(&task, taskID).Error; err != nil {
+	// 加载任务及其关联数据
+	task := &model.Task{}
+	err := tx.Preload("Workflow").Preload("Step").Where("id = ?", req.TaskID).First(task).Error
+	if err != nil {
 		tx.Rollback()
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("task not found")
-		}
-		return fmt.Errorf("failed to get task: %w", err)
+		return nil, err
 	}
 
 	// 检查权限
-	if task.AssigneeID != userID {
+	if task.ApproverID != user.ID {
 		tx.Rollback()
-		return fmt.Errorf("unauthorized to process this task")
+		return nil, errors.New("用户无权限审批任务")
 	}
 
-	// 检查状态
-	if task.Status != model.StatusPending {
+	// 检查任务状态
+	if task.Status != model.TaskStatusProcessing {
 		tx.Rollback()
-		return fmt.Errorf("task is not pending")
+		return nil, errors.New("任务状态不正确，无法审批")
 	}
 
-	// 更新任务状态
-	now := time.Now()
-	task.Status = status
-	task.Comment = comment
-	task.CompletedAt = &now
-
-	if err := tx.Save(&task).Error; err != nil {
+	// 更新当前任务状态和备注
+	task.Status = req.Status
+	task.Comment = req.Comment
+	if err := tx.Save(task).Error; err != nil {
 		tx.Rollback()
-		return fmt.Errorf("failed to update task: %w", err)
+		return nil, err
 	}
 
-	// 更新流程实例状态
-	if status == model.StatusRejected {
-		// 拒绝则整个流程结束，取消同步骤的其他待处理任务
-		if err := tx.Model(&model.WorkflowTask{}).
-			Where("instance_id = ? AND step_id = ? AND status = ?", task.InstanceID, task.StepID, model.StatusPending).
-			Updates(map[string]any{
-				"status":       model.StatusCancelled,
-				"completed_at": &now,
-			}).Error; err != nil {
+	if req.Status == model.TaskStatusApproved {
+		// 批准：更新 Step 状态
+		task.Step.Status = model.StepStatusApproved
+		if err := tx.Save(&task.Step).Error; err != nil {
 			tx.Rollback()
-			return fmt.Errorf("failed to cancel pending tasks: %w", err)
+			return nil, err
 		}
 
-		// 更新流程实例状态为拒绝
-		if err := tx.Model(&task.Instance).Updates(map[string]any{
-			"status":       model.StatusRejected,
-			"completed_at": &now,
-		}).Error; err != nil {
+		// 更新该 Step 的其他任务为 ApprovedByOther（排除当前任务）
+		if err := tx.Model(&model.Task{}).
+			Where("step_id = ? AND id != ? AND status = ?", task.StepID, task.ID, model.TaskStatusProcessing).
+			Update("status", model.TaskStatusApprovedByOther).Error; err != nil {
 			tx.Rollback()
-			return fmt.Errorf("failed to update workflow instance: %w", err)
-		}
-	} else {
-		// 通过则检查当前步骤是否完成
-		stepCompleted, err := s.checkStepCompletion(tx, task.InstanceID, task.StepID, task.Step.ApprovalStrategy)
-		if err != nil {
-			tx.Rollback()
-			return fmt.Errorf("failed to check step completion: %w", err)
+			return nil, err
 		}
 
-		if stepCompleted {
-			// 当前步骤完成，检查是否还有后续步骤
-			var nextStep model.WorkflowStep
-			if err := tx.Where("workflow_id = ? AND step_order > ?", task.Step.WorkflowID, task.Step.StepOrder).
-				Order("step_order ASC").
-				First(&nextStep).Error; err != nil {
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					// 没有后续步骤，流程完成
-					if err := tx.Model(&task.Instance).Updates(map[string]any{
-						"status":       model.StatusApproved,
-						"completed_at": &now,
-					}).Error; err != nil {
-						tx.Rollback()
-						return fmt.Errorf("failed to complete workflow instance: %w", err)
-					}
-				} else {
-					tx.Rollback()
-					return fmt.Errorf("failed to check next step: %w", err)
-				}
-			} else {
-				// 创建下一个任务
-				assigneeIDs, err := s.determineAssigneeIDs(&nextStep, task.Instance.SpaceID, tx)
-				if err != nil {
-					tx.Rollback()
-					return fmt.Errorf("failed to determine assignees for next step: %w", err)
-				}
+		// 查找下一个步骤
+		nextStep := &model.Step{}
+		err := tx.Where("workflow_id = ? AND step_order = ?", task.WorkflowID, task.Step.StepOrder+1).First(nextStep).Error
 
-				if len(assigneeIDs) == 0 {
-					tx.Rollback()
-					return fmt.Errorf("no assignees found for next step")
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			// 数据库错误
+			tx.Rollback()
+			return nil, err
+		}
+
+		if err == nil && nextStep.ID != 0 {
+			// 有下一步：更新 Workflow 的当前步骤
+			task.Workflow.CurrentStepID = nextStep.ID
+			if err := tx.Save(&task.Workflow).Error; err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+
+			// 创建下一步的任务
+			userList, err := s.iamClient.GetSpaceMemebersByRole(user, task.Workflow.SpaceID, nextStep.StepRole)
+			if err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+
+			if len(userList) == 0 {
+				tx.Rollback()
+				return nil, errors.New("未找到下一步骤的审批人")
+			}
+
+			tasks := make([]model.Task, len(userList))
+			for i, approver := range userList {
+				tasks[i] = model.Task{
+					WorkflowID:       task.WorkflowID,
+					StepID:           nextStep.ID,
+					ApproverID:       approver.ID,
+					ApproverNickName: approver.Nickname,
+					TaskName:         nextStep.StepName,
+					IsRequired:       nextStep.IsRequired,
+					TimeoutHours:     nextStep.TimeoutHours,
+					Status:           model.TaskStatusProcessing,
 				}
+			}
+			if err := tx.Create(&tasks).Error; err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+		} else {
+			// 没有下一步：工作流完成
+			task.Workflow.Status = model.WorkflowStatusCompleted
+			if err := tx.Save(&task.Workflow).Error; err != nil {
+				tx.Rollback()
+				return nil, err
+			}
 
-				// 为每个审批人创建任务
-				for _, assigneeID := range assigneeIDs {
-					nextTask := &model.WorkflowTask{
-						InstanceID: task.Instance.ID,
-						StepID:     nextStep.ID,
-						AssigneeID: assigneeID,
-						Status:     model.StatusPending,
-						AssignedAt: now,
-					}
-
-					if err := tx.Create(nextTask).Error; err != nil {
-						tx.Rollback()
-						return fmt.Errorf("failed to create next task: %w", err)
-					}
+			// 更新资源状态
+			if task.Workflow.ResourceType == "document" {
+				doc := &model.Document{}
+				if err := tx.Where("id = ?", task.Workflow.ResourceID).First(doc).Error; err != nil {
+					tx.Rollback()
+					return nil, err
+				}
+				doc.Status = model.DocumentStatusPendingPublish
+				if err := tx.Save(doc).Error; err != nil {
+					tx.Rollback()
+					return nil, err
 				}
 			}
 		}
-		// 如果当前步骤未完成，继续等待其他审批人
-	}
-
-	// 提交事务
-	if err := tx.Commit().Error; err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	return nil
-}
-
-// GetWorkflowStatus 获取流程状态统计
-func (s *WorkflowService) GetWorkflowStatus(workflowID uint) (string, error) {
-	// 获取该workflow的最新实例状态
-	var instance model.WorkflowInstance
-	if err := s.db.Where("workflow_id = ?", workflowID).
-		Order("created_at DESC").
-		First(&instance).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "no_instance", nil // 该workflow还没有实例
-		}
-		return "", fmt.Errorf("failed to get latest workflow instance: %w", err)
-	}
-
-	return instance.Status, nil
-}
-
-// ProcessTimeoutTasks 处理超时任务
-func (s *WorkflowService) ProcessTimeoutTasks() error {
-	// 查找超时的任务
-	var timeoutTasks []model.WorkflowTask
-	timeoutThreshold := time.Now().Add(-72 * time.Hour) // 默认72小时超时
-
-	if err := s.db.Where("status = ? AND assigned_at < ?", model.StatusPending, timeoutThreshold).Find(&timeoutTasks).Error; err != nil {
-		return fmt.Errorf("failed to find timeout tasks: %w", err)
-	}
-
-	for _, task := range timeoutTasks {
-		// 更新任务状态为超时
-		if err := s.db.Model(&task).Updates(map[string]any{
-			"status":       model.StatusTimeout,
-			"completed_at": time.Now(),
-		}).Error; err != nil {
-			return fmt.Errorf("failed to update timeout task: %w", err)
-		}
-
-		// 更新流程实例状态为超时
-		if err := s.db.Model(&model.WorkflowInstance{}).
-			Where("id = ?", task.InstanceID).
-			Updates(map[string]any{
-				"status":       model.StatusTimeout,
-				"completed_at": time.Now(),
-			}).Error; err != nil {
-			return fmt.Errorf("failed to update timeout instance: %w", err)
-		}
-	}
-
-	return nil
-}
-
-// checkStepCompletion 检查步骤是否完成
-func (s *WorkflowService) checkStepCompletion(tx *gorm.DB, instanceID uint, stepID uint, strategy string) (bool, error) {
-	// 获取该步骤的所有任务
-	var tasks []model.WorkflowTask
-	if err := tx.Where("instance_id = ? AND step_id = ?", instanceID, stepID).Find(&tasks).Error; err != nil {
-		return false, fmt.Errorf("failed to get tasks: %w", err)
-	}
-
-	if len(tasks) == 0 {
-		return false, fmt.Errorf("no tasks found for step")
-	}
-
-	// 统计各种状态的任务数量
-	var totalTasks = len(tasks)
-	var approvedTasks = 0
-	var rejectedTasks = 0
-	var pendingTasks = 0
-
-	for _, task := range tasks {
-		switch task.Status {
-		case model.StatusApproved:
-			approvedTasks++
-		case model.StatusRejected:
-			rejectedTasks++
-		case model.StatusPending:
-			pendingTasks++
-		}
-	}
-
-	// 根据审批策略判断是否完成
-	switch strategy {
-	case model.ApprovalStrategyAny:
-		// 任意一人同意即可通过
-		return approvedTasks > 0, nil
-
-	case model.ApprovalStrategyAll:
-		// 所有人都必须同意
-		return approvedTasks == totalTasks, nil
-
-	case model.ApprovalStrategyMajority:
-		// 多数人同意即可通过
-		return approvedTasks > (totalTasks / 2), nil
-
-	default:
-		// 默认策略为任意一人同意
-		return approvedTasks > 0, nil
-	}
-}
-
-// determineAssigneeIDs 确定审批人ID列表
-func (s *WorkflowService) determineAssigneeIDs(step *model.WorkflowStep, spaceID uint, tx *gorm.DB) ([]uint, error) {
-	var userIDs []uint
-
-	switch step.ApproverType {
-	case model.ApproverTypeUser:
-		// 检查指定用户是否在当前空间中，超级管理员和企业管理员可以跨空间
-		err := tx.Raw(`
-			SELECT u.id FROM users u 
-			LEFT JOIN space_members sm ON u.id = sm.user_id AND sm.space_id = ?
-			JOIN user_roles ur ON u.id = ur.user_id 
-			JOIN roles r ON ur.role_id = r.id 
-			WHERE u.id = ? AND u.status = 1 
-			AND (sm.user_id IS NOT NULL OR r.name IN ('super_admin', 'enterprise_admin'))
-		`, spaceID, step.ApproverID).Scan(&userIDs).Error
-		if err != nil {
-			return nil, err
-		}
-		return userIDs, nil
-
-	case model.ApproverTypeRole:
-		// 查询角色对应的所有用户，超级管理员和企业管理员可以跨空间
-		err := tx.Raw(`
-			SELECT u.id FROM users u 
-			JOIN user_roles ur ON u.id = ur.user_id 
-			JOIN roles r ON ur.role_id = r.id 
-			LEFT JOIN space_members sm ON u.id = sm.user_id AND sm.space_id = ?
-			WHERE r.name = ? AND u.status = 1 
-			AND (sm.user_id IS NOT NULL OR r.name IN ('super_admin', 'enterprise_admin'))
-		`, spaceID, step.ApproverID).Scan(&userIDs).Error
-		if err != nil {
-			return nil, err
-		}
-		return userIDs, nil
-
-	case model.ApproverTypeSpaceAdmin:
-		// 查询空间管理员，超级管理员和企业管理员也可以作为空间管理员
-		err := tx.Raw(`
-			SELECT u.id FROM users u 
-			LEFT JOIN space_members sm ON u.id = sm.user_id AND sm.space_id = ? AND sm.role = 'space_admin'
-			JOIN user_roles ur ON u.id = ur.user_id 
-			JOIN roles r ON ur.role_id = r.id 
-			WHERE u.status = 1 
-			AND (sm.user_id IS NOT NULL OR r.name IN ('super_admin', 'enterprise_admin'))
-		`, spaceID).Scan(&userIDs).Error
-		if err != nil {
-			return nil, err
-		}
-		return userIDs, nil
-
-	default:
-		return nil, fmt.Errorf("unsupported approver type: %s", step.ApproverType)
-	}
-}
-
-// TransferTask 转交任务
-func (s *WorkflowService) TransferTask(taskID uint, fromUserID uint, toUserID uint, comment string) error {
-	// 开始事务
-	tx := s.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
+	} else {
+		// 拒绝：更新 Step 状态
+		task.Step.Status = model.StepStatusRejected
+		if err := tx.Save(&task.Step).Error; err != nil {
 			tx.Rollback()
+			return nil, err
 		}
-	}()
 
-	// 获取任务
-	var task model.WorkflowTask
-	if err := tx.Preload("Instance").First(&task, taskID).Error; err != nil {
-		tx.Rollback()
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("task not found")
+		// 更新该 Step 的其他任务为 RejectedByOther（排除当前任务）
+		if err := tx.Model(&model.Task{}).
+			Where("step_id = ? AND id != ? AND status = ?", task.StepID, task.ID, model.TaskStatusProcessing).
+			Update("status", model.TaskStatusRejectedByOther).Error; err != nil {
+			tx.Rollback()
+			return nil, err
 		}
-		return fmt.Errorf("failed to get task: %w", err)
-	}
 
-	// 检查权限
-	if task.AssigneeID != fromUserID {
-		tx.Rollback()
-		return fmt.Errorf("unauthorized to transfer this task")
-	}
+		// 更新 Workflow 状态为已取消
+		task.Workflow.Status = model.WorkflowStatusCancelled
+		if err := tx.Save(&task.Workflow).Error; err != nil {
+			tx.Rollback()
+			return nil, err
+		}
 
-	// 检查状态
-	if task.Status != model.StatusPending {
-		tx.Rollback()
-		return fmt.Errorf("task is not pending")
-	}
-
-	// 检查目标用户是否存在
-	var userCount int64
-	if err := tx.Model(&User{}).Where("id = ? AND status = 1", toUserID).Count(&userCount).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed to check target user: %w", err)
-	}
-	if userCount == 0 {
-		tx.Rollback()
-		return fmt.Errorf("target user not found or inactive")
-	}
-
-	// 更新任务
-	now := time.Now()
-	task.AssigneeID = toUserID
-	task.Comment = comment
-	task.TransferredAt = &now
-	task.TransferredBy = &fromUserID
-
-	if err := tx.Save(&task).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed to update task: %w", err)
+		// 更新资源状态为失败
+		if task.Workflow.ResourceType == "document" {
+			doc := &model.Document{}
+			if err := tx.Where("id = ?", task.Workflow.ResourceID).First(doc).Error; err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+			doc.Status = model.DocumentStatusFailed
+			if err := tx.Save(doc).Error; err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+		}
 	}
 
 	// 提交事务
 	if err := tx.Commit().Error; err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+		return nil, err
 	}
 
-	return nil
+	return task, nil
 }

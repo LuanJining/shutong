@@ -5,41 +5,33 @@ import (
 	"os"
 	"strings"
 
+	commonConfig "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/config"
 	"github.com/spf13/viper"
 )
 
+// Config Gateway 服务配置
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Iam      IamConfig      `mapstructure:"iam"`
-	Workflow WorkflowConfig `mapstructure:"workflow"`
-	Kb       KbConfig       `mapstructure:"kb"`
-	Gin      GinConfig      `mapstructure:"gin"`
-	Log      LogConfig      `mapstructure:"log"`
+	Server   commonConfig.ServerConfig `mapstructure:"server"`
+	Iam      IamConfig                 `mapstructure:"iam"`
+	Workflow WorkflowConfig            `mapstructure:"workflow"`
+	Kb       KbConfig                  `mapstructure:"kb"`
+	Gin      commonConfig.GinConfig    `mapstructure:"gin"`
+	Log      commonConfig.LogConfig    `mapstructure:"log"`
 }
 
-type ServerConfig struct {
-	Host string `mapstructure:"host"`
-	Port string `mapstructure:"port"`
-}
-
+// IamConfig IAM 服务地址配置（Gateway 特有）
 type IamConfig struct {
 	Url string `mapstructure:"url"`
 }
 
+// WorkflowConfig Workflow 服务地址配置（Gateway 特有）
 type WorkflowConfig struct {
 	Url string `mapstructure:"url"`
 }
 
+// KbConfig KB 服务地址配置（Gateway 特有）
 type KbConfig struct {
 	Url string `mapstructure:"url"`
-}
-
-type GinConfig struct {
-	Mode string `mapstructure:"mode"`
-}
-
-type LogConfig struct {
-	Level string `mapstructure:"level"`
 }
 
 func Load() (*Config, error) {

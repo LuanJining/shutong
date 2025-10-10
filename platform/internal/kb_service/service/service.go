@@ -1,16 +1,20 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"path/filepath"
-	"strconv"
+	"sort"
 	"strings"
 	"time"
+	"unicode"
 
+	"github.com/google/uuid"
 	openai "github.com/openai/openai-go/v2"
 	"github.com/openai/openai-go/v2/packages/ssestream"
 
@@ -25,7 +29,11 @@ type DocumentService struct {
 	minioClient    *client.S3Client
 	workflowClient *client.WorkflowClient
 	openaiClient   *client.OpenAIClient
+	ocrClient      *client.PaddleOCRClient
+	vectorClient   *client.QdrantClient
 }
+
+var errUnsupportedFileType = errors.New("unsupported file type for text extraction")
 
 type ChatDocumentStreamResult struct {
 	Stream  *ssestream.Stream[openai.ChatCompletionChunk]
@@ -33,24 +41,27 @@ type ChatDocumentStreamResult struct {
 }
 
 // NewDocumentService 创建文档服务
-func NewDocumentService(db *gorm.DB, minioClient *client.S3Client, workflowClient *client.WorkflowClient, openaiClient *client.OpenAIClient) *DocumentService {
+func NewDocumentService(
+	db *gorm.DB,
+	minioClient *client.S3Client,
+	workflowClient *client.WorkflowClient,
+	openaiClient *client.OpenAIClient,
+	ocrClient *client.PaddleOCRClient,
+	vectorClient *client.QdrantClient,
+) *DocumentService {
 	return &DocumentService{
 		db:             db,
 		minioClient:    minioClient,
 		workflowClient: workflowClient,
 		openaiClient:   openaiClient,
+		ocrClient:      ocrClient,
+		vectorClient:   vectorClient,
 	}
 }
 
 // UploadDocument 上传文档
-func (s *DocumentService) UploadDocument(ctx context.Context, req *model.UploadDocumentRequest) (*model.UploadDocumentResponse, error) {
+func (s *DocumentService) UploadDocument(ctx context.Context, req *model.UploadDocumentRequest) (*model.Document, error) {
 	// 设置默认值
-	if req.Visibility == "" {
-		req.Visibility = "private"
-	}
-	if req.Urgency == "" {
-		req.Urgency = "normal"
-	}
 	if req.CreatedBy == 0 {
 		req.CreatedBy = 1 // 默认系统用户ID
 	}
@@ -62,21 +73,24 @@ func (s *DocumentService) UploadDocument(ctx context.Context, req *model.UploadD
 
 	// 创建文档记录
 	document := &model.Document{
-		Title:        strings.TrimSuffix(req.FileName, fileExt),
-		FileName:     req.FileName,
-		FilePath:     filePath,
-		FileSize:     req.FileSize,
-		FileType:     fileExt,
-		MimeType:     req.ContentType,
-		Status:       model.DocumentStatusUploading,
-		Visibility:   model.DocumentVisibility(req.Visibility),
-		Urgency:      model.DocumentUrgency(req.Urgency),
-		SpaceID:      req.SpaceID,
-		CreatedBy:    req.CreatedBy,
-		Department:   req.Department,
-		Tags:         req.Tags,
-		Summary:      req.Summary,
-		NeedApproval: req.NeedApproval,
+		Title:           strings.TrimSuffix(req.FileName, fileExt),
+		FileName:        req.FileName,
+		FilePath:        filePath,
+		FileSize:        req.FileSize,
+		MimeType:        req.ContentType,
+		FileType:        fileExt,
+		Status:          model.DocumentStatusUploading,
+		SpaceID:         req.SpaceID,
+		SubSpaceID:      req.SubSpaceID,
+		ClassID:         req.ClassID,
+		CreatedBy:       req.CreatedBy,
+		CreatorNickName: req.CreatorNickName,
+		Department:      req.Department,
+		Tags:            req.Tags,
+		Summary:         req.Summary,
+		NeedApproval:    req.NeedApproval,
+		Version:         req.Version,
+		UseType:         req.UseType,
 	}
 	// 上传文件到MinIO
 	uploadedSize, err := s.minioClient.UploadFile(ctx, filePath, req.File, req.FileSize, req.ContentType)
@@ -103,26 +117,30 @@ func (s *DocumentService) UploadDocument(ctx context.Context, req *model.UploadD
 		if err != nil {
 			return nil, fmt.Errorf("failed to create workflow: %w", err)
 		}
-		// 设置状态为待审批
-		s.db.Model(document).Update("status", model.DocumentStatusPendingApproval)
-		document.Status = model.DocumentStatusPendingApproval
+		document, err = s.StartWorkflow(ctx, document)
+		if err != nil {
+			return nil, fmt.Errorf("failed to start workflow: %w", err)
+		}
 	} else {
 		// 不需要审批，直接设置为已发布
 		s.db.Model(document).Update("status", model.DocumentStatusPendingPublish)
 		document.Status = model.DocumentStatusPendingPublish
 	}
 
-	return &model.UploadDocumentResponse{
-		DocumentID: document.ID,
-		Status:     document.Status,
-		Message:    "Document uploaded successfully",
-	}, nil
+	// 异步处理文档（OCR/向量化）
+	go func(docID uint) {
+		if err := s.ProcessDocument(context.Background(), docID); err != nil {
+			log.Printf("failed to process document %d: %v", docID, err)
+		}
+	}(document.ID)
+
+	return document, nil
 }
 
 // GetDocument 获取文档详情
 func (s *DocumentService) GetDocument(ctx context.Context, documentID uint) (*model.Document, error) {
 	var document model.Document
-	if err := s.db.First(&document, documentID).Error; err != nil {
+	if err := s.db.Preload("Workflow").First(&document, documentID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("document not found")
 		}
@@ -146,7 +164,7 @@ func (s *DocumentService) GetDocumentsBySpaceId(ctx context.Context, spaceID uin
 
 	// 分页查询
 	offset := (page - 1) * pageSize
-	if err := query.Order("created_at DESC").
+	if err := query.Preload("Workflow").Order("created_at DESC").
 		Offset(offset).
 		Limit(pageSize).
 		Find(&documents).Error; err != nil {
@@ -296,42 +314,45 @@ func (s *DocumentService) prepareChatDocument(ctx context.Context, spaceID uint,
 }
 
 func (s *DocumentService) CreateWorkflow(ctx context.Context, document *model.Document) (*model.Document, error) {
-	// 直接写死空间管理员审批，后期再扩展
-	workflowStep := model.WorkflowStep{
-		StepName:         "文档发布审批",
-		StepOrder:        1,
-		ApproverType:     "space_admin",
-		ApproverID:       0,
-		IsRequired:       true,
-		TimeoutHours:     24,
-		ApprovalStrategy: "any",
+	step := model.Step{
+		StepName:     "文档发布审批",
+		StepOrder:    1,
+		StepRole:     string(model.SpaceMemberRoleApprover),
+		IsRequired:   true,
+		TimeoutHours: 24 * 7,
+		Status:       model.StepStatusProcessing,
 	}
 	workflow := model.Workflow{
-		Name:        "文档发布审批流程",
-		Description: "用于文档发布的审批流程",
-		SpaceID:     document.SpaceID,
-		Priority:    1,
-		Steps:       []model.WorkflowStep{workflowStep},
+		Name:         "文档发布审批流程",
+		Description:  "用于文档发布的审批流程",
+		SpaceID:      document.SpaceID,
+		Status:       model.WorkflowStatusProcessing,
+		Steps:        []model.Step{step},
+		ResourceType: "document",
+		ResourceID:   document.ID,
 	}
-	workflowIDStr, err := s.workflowClient.CreateWorkflow(ctx, &workflow, document.CreatedBy)
+
+	workflowID, err := s.workflowClient.CreateWorkflow(ctx, &workflow, document.CreatedBy)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create workflow: %w", err)
 	}
 
-	// 将字符串ID转换为uint
-	workflowID, err := strconv.ParseUint(workflowIDStr, 10, 32)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse workflow ID: %w", err)
-	}
+	s.db.Model(document).Updates(map[string]any{
+		"workflow_id": workflowID,
+	})
 
-	// 更新workflow对象的ID，用于启动工作流
-	workflow.ID = uint(workflowID)
-	_, err = s.workflowClient.StartWorkflow(ctx, &workflow, document.CreatedBy, document.ID)
+	return document, nil
+}
+
+func (s *DocumentService) StartWorkflow(ctx context.Context, document *model.Document) (*model.Document, error) {
+	_, err := s.workflowClient.StartWorkflow(ctx, document.WorkflowID, document.CreatedBy)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start workflow: %w", err)
 	}
+
 	s.db.Model(document).Updates(map[string]any{
-		"workflow_id": workflowID,
+		"status":     model.DocumentStatusPendingApproval,
+		"updated_at": time.Now(),
 	})
 	return document, nil
 }
@@ -364,4 +385,477 @@ func (s *DocumentService) DeleteDocument(ctx context.Context, documentID uint) e
 		return fmt.Errorf("failed to delete document: %w", err)
 	}
 	return nil
+}
+
+// GetHomepageDocuments 获取首页展示的文档
+// 返回5个知识库，每个知识库包含3个二级知识库，每个二级知识库包含6个文档
+func (s *DocumentService) GetHomepageDocuments(ctx context.Context) (*model.HomepageResponse, error) {
+	// 获取5个知识库（按创建时间倒序）
+	var spaces []model.Space
+	if err := s.db.WithContext(ctx).
+		Where("status = ?", 1).
+		Order("created_at DESC").
+		Limit(5).
+		Find(&spaces).Error; err != nil {
+		return nil, fmt.Errorf("failed to get spaces: %w", err)
+	}
+
+	response := &model.HomepageResponse{
+		Spaces: make([]model.HomepageSpace, 0, len(spaces)),
+	}
+
+	// 遍历每个知识库
+	for _, space := range spaces {
+		homepageSpace := model.HomepageSpace{
+			ID:          space.ID,
+			Name:        space.Name,
+			Description: space.Description,
+			SubSpaces:   make([]model.HomepageSubSpace, 0, 3),
+		}
+
+		// 获取该知识库下的3个二级知识库
+		var subSpaces []model.SubSpace
+		if err := s.db.WithContext(ctx).
+			Where("space_id = ? AND status = ?", space.ID, 1).
+			Order("created_at DESC").
+			Limit(3).
+			Find(&subSpaces).Error; err != nil {
+			log.Printf("failed to get subspaces for space %d: %v", space.ID, err)
+			continue
+		}
+
+		// 遍历每个二级知识库
+		for _, subSpace := range subSpaces {
+			homepageSubSpace := model.HomepageSubSpace{
+				ID:          subSpace.ID,
+				Name:        subSpace.Name,
+				Description: subSpace.Description,
+				Documents:   make([]model.HomepageDocument, 0, 6),
+			}
+
+			// 获取该二级知识库下的6个文档（只获取已发布的文档）
+			var documents []model.Document
+			if err := s.db.WithContext(ctx).
+				Where("sub_space_id = ? AND status IN ?", subSpace.ID, []model.DocumentStatus{
+					model.DocumentStatusPublished,
+					model.DocumentStatusPendingPublish,
+				}).
+				Order("created_at DESC").
+				Limit(6).
+				Find(&documents).Error; err != nil {
+				log.Printf("failed to get documents for subspace %d: %v", subSpace.ID, err)
+				continue
+			}
+
+			// 将文档转换为首页文档结构
+			for _, doc := range documents {
+				homepageSubSpace.Documents = append(homepageSubSpace.Documents, model.HomepageDocument{
+					ID:              doc.ID,
+					Title:           doc.Title,
+					FileName:        doc.FileName,
+					FileSize:        doc.FileSize,
+					FileType:        doc.FileType,
+					Status:          doc.Status,
+					CreatorNickName: doc.CreatorNickName,
+					Summary:         doc.Summary,
+					CreatedAt:       doc.CreatedAt,
+					UpdatedAt:       doc.UpdatedAt,
+				})
+			}
+
+			homepageSpace.SubSpaces = append(homepageSpace.SubSpaces, homepageSubSpace)
+		}
+
+		response.Spaces = append(response.Spaces, homepageSpace)
+	}
+
+	return response, nil
+}
+
+// GetTagCloud 聚合标签云
+func (s *DocumentService) GetTagCloud(ctx context.Context, spaceID, subSpaceID uint, limit int) ([]model.TagCloudItem, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+
+	query := s.db.WithContext(ctx).
+		Model(&model.Document{}).
+		Where("tags IS NOT NULL AND tags <> ''").
+		Where("status IN ?", []model.DocumentStatus{
+			model.DocumentStatusPublished,
+			model.DocumentStatusPendingPublish,
+		})
+
+	if spaceID > 0 {
+		query = query.Where("space_id = ?", spaceID)
+	}
+
+	if subSpaceID > 0 {
+		query = query.Where("sub_space_id = ?", subSpaceID)
+	}
+
+	var tagStrings []string
+	if err := query.Pluck("tags", &tagStrings).Error; err != nil {
+		return nil, fmt.Errorf("failed to fetch document tags: %w", err)
+	}
+
+	if len(tagStrings) == 0 {
+		return []model.TagCloudItem{}, nil
+	}
+
+	tagCounts := make(map[string]int)
+	for _, raw := range tagStrings {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+
+		tags := make([]string, 0)
+		if err := json.Unmarshal([]byte(raw), &tags); err != nil {
+			// 尝试以逗号分隔的字符串解析
+			for _, tag := range strings.Split(raw, ",") {
+				tag = strings.TrimSpace(tag)
+				tag = strings.Trim(tag, "\"'")
+				if tag != "" {
+					tags = append(tags, tag)
+				}
+			}
+		}
+
+		if len(tags) == 0 {
+			continue
+		}
+
+		seen := make(map[string]struct{}, len(tags))
+		for _, tag := range tags {
+			tag = strings.TrimSpace(tag)
+			if tag == "" {
+				continue
+			}
+			if _, exists := seen[tag]; exists {
+				continue
+			}
+			seen[tag] = struct{}{}
+			tagCounts[tag]++
+		}
+	}
+
+	items := make([]model.TagCloudItem, 0, len(tagCounts))
+	for tag, count := range tagCounts {
+		items = append(items, model.TagCloudItem{
+			Tag:   tag,
+			Count: count,
+		})
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Count == items[j].Count {
+			return items[i].Tag < items[j].Tag
+		}
+		return items[i].Count > items[j].Count
+	})
+
+	if limit < len(items) {
+		items = items[:limit]
+	}
+
+	return items, nil
+}
+
+// ProcessDocument 执行文档OCR与向量化处理
+func (s *DocumentService) ProcessDocument(ctx context.Context, documentID uint) error {
+	if s.minioClient == nil {
+		return errors.New("minio client is not configured")
+	}
+
+	var document model.Document
+	if err := s.db.WithContext(ctx).First(&document, documentID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return fmt.Errorf("document %d not found", documentID)
+		}
+		return fmt.Errorf("failed to load document %d: %w", documentID, err)
+	}
+
+	reader, err := s.minioClient.DownloadFile(ctx, document.FilePath)
+	if err != nil {
+		s.markDocumentProcessingError(document.ID, fmt.Errorf("failed to download file: %w", err))
+		return err
+	}
+	defer reader.Close()
+
+	fileBytes, err := io.ReadAll(reader)
+	if err != nil {
+		s.markDocumentProcessingError(document.ID, fmt.Errorf("failed to read file: %w", err))
+		return err
+	}
+
+	text, err := extractPlainText(document.FileType, fileBytes)
+	if err != nil {
+		if errors.Is(err, errUnsupportedFileType) {
+			if s.ocrClient == nil {
+				err = fmt.Errorf("unsupported file type %s and OCR client not configured", document.FileType)
+				s.markDocumentProcessingError(document.ID, err)
+				return err
+			}
+			text, err = s.ocrClient.Recognize(ctx, document.FileName, fileBytes)
+			if err != nil {
+				err = fmt.Errorf("ocr recognition failed: %w", err)
+				s.markDocumentProcessingError(document.ID, err)
+				return err
+			}
+		} else {
+			s.markDocumentProcessingError(document.ID, err)
+			return err
+		}
+	}
+
+	if strings.TrimSpace(text) == "" {
+		err = errors.New("empty text extracted from document")
+		s.markDocumentProcessingError(document.ID, err)
+		return err
+	}
+
+	chunks := splitIntoChunks(text, 800, 120)
+
+	if err := s.storeChunks(ctx, &document, chunks); err != nil {
+		s.markDocumentProcessingError(document.ID, err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *DocumentService) storeChunks(ctx context.Context, document *model.Document, chunks []string) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("document_id = ?", document.ID).Delete(&model.DocumentChunk{}).Error; err != nil {
+			return fmt.Errorf("failed to clear existing chunks: %w", err)
+		}
+
+		metadataJSON, err := json.Marshal(map[string]any{
+			"space_id":     document.SpaceID,
+			"sub_space_id": document.SubSpaceID,
+			"class_id":     document.ClassID,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to marshal chunk metadata: %w", err)
+		}
+
+		points := make([]client.QdrantPoint, 0, len(chunks))
+		createdChunks := 0
+		for idx, content := range chunks {
+			if strings.TrimSpace(content) == "" {
+				continue
+			}
+
+			embeddingVector := simpleEmbedding(content)
+			vectorID := uuid.NewString()
+
+			chunk := model.DocumentChunk{
+				DocumentID: document.ID,
+				Index:      idx,
+				Content:    content,
+				TokenCount: countTokens(content),
+				Metadata:   string(metadataJSON),
+				VectorID:   vectorID,
+			}
+
+			if err := tx.Create(&chunk).Error; err != nil {
+				return fmt.Errorf("failed to create chunk: %w", err)
+			}
+			createdChunks++
+
+			if s.vectorClient != nil {
+				payload := map[string]any{
+					"document_id":  document.ID,
+					"chunk_id":     chunk.ID,
+					"space_id":     document.SpaceID,
+					"sub_space_id": document.SubSpaceID,
+					"class_id":     document.ClassID,
+					"created_at":   chunk.CreatedAt,
+					"title":        document.Title,
+					"file_name":    document.FileName,
+					"content":      content,
+				}
+
+				points = append(points, client.QdrantPoint{
+					ID:      vectorID,
+					Vector:  embeddingVector,
+					Payload: payload,
+				})
+			}
+		}
+
+		if s.vectorClient != nil && len(points) > 0 {
+			if err := s.vectorClient.UpsertPoints(ctx, points); err != nil {
+				return fmt.Errorf("failed to upsert document vectors: %w", err)
+			}
+		}
+
+		processedAt := time.Now()
+		updateData := map[string]any{
+			"processed_at": &processedAt,
+			"parse_error":  "",
+			"vector_count": createdChunks,
+		}
+
+		if err := tx.Model(&model.Document{}).Where("id = ?", document.ID).Updates(updateData).Error; err != nil {
+			return fmt.Errorf("failed to update document meta: %w", err)
+		}
+
+		return nil
+	})
+}
+
+func (s *DocumentService) markDocumentProcessingError(documentID uint, procErr error) {
+	if procErr == nil {
+		return
+	}
+
+	updateData := map[string]any{
+		"parse_error":  procErr.Error(),
+		"vector_count": 0,
+		"processed_at": nil,
+	}
+
+	if err := s.db.Model(&model.Document{}).Where("id = ?", documentID).Updates(updateData).Error; err != nil {
+		log.Printf("failed to update document %d after processing error: %v", documentID, err)
+	}
+}
+
+func extractPlainText(fileType string, data []byte) (string, error) {
+	switch strings.ToLower(fileType) {
+	case ".txt", ".md", ".csv", ".log":
+		return string(data), nil
+	case ".json":
+		var buf bytes.Buffer
+		if err := json.Indent(&buf, data, "", "  "); err == nil {
+			return buf.String(), nil
+		}
+		return string(data), nil
+	case ".html", ".htm":
+		result := stripHTMLTags(string(data))
+		if strings.TrimSpace(result) == "" {
+			return "", fmt.Errorf("html content is empty after stripping tags")
+		}
+		return result, nil
+	default:
+		return "", fmt.Errorf("%w: %s", errUnsupportedFileType, fileType)
+	}
+}
+
+func splitIntoChunks(text string, chunkSize int, overlap int) []string {
+	clean := strings.TrimSpace(text)
+	if clean == "" {
+		return []string{}
+	}
+
+	if chunkSize <= 0 {
+		chunkSize = 800
+	}
+	if overlap < 0 {
+		overlap = 0
+	}
+	if overlap >= chunkSize {
+		overlap = chunkSize / 2
+	}
+
+	runes := []rune(clean)
+	var chunks []string
+	start := 0
+
+	for start < len(runes) {
+		end := start + chunkSize
+		if end > len(runes) {
+			end = len(runes)
+		}
+
+		chunk := strings.TrimSpace(string(runes[start:end]))
+		if chunk != "" {
+			chunks = append(chunks, chunk)
+		}
+
+		if end == len(runes) {
+			break
+		}
+
+		start = end - overlap
+		if start < 0 {
+			start = 0
+		}
+	}
+
+	return chunks
+}
+
+func countTokens(content string) int {
+	return len(strings.Fields(content))
+}
+
+func simpleEmbedding(content string) []float64 {
+	words := strings.Fields(content)
+	wordCount := len(words)
+
+	uniqueWords := make(map[string]struct{}, wordCount)
+	var totalWordLen int
+	var digitCount, upperCount int
+
+	for _, w := range words {
+		uniqueWords[strings.ToLower(w)] = struct{}{}
+		totalWordLen += len(w)
+	}
+
+	for _, r := range content {
+		if unicode.IsDigit(r) {
+			digitCount++
+		}
+		if unicode.IsUpper(r) {
+			upperCount++
+		}
+	}
+
+	var avgWordLen float64
+	if wordCount > 0 {
+		avgWordLen = float64(totalWordLen) / float64(wordCount)
+	}
+
+	return []float64{
+		float64(len(content)),            // 文本长度
+		float64(wordCount),               // 单词数
+		float64(len(uniqueWords)),        // 去重单词数
+		float64(digitCount),              // 数字字符数
+		float64(upperCount),              // 大写字母数
+		avgWordLen,                       // 平均词长度
+		float64(countSentences(content)), // 句子数
+	}
+}
+
+func countSentences(content string) int {
+	count := 0
+	for _, ch := range content {
+		if ch == '.' || ch == '!' || ch == '?' || ch == '。' || ch == '！' || ch == '？' {
+			count++
+		}
+	}
+	if count == 0 && strings.TrimSpace(content) != "" {
+		return 1
+	}
+	return count
+}
+
+func stripHTMLTags(input string) string {
+	var output strings.Builder
+	inTag := false
+	for _, r := range input {
+		switch r {
+		case '<':
+			inTag = true
+		case '>':
+			inTag = false
+		default:
+			if !inTag {
+				output.WriteRune(r)
+			}
+		}
+	}
+	return output.String()
 }

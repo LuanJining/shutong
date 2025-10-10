@@ -5,44 +5,24 @@ import (
 	"os"
 	"strings"
 
+	commonConfig "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/config"
 	"github.com/spf13/viper"
 )
 
+// Config IAM 服务配置
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	JWT      JWTConfig      `mapstructure:"jwt"`
-	Log      LogConfig      `mapstructure:"log"`
-	Gin      GinConfig      `mapstructure:"gin"`
+	Server   commonConfig.ServerConfig   `mapstructure:"server"`
+	Database commonConfig.DatabaseConfig `mapstructure:"database"`
+	JWT      JWTConfig                   `mapstructure:"jwt"`
+	Log      commonConfig.LogConfig      `mapstructure:"log"`
+	Gin      commonConfig.GinConfig      `mapstructure:"gin"`
 }
 
-type ServerConfig struct {
-	Host string `mapstructure:"host"`
-	Port string `mapstructure:"port"`
-}
-
-type DatabaseConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     string `mapstructure:"port"`
-	User     string `mapstructure:"user"`
-	Password string `mapstructure:"password"`
-	DBName   string `mapstructure:"dbname"`
-	SSLMode  string `mapstructure:"sslmode"`
-}
-
+// JWTConfig JWT 配置（IAM 特有）
 type JWTConfig struct {
 	Secret                 string `mapstructure:"secret"`
 	AccessTokenExpireTime  int    `mapstructure:"access_token_expire_time"`  // 小时
 	RefreshTokenExpireTime int    `mapstructure:"refresh_token_expire_time"` // 小时
-}
-
-type LogConfig struct {
-	Level      string `mapstructure:"level"`        // 日志级别: debug, info, warn, error
-	DBLogLevel string `mapstructure:"db_log_level"` // 数据库日志级别: silent, error, warn, info
-}
-
-type GinConfig struct {
-	Mode string `mapstructure:"mode"`
 }
 
 func Load() (*Config, error) {

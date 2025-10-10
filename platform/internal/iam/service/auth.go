@@ -372,3 +372,27 @@ func (s *AuthService) CheckPermission(userID uint, spaceID uint, resource string
 
 	return false, nil
 }
+
+func (s *AuthService) CreateSubSpace(req *model.CreateSubSpaceRequest, userID uint) (*model.SubSpace, error) {
+	var subSpace model.SubSpace
+	subSpace.SpaceID = req.SpaceID
+	subSpace.Name = req.Name
+	subSpace.Description = req.Description
+	subSpace.CreatedBy = userID
+	if err := s.db.Create(&subSpace).Error; err != nil {
+		return nil, err
+	}
+	return &subSpace, nil
+}
+
+func (s *AuthService) CreateClass(req *model.CreateClassRequest, userID uint) (*model.Class, error) {
+	var class model.Class
+	class.SubSpaceID = req.SubSpaceID
+	class.Name = req.Name
+	class.Description = req.Description
+	class.CreatedBy = userID
+	if err := s.db.Create(&class).Error; err != nil {
+		return nil, err
+	}
+	return &class, nil
+}

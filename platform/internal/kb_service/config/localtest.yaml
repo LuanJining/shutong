@@ -30,17 +30,18 @@ minio:
   bucket: kb-platform
   region: us-east-1
 
-qdrant:
-  host: localhost
-  port: "6333"
-  user: qdrant
-  password: qdrant
-  dbname: kb_platform
-  sslmode: disable
-
 ocr:
-  url: http://localhost:8084
+  base_url: http://localhost:8500
+  timeout_seconds: 600
+  language: ch
 
+vector:
+  base_url: http://localhost:6333
+  api_key: ""
+  collection: kb_documents
+  vector_size: 7
+  distance: Cosine
+  timeout_seconds: 30
 
 openai:
   url: https://api.deepseek.com/v3.1_terminus_expires_on_20251015

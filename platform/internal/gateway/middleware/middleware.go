@@ -7,23 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CORS 跨域中间件
-func CORS() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-User-ID")
-		c.Header("Access-Control-Allow-Credentials", "true")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(http.StatusNoContent)
-			return
-		}
-
-		c.Next()
-	}
-}
-
+// AuthRequired Gateway 专用的认证中间件
+// 通过 IAM 服务验证 token 并将用户 ID 添加到请求头中
 func AuthRequired(iamHandler *handler.IamHandler) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.GetHeader("Authorization")
