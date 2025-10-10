@@ -13,13 +13,11 @@ export default function KonwledgeDetail() {
     const fromPage: any = useLocation().state
     const [info, setInfo] = useState<any>(null)
 
-    console.log(fromPage)
-
     useEffect(() => { fromPage?.documentId && getInfo() }, [fromPage?.documentId])
 
     const getInfo = async () => {
         const r: any = await api_frontend.documentDetail(fromPage?.documentId)
-        setInfo(r)
+        setInfo(r.data)
     }
 
     const BaseInfo = () => (<div className="form-box">
@@ -70,16 +68,13 @@ export default function KonwledgeDetail() {
                     <Form.Item style={{ marginBottom: 12 }} wrapperCol={{ offset: 1 }}>
                         <div className="flex al-center">
                             <div className="hg-fs elli fw-bold">{info?.title}</div>
-                            {info?.id && <DownloadOutlined onClick={download} className="lg-fs mgL16 pointer fw-bold primary-blue" />
-                            }
+                            {info?.id && <DownloadOutlined onClick={download} className="lg-fs mgL16 pointer fw-bold primary-blue" />}
                         </div>
                     </Form.Item>
 
                     <Form.Item className="h-100p" wrapperCol={{ offset: 1 }}>
                         <FileUploader
-                            styles={{
-                                maxHeight: 'calc(100vh - 190px)',
-                            }}
+                            styles={{maxHeight: 'calc(100vh - 190px)'}}
                             file={null} type={"url"} fileType={info?.file_type === '.pdf' ? 'pdf' : 'docx'} />
                     </Form.Item>
                 </div>

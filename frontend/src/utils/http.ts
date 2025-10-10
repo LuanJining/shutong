@@ -3,10 +3,9 @@ import storage from "./storage";
 import _caches from "@/config/_caches";
 import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
 import { message } from "antd";
-import { getViteUrl } from "./tools";
 
 const instance = axios.create({
-    baseURL: getViteUrl('VITE_API_URL'),
+    baseURL: import.meta.env['VITE_API_URL'],
     timeout: 120000,
 });
 
@@ -15,7 +14,6 @@ instance.interceptors.request.use(
         const token = storage.get(_caches.AUTH_INFO)?.access_token
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
-            !config.url?.includes('/iam') && (config.headers['X-User-ID'] = storage.get(_caches.AUTH_INFO)?.user?.id)
         }
         return config;
     },

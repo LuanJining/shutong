@@ -1,6 +1,6 @@
 import "./index.scss"
 import api_frontend from "@/api/api_frontend";
-import { Button, Form, Input, message } from "antd";
+import { Button, Checkbox, Form, Input, message } from "antd";
 import storage from "@/utils/storage";
 import _cache from "@/config/_caches";
 import { useNavigate } from "react-router-dom";
@@ -37,6 +37,11 @@ export default function Index() {
 
                 <Form.Item name='password' label='密码'>
                     <Input.Password placeholder="请输入密码" />
+                </Form.Item>
+
+                <Form.Item>
+                    <Checkbox />
+                    <span className="mgL12">记住密码</span>
                 </Form.Item>
 
                 <Form.Item className="mgT32">

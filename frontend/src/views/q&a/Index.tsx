@@ -4,7 +4,6 @@ import { Input, message, Modal, Select } from "antd"
 import { useEffect, useRef, useState } from "react"
 import { LoadingOutlined } from "@ant-design/icons"
 import { OPTIONS_TYPE } from "@/types/common"
-import { getViteUrl } from "@/utils/tools"
 import ServiceImg from "@/assets/images/service.png"
 import api_frontend from "@/api/api_frontend"
 import storage from "@/utils/storage"
@@ -19,7 +18,7 @@ export default function Index() {
     const abortController = useRef<any>(null)
     const chatBoxRef = useRef<any>(null)
     const chatContainerRef = useRef<any>(null)
-    const fetchUrl: string = `${getViteUrl('VITE_API_URL')}/kb/${space_id}/chat/stream`;
+    const fetchUrl: string = `${import.meta.env['VITE_API_URL']}/kb/${space_id}/chat/stream`;
 
     useEffect(() => { getSpaces() }, [])
     useEffect(() => { setSpaceId(konwledges?.[0]?.value) }, [konwledges])

@@ -1,0 +1,40 @@
+.page-nav {
+  width: 283px;
+  height: 100%;
+  background-color: #efefef;
+  box-sizing: border-box;
+
+  .nav-icon {
+    transition: all 0.3s;
+    &:hover {
+      color: var(--primary-blue);
+      transform: scale(1.2);
+    }
+  }
+
+  .nav-content {
+    .nav-item {
+      width: 100%;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      box-sizing: border-box;
+      padding-left: 24px;
+      padding-right: 12px;
+      cursor: pointer;
+
+      .icons-box {
+        display: none;
+      }
+      &:hover {
+        background-color: #e1e1e1;
+        .icons-box {
+          display: flex;
+        }
+      }
+    }
+    .nav-item-active {
+      background-color: #c7e2f1 !important;
+    }
+  }
+}

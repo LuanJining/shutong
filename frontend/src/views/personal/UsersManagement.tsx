@@ -2,7 +2,6 @@ import dayjs from 'dayjs'
 import { Button, Col, Input, Row, Space, Table, TableProps } from "antd";
 import CreatUser from "./CreatUser";
 import { useEffect, useState } from "react";
-import utils from "@/utils";
 import api_frontend from "@/api/api_frontend";
 import AssignRoles from './AssignRoles';
 import { Par_Common_Params } from '@/types/api';
@@ -26,13 +25,11 @@ export default function UsersManagement() {
     useEffect(() => { getUsers() }, [])
 
     const getUsers = async (values: any = {}) => {
-        utils.setLoading(true)
         const params: any = { ...par, ...values }
         delete params?.total
         const { data: { users, pagination: { total } } } = await api_frontend.getUsers(params)
         setData(users.map((v: any) => ({ key: v.id, ...v })))
         setPar({ ...params, total })
-        utils.setLoading(false)
     }
 
 

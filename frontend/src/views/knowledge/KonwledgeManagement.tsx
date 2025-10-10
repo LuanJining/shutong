@@ -46,7 +46,6 @@ export default function KonwledgeManagement() {
             utils.setLoading(false)
             throw (e)
         }
-
     }
 
     const columns: TableProps<DataType>['columns'] = [
@@ -94,7 +93,6 @@ export default function KonwledgeManagement() {
                     >
                         <span className="pointer primary-blue">删除</span>
                     </Popconfirm>
-
                 </Space>
             ),
         },

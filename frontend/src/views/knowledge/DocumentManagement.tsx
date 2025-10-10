@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { Par_Common_Params } from '@/types/api';
 import { DeleteOutlined, DownloadOutlined } from '@ant-design/icons';
-import { Button, Col, Popconfirm, Row, Space, Switch, Table, TableProps } from 'antd';
+import { Button, Col, message, Popconfirm, Row, Space, Switch, Table, TableProps } from 'antd';
 
 interface DataType {
     id: string;
@@ -21,13 +21,13 @@ export default function DocumentManagement({ space_id }: { space_id: string | nu
     const [list, setList] = useState<any[]>([])
     const [par, setPar] = useState<Par_Common_Params>({ page: 1, page_size: 10 })
 
-    useEffect(() => { getDocument() }, [space_id])
+    useEffect(() => { space_id && getDocument() }, [space_id])
 
     const getDocument = async (values: any = {}) => {
         try {
             const params: Par_Common_Params = { ...par, ...values }
             delete params?.total
-            const { items, total }: any = await api_frontend.documentList(space_id, params)
+            const { data: { items, total } }: any = await api_frontend.documentList(space_id, params)
             setList(items.map((v: any) => ({ key: v.id, ...v })))
             setPar({ ...params, total })
         } catch (e) {
@@ -43,16 +43,16 @@ export default function DocumentManagement({ space_id }: { space_id: string | nu
     }
 
     const onDelete = async (item: any) => {
-        // try {
-        //     utils.setLoading(true)
-        //     await api_frontend.deleteSpace(item.id)
-        //     await getDocument()
-        //     message.success('删除成功' )
-        //     utils.setLoading(false)
-        // } catch (e) {
-        //     utils.setLoading(false)
-        //     throw (e)
-        // }
+        try {
+            utils.setLoading(true)
+            await api_frontend.deleteSpace(item.id)
+            await getDocument()
+            message.success('删除成功')
+            utils.setLoading(false)
+        } catch (e) {
+            utils.setLoading(false)
+            throw (e)
+        }
     }
 
     const columns: TableProps<DataType>['columns'] = [
