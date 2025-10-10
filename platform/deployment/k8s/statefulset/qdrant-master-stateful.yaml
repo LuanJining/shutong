@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: qdrant-service
+  namespace: kb-platform
+  labels:
+    app: qdrant-service
+spec:
+  ports:
+    - name: http
+      port: 6333
+      targetPort: http
+    - name: grpc
+      port: 6334
+      targetPort: grpc
+  clusterIP: None
+  selector:
+    app: qdrant-service
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: qdrant-service
+  namespace: kb-platform
+  labels:
+    app: qdrant-service
+spec:
+  serviceName: qdrant-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qdrant-service
+  template:
+    metadata:
+      labels:
+        app: qdrant-service
+    spec:
+      containers:
+        - name: qdrant-service
+          image: harbor.kunxiangtech.com:8443/fy-platform/qdrant:v1.15
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 6333
+            - name: grpc
+              containerPort: 6334
+          volumeMounts:
+            - name: qdrant-service-storage
+              mountPath: /qdrant/storage
+          resources: {}
+      imagePullSecrets: []
+  volumeClaimTemplates:
+    - metadata:
+        name: qdrant-service-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
