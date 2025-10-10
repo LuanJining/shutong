@@ -18,3 +18,4 @@ data:
   KBASE_DB_LOG_LEVEL: "error"
   KBASE_GIN_MODE: "release"
   KBASE_LOG_DB_LOG_LEVEL: "error"
+  KBASE_IAM_URL: "http://iam-service:8081"
