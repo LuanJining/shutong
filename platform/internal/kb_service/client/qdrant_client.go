@@ -71,10 +71,8 @@ type QdrantSearchResult struct {
 
 type qdrantSearchResponse struct {
 	Result []QdrantSearchResult `json:"result"`
-	Status struct {
-		Code  int    `json:"code"`
-		Error string `json:"error,omitempty"`
-	} `json:"status"`
+	Status string               `json:"status"`
+	Time   float64              `json:"time"`
 }
 
 // NewQdrantClient 创建新的 Qdrant 客户端

@@ -174,6 +174,7 @@ type TagCloudResponse struct {
 type KnowledgeSearchRequest struct {
 	Query      string `json:"query" binding:"required"`
 	Limit      int    `json:"limit"`
+	SpaceID    uint   `json:"space_id"`
 	SubSpaceID uint   `json:"sub_space_id"`
 	ClassID    uint   `json:"class_id"`
 }
