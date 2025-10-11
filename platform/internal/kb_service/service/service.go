@@ -1088,10 +1088,7 @@ func ensureVectorSize(vec []float64, size int) []float64 {
 		return vec
 	}
 	result := make([]float64, size)
-	copyCount := len(vec)
-	if copyCount > size {
-		copyCount = size
-	}
+	copyCount := min(len(vec), size)
 	copy(result, vec[:copyCount])
 	return result
 }

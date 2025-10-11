@@ -1,4 +1,5 @@
-BASE_URL="http://localhost:8080/api/v1"
+# BASE_URL="http://localhost:8080/api/v1"
+BASE_URL="http://182.140.132.5:30368/api/v1"
 TEST_FILE="./test.txt"
 
 # 登录管理员账户
