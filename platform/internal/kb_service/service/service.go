@@ -614,7 +614,7 @@ func (s *DocumentService) GetTagCloud(ctx context.Context, spaceID, subSpaceID u
 }
 
 // SearchKnowledge 基于向量的知识搜索
-func (s *DocumentService) SearchKnowledge(ctx context.Context, spaceID uint, req *model.KnowledgeSearchRequest) (*model.KnowledgeSearchResponse, error) {
+func (s *DocumentService) SearchKnowledge(ctx context.Context, req *model.KnowledgeSearchRequest) (*model.KnowledgeSearchResponse, error) {
 	if req == nil {
 		return nil, errors.New("search request is nil")
 	}
@@ -632,7 +632,7 @@ func (s *DocumentService) SearchKnowledge(ctx context.Context, spaceID uint, req
 		limit = 20
 	}
 
-	chunks, err := s.searchChunks(ctx, spaceID, query, req.SubSpaceID, req.ClassID, limit)
+	chunks, err := s.searchChunks(ctx, req.SpaceID, query, req.SubSpaceID, req.ClassID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -670,25 +670,29 @@ func (s *DocumentService) searchChunks(ctx context.Context, spaceID uint, query 
 	vector := simpleEmbedding(query)
 	vector = ensureVectorSize(vector, s.vectorClient.VectorSize())
 
-	filter := &client.QdrantFilter{
-		Must: []client.QdrantCondition{
-			{
-				Key:   "space_id",
-				Match: client.QdrantMatch{Value: spaceID},
-			},
-		},
+	var must []client.QdrantCondition
+	if spaceID > 0 {
+		must = append(must, client.QdrantCondition{
+			Key:   "space_id",
+			Match: client.QdrantMatch{Value: spaceID},
+		})
 	}
 	if subSpaceID > 0 {
-		filter.Must = append(filter.Must, client.QdrantCondition{
+		must = append(must, client.QdrantCondition{
 			Key:   "sub_space_id",
 			Match: client.QdrantMatch{Value: subSpaceID},
 		})
 	}
 	if classID > 0 {
-		filter.Must = append(filter.Must, client.QdrantCondition{
+		must = append(must, client.QdrantCondition{
 			Key:   "class_id",
 			Match: client.QdrantMatch{Value: classID},
 		})
+	}
+
+	var filter *client.QdrantFilter
+	if len(must) > 0 {
+		filter = &client.QdrantFilter{Must: must}
 	}
 
 	results, err := s.vectorClient.SearchPoints(ctx, vector, limit, filter)
@@ -745,14 +749,18 @@ func (s *DocumentService) searchChunks(ctx context.Context, spaceID uint, query 
 	}
 
 	var documents []model.Document
-	if err := s.db.WithContext(ctx).
+	dbQuery := s.db.WithContext(ctx).
 		Where("id IN ?", docIDs).
-		Where("space_id = ?", spaceID).
 		Where("status IN ?", []model.DocumentStatus{
 			model.DocumentStatusPublished,
 			model.DocumentStatusPendingPublish,
-		}).
-		Find(&documents).Error; err != nil {
+		})
+
+	if spaceID > 0 {
+		dbQuery = dbQuery.Where("space_id = ?", spaceID)
+	}
+
+	if err := dbQuery.Find(&documents).Error; err != nil {
 		return nil, fmt.Errorf("failed to load documents: %w", err)
 	}
 

@@ -41,7 +41,7 @@ func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, workfl
 		{
 			documents.POST("/upload", middleware.FetchUserFromHeader(db), documentHandler.UploadDocument)
 			documents.GET("/tag-cloud", documentHandler.GetTagCloud)
-			documents.POST("/:id/search", documentHandler.SearchKnowledge)
+			documents.POST("/search", documentHandler.SearchKnowledge)
 
 			documents.GET("/:id/preview", documentHandler.PreviewDocument)
 			documents.GET("/:id/info", documentHandler.GetDocument)

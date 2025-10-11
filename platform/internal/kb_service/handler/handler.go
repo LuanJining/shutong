@@ -317,16 +317,6 @@ func (h *DocumentHandler) GetTagCloud(c *gin.Context) {
 
 // SearchKnowledge 知识检索
 func (h *DocumentHandler) SearchKnowledge(c *gin.Context) {
-	spaceIDStr := c.Param("id")
-	spaceID, err := strconv.ParseUint(spaceIDStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, &model.APIResponse{
-			Code:    http.StatusBadRequest,
-			Message: "Invalid space ID",
-		})
-		return
-	}
-
 	var req model.KnowledgeSearchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, &model.APIResponse{
@@ -336,7 +326,7 @@ func (h *DocumentHandler) SearchKnowledge(c *gin.Context) {
 		return
 	}
 
-	results, err := h.documentService.SearchKnowledge(c.Request.Context(), uint(spaceID), &req)
+	results, err := h.documentService.SearchKnowledge(c.Request.Context(), &req)
 	if err != nil {
 		switch {
 		case errors.Is(err, model.ErrVectorClientNotConfigured):
