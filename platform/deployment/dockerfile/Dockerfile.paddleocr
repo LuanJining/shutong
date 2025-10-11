@@ -1,7 +1,10 @@
 FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    KMP_DUPLICATE_LIB_OK=TRUE \
+    MKL_THREADING_LAYER=GNU \
+    FLAGS_use_mkldnn=false
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -9,7 +12,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsm6 \
     libxext6 \
     libxrender-dev \
+    libgl1 \
+    libgomp1 \
     poppler-utils \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
 
@@ -17,6 +23,16 @@ WORKDIR /app
 
 COPY deployment/paddleocr/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Pre-download PaddleOCR models for offline use (download only, don't initialize)
+RUN mkdir -p /root/.paddleocr/whl && \
+    cd /root/.paddleocr/whl && \
+    wget -q https://paddleocr.bj.bcebos.com/PP-OCRv4/chinese/ch_PP-OCRv4_det_infer.tar && \
+    tar -xf ch_PP-OCRv4_det_infer.tar && rm ch_PP-OCRv4_det_infer.tar && \
+    wget -q https://paddleocr.bj.bcebos.com/PP-OCRv4/chinese/ch_PP-OCRv4_rec_infer.tar && \
+    tar -xf ch_PP-OCRv4_rec_infer.tar && rm ch_PP-OCRv4_rec_infer.tar && \
+    wget -q https://paddleocr.bj.bcebos.com/dygraph_v2.0/ch/ch_ppocr_mobile_v2.0_cls_infer.tar && \
+    tar -xf ch_ppocr_mobile_v2.0_cls_infer.tar && rm ch_ppocr_mobile_v2.0_cls_infer.tar
 
 COPY deployment/paddleocr/server.py ./server.py
 

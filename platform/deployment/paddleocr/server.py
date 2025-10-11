@@ -39,7 +39,14 @@ def _load_ocr(language: str) -> PaddleOCR:
     with _ocr_lock:
         if lang not in _ocr_models:
             logger.info("Loading PaddleOCR model for language: %s", lang)
-            _ocr_models[lang] = PaddleOCR(use_angle_cls=True, lang=lang, show_log=False)
+            _ocr_models[lang] = PaddleOCR(
+                use_angle_cls=True,
+                lang=lang,
+                show_log=False,
+                use_gpu=False,
+                enable_mkldnn=False,  # Disable MKL-DNN to avoid SIGILL
+                cpu_threads=2,  # Limit CPU threads for stability
+            )
     return _ocr_models[lang]
 
 

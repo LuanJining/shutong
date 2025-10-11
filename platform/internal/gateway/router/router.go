@@ -127,6 +127,7 @@ func Setup(cfg *configs.Config) *gin.Engine {
 			kb.GET("/:id/space", kbHandler.ProxyToKbClient)
 			kb.GET("/homepage", kbHandler.ProxyToKbClient)
 			kb.DELETE("/:id", kbHandler.ProxyToKbClient)
+			kb.POST("/search", kbHandler.ProxyToKbClient)
 
 			// 文档流程相关
 			kb.POST("/:id/submit", kbHandler.ProxyToKbClient)

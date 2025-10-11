@@ -68,6 +68,8 @@ var (
 	ErrNoDocumentsAvailable = errors.New("no documents available for chat")
 	// ErrEmptyChatQuestion indicates an empty or whitespace-only question.
 	ErrEmptyChatQuestion = errors.New("question is required")
+	// ErrVectorClientNotConfigured indicates vector search is unavailable.
+	ErrVectorClientNotConfigured = errors.New("vector client is not configured")
 )
 
 // ChatDocumentRequest 请求结构
@@ -167,4 +169,26 @@ type TagCloudItem struct {
 // TagCloudResponse 标签云响应
 type TagCloudResponse struct {
 	Items []TagCloudItem `json:"items"`
+}
+
+type KnowledgeSearchRequest struct {
+	Query      string `json:"query" binding:"required"`
+	Limit      int    `json:"limit"`
+	SpaceID    uint   `json:"space_id"`
+	SubSpaceID uint   `json:"sub_space_id"`
+	ClassID    uint   `json:"class_id"`
+}
+
+type KnowledgeSearchResult struct {
+	DocumentID uint    `json:"document_id"`
+	ChunkID    uint    `json:"chunk_id"`
+	Title      string  `json:"title"`
+	Content    string  `json:"content"`
+	Snippet    string  `json:"snippet"`
+	Score      float64 `json:"score"`
+	FileName   string  `json:"file_name"`
+}
+
+type KnowledgeSearchResponse struct {
+	Items []KnowledgeSearchResult `json:"items"`
 }

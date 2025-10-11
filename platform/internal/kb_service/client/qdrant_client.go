@@ -42,6 +42,39 @@ type qdrantCollectionRequest struct {
 	} `json:"vectors"`
 }
 
+type QdrantMatch struct {
+	Value any `json:"value"`
+}
+
+type QdrantCondition struct {
+	Key   string      `json:"key"`
+	Match QdrantMatch `json:"match"`
+}
+
+type QdrantFilter struct {
+	Must []QdrantCondition `json:"must,omitempty"`
+}
+
+type qdrantSearchRequest struct {
+	Vector      []float64     `json:"vector"`
+	Top         int           `json:"top"`
+	WithPayload bool          `json:"with_payload"`
+	WithVector  bool          `json:"with_vector"`
+	Filter      *QdrantFilter `json:"filter,omitempty"`
+}
+
+type QdrantSearchResult struct {
+	ID      string         `json:"id"`
+	Score   float64        `json:"score"`
+	Payload map[string]any `json:"payload"`
+}
+
+type qdrantSearchResponse struct {
+	Result []QdrantSearchResult `json:"result"`
+	Status string               `json:"status"`
+	Time   float64              `json:"time"`
+}
+
 // NewQdrantClient 创建新的 Qdrant 客户端
 func NewQdrantClient(cfg *config.QdrantConfig) *QdrantClient {
 	if cfg == nil || strings.TrimSpace(cfg.BaseURL) == "" {
@@ -161,4 +194,54 @@ func (c *QdrantClient) UpsertPoints(ctx context.Context, points []QdrantPoint) e
 	}
 
 	return nil
+}
+
+// SearchPoints 在 Qdrant 中检索相似向量
+func (c *QdrantClient) SearchPoints(ctx context.Context, vector []float64, top int, filter *QdrantFilter) ([]QdrantSearchResult, error) {
+	if c == nil {
+		return nil, errors.New("qdrant client is not configured")
+	}
+	if len(vector) != c.vectorSize {
+		return nil, fmt.Errorf("qdrant: vector size mismatch, expect %d got %d", c.vectorSize, len(vector))
+	}
+	if top <= 0 {
+		top = 5
+	}
+
+	body, err := json.Marshal(qdrantSearchRequest{
+		Vector:      vector,
+		Top:         top,
+		WithPayload: true,
+		WithVector:  false,
+		Filter:      filter,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("qdrant: marshal search request failed: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/collections/"+c.collection+"/points/search", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("qdrant: create search request failed: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if c.apiKey != "" {
+		req.Header.Set("api-key", c.apiKey)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("qdrant: search request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("qdrant: search unexpected status %d", resp.StatusCode)
+	}
+
+	var searchResp qdrantSearchResponse
+	if err := json.NewDecoder(resp.Body).Decode(&searchResp); err != nil {
+		return nil, fmt.Errorf("qdrant: failed to decode search response: %w", err)
+	}
+
+	return searchResp.Result, nil
 }

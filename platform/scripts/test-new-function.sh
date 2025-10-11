@@ -1,5 +1,6 @@
-BASE_URL="http://localhost:8080/api/v1"
-TEST_FILE="/Users/gideonzy/Downloads/evaluation_report2.pdf"
+# BASE_URL="http://localhost:8080/api/v1"
+BASE_URL="http://182.140.132.5:30368/api/v1"
+TEST_FILE="./test.txt"
 
 # 登录管理员账户
 LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/iam/auth/login" \
@@ -132,7 +133,7 @@ echo "=== 上传文档 ==="
 UPLOAD_DOC_RESPONSE=$(curl -s -X POST "$BASE_URL/kb/upload" \
   -H "Authorization: Bearer $UPLOAD_TOKEN" \
   -F "file=@$TEST_FILE" \
-  -F "file_name=测试文档.pdf" \
+  -F "file_name=test.txt" \
   -F "space_id=$SPACE_ID" \
   -F "sub_space_id=$SUBSPACE_ID" \
   -F "class_id=$CLASS_ID" \
@@ -191,3 +192,15 @@ if [ "$DOC_STATUS" = "pending_publish" ]; then
 else
   echo "❌ 测试失败：文档状态为 $DOC_STATUS，期望为 pending_publish"
 fi
+
+
+curl -X POST "$BASE_URL/kb/search" \
+  -H "Authorization: Bearer $UPLOAD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "沈个好远",
+    "space_id": 23,
+    "sub_space_id": 23,
+    "class_id": 23,
+    "limit": 10
+  }' | jq .

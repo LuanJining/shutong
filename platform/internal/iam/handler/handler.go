@@ -38,19 +38,26 @@ func NewHandler(db *gorm.DB, authService *service.AuthService) *Handler {
 func (h *Handler) Login(c *gin.Context) {
 	var req service.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "请求参数错误: " + err.Error(),
+		})
 		return
 	}
 
 	response, err := h.authService.Login(&req)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, model.APIResponse{
+			Code:    http.StatusUnauthorized,
+			Message: "登录失败: " + err.Error(),
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "登录成功",
-		"data":    response,
+	c.JSON(http.StatusOK, model.APIResponse{
+		Code:    http.StatusOK,
+		Message: "登录成功",
+		Data:    response,
 	})
 }
 
