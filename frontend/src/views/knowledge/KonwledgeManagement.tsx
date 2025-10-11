@@ -4,7 +4,7 @@ import AddModal from './AddModal'
 import api_frontend from '@/api/api_frontend';
 import utils from '@/utils';
 import { Button, Col, Input, message, Popconfirm, Row, Space, Table, TableProps } from 'antd';
-import _optsEnum from '@/config/_optsEnum';
+import _optsEnum from '@/config/optsEnum';
 import { Par_Common_Params } from '@/types/api';
 
 interface DataType {

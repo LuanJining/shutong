@@ -1,12 +1,12 @@
 import dayjs from 'dayjs'
 import utils from '@/utils';
-import _optsEnum from '@/config/_optsEnum';
+import _optsEnum from '@/config/optsEnum';
 import api_frontend from '@/api/api_frontend';
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { Par_Common_Params } from '@/types/api';
 import { DeleteOutlined, DownloadOutlined } from '@ant-design/icons';
-import { Button, Col, message, Popconfirm, Row, Space, Switch, Table, TableProps } from 'antd';
+import { message, Popconfirm, Space, Switch, Table, TableProps } from 'antd';
 
 interface DataType {
     id: string;
@@ -16,12 +16,16 @@ interface DataType {
     type: string
 }
 
-export default function DocumentManagement({ space_id }: { space_id: string | number }) {
+interface IProps {
+    space_id: number;
+}
+
+export default function DocumentManagement({ space_id }: IProps) {
     const navigate = useNavigate()
     const [list, setList] = useState<any[]>([])
     const [par, setPar] = useState<Par_Common_Params>({ page: 1, page_size: 10 })
 
-    useEffect(() => { space_id && getDocument() }, [space_id])
+    useEffect(() => { space_id !== -1 && getDocument() }, [space_id])
 
     const getDocument = async (values: any = {}) => {
         try {
@@ -103,20 +107,7 @@ export default function DocumentManagement({ space_id }: { space_id: string | nu
     ];
 
     return (
-
         <div className="knowledge-box pd16">
-            <div className="nm-fs fw-bold">文档</div>
-            <Row className="mgT24">
-                <div className="sm-fs primary-gray">知识库的所有文件都在这里显示，整个知识库都可以链接到应用引用或通过 Chat 插件进行索引。</div>
-                <Col className="text-right" flex={1}>
-                    <Button
-                        style={{ width: 150 }}
-                        onClick={() => { navigate('/knowledge/add') }}
-                        type="primary">
-                        + 添加文档
-                    </Button></Col>
-            </Row>
-
             <Table<DataType>
                 columns={columns}
                 dataSource={list}

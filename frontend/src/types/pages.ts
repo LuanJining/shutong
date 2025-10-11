@@ -6,5 +6,5 @@ export interface Props_File_View {
 }
 
 export interface Props_Self_Nav {
-    key: number|string; label: string
+    key: number | string; label: string
 }

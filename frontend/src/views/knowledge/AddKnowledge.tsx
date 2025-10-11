@@ -10,7 +10,7 @@ import utils from "@/utils"
 import FileUploader from "./Preview"
 import { useSelector } from "react-redux"
 import { useForm } from "antd/es/form/Form"
-import _opts from '@/config/_opts';
+import _opts from '@/config/opts';
 import api_frontend from "@/api/api_frontend"
 // type RangePickerProps = GetProps<typeof DatePicker.RangePicker>;
 
@@ -23,16 +23,11 @@ export default function AddKnowledge() {
     const [cateOpen, setCopen] = useState<boolean>(false)
     const [isBase, setIsBase] = useState<boolean>(true)
     const [fileInfo, setFileInfo] = useState<any>(initFileInfo)
-    const [spaces, setSpaces] = useState<any[]>([])
     const userInfo: any = useSelector((state: any) => state.systemSlice.userInfo)
 
-    useEffect(() => { getSpaces() }, [])
     useEffect(() => { form.setFieldValue('department', userInfo?.department) }, [userInfo])
 
-    const getSpaces = async () => {
-        const { data: { spaces } }: any = await api_frontend.getSpaces()
-        setSpaces(spaces.map((v: any) => ({ label: v.name, value: v.id })))
-    }
+
     // const onOk = (value: DatePickerProps['value'] | RangePickerProps['value']) => {
     //     console.log('onOk: ', value);
     // };
@@ -101,10 +96,6 @@ export default function AddKnowledge() {
             </Dragger>
         </Form.Item>
 
-        <Form.Item name='space_id' rules={[{ required: true, message: '请选择知识库' }]} label='知识库'>
-            <Select options={spaces} />
-        </Form.Item>
-
         <Form.Item label='创建者'>{userInfo?.nickname}</Form.Item>
 
         <Form.Item name='department' label='所属部门'>
@@ -112,9 +103,9 @@ export default function AddKnowledge() {
             {userInfo?.department}
         </Form.Item>
 
-        {/* <Form.Item name='' label='知识分类'>
-            <Input />
-        </Form.Item> */}
+        <Form.Item name='class_id' label='知识分类' rules={[{required:true,message:'请选择分类'}]}>
+            <div onClick={() => { setCopen(true) }} className="konw-cate-box"></div>
+        </Form.Item>
 
         <Form.Item rules={[{ required: true, message: '请选择标签' }]} name='tags' label='知识标签'>
             <Select mode="multiple" options={[
@@ -169,11 +160,11 @@ export default function AddKnowledge() {
                     </Form.Item> : <></>
                 }
             }
-        </Form.Item>
+        </Form.Item> */}
 
-        <Form.Item style={{ marginBottom: 0 }} label='版本'>
+        <Form.Item name='version' style={{ marginBottom: 0 }} label='版本'>
             <Input />
-        </Form.Item>  */}
+        </Form.Item>
 
     </div>)
 
@@ -314,7 +305,7 @@ export default function AddKnowledge() {
                 </div>
             </Form>
 
-            <CateSelect open={cateOpen} setOpen={setCopen} />
+            <CateSelect open={cateOpen} setOpen={setCopen} callback={(values: any) => { }} />
         </div>
     )
 }

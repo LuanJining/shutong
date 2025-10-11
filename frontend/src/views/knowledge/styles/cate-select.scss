@@ -18,8 +18,12 @@
           color: #333;
           cursor: pointer;
           &:hover {
-            background-color: #cfe3ff;
+            background-color: #dbe6f6;
           }
+        }
+
+        .cate-active {
+          background-color: #cfe3ff;
         }
       }
     }

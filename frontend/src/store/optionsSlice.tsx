@@ -1,5 +1,5 @@
 import api_frontend from "@/api/api_frontend";
-import _cache from "@/config/_caches";
+import _cache from "@/config/caches";
 import { OPTIONS_TYPE } from "@/types/common";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 

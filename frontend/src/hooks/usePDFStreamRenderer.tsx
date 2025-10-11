@@ -17,7 +17,6 @@ interface UsePDFStreamRendererReturn {
 }
 
 /**
- * Hook：用于渲染 PDF（支持传入 File 或远程 URL 接口）
  * @param source 渲染源：可以是 File 对象，也可以是 URL + 请求配置
  * @returns { pdfPages, loading, error }
  */
@@ -67,7 +66,7 @@ export const usePDFStreamRenderer = (
                                     const context = canvasEl.getContext('2d');
                                     if (!context) return;
 
-                                    const viewport = page.getViewport({ scale: 1.5 });
+                                    const viewport = page.getViewport({ scale: 1.2 });
 
                                     canvasEl.width = viewport.width;
                                     canvasEl.height = viewport.height;

@@ -1,4 +1,4 @@
-import _cache from "@/config/_caches";
+import _cache from "@/config/caches";
 import storage from "@/utils/storage";
 import { createSlice } from "@reduxjs/toolkit";
 

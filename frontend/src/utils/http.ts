@@ -1,6 +1,6 @@
 import utils from ".";
 import storage from "./storage";
-import _caches from "@/config/_caches";
+import _caches from "@/config/caches";
 import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
 import { message } from "antd";
 

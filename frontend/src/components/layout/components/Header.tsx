@@ -6,7 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { BellOutlined, LogoutOutlined } from "@ant-design/icons";
 import { useMemo } from "react";
 import BannerImg from '@/assets/images/banner.png'
-import _caches from "@/config/_caches";
+import _caches from "@/config/caches";
 
 const { Header } = Layout;
 

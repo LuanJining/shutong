@@ -13,6 +13,8 @@ import IconRight from "@/assets/icons/icon-right.png"
 import { SearchOutlined } from "@ant-design/icons"
 import { Col, Input, Row } from "antd"
 import { useNavigate } from "react-router-dom"
+import { useEffect, useMemo, useState } from "react"
+import api_frontend from "@/api/api_frontend"
 
 const countArray: any[] = [
     { label: '制度汇总', desc: '公司各部门制定指引', icon: <img src={IconFile} />, },
@@ -24,6 +26,36 @@ const countArray: any[] = [
 
 export default function Index() {
     const navigate = useNavigate()
+    const [spaces, setSpaces] = useState<any[]>([])
+    const [par, setPar] = useState<any>({})
+    const [keywords, setKeywords] = useState<string>('')
+
+    useEffect(() => { getHomePage() }, [])
+
+    const getHomePage = async () => {
+        const { data: { spaces } }: any = await api_frontend.homePage()
+        setSpaces(spaces)
+        const tempPar: any = {}
+        spaces.map(({ id, sub_spaces }: any) => {
+            tempPar[id] = sub_spaces?.at(0)?.id
+        })
+        setPar(tempPar)
+    }
+
+    const search = async () => {
+        const params: any = {
+            limit: 5,
+            query: keywords.trim()
+        }
+        const r: any = await api_frontend.search(params)
+    }
+
+    const firstOne: any = useMemo(() => spaces?.at(0), [spaces])
+    const lastItems: any = useMemo(() => spaces?.slice(1, 5), [spaces])
+
+    const getDocument = (spaceId: number) => {
+        return spaces.find(({ id }: any) => id === spaceId)?.sub_spaces?.find(({ id }: any) => id === par[spaceId])?.documents ?? []
+    }
 
     return (
         <div className="app-home">
@@ -38,11 +70,14 @@ export default function Index() {
                 </div>
 
                 <div className="search-box flex al-center">
-                    <Input variant="borderless" placeholder="请输入搜索内容" />
-                    <SearchOutlined className="hg-fs" />
+                    <Input
+                        value={keywords}
+                        onPressEnter={search}
+                        onChange={(e: any) => { setKeywords(e.target.value) }}
+                        variant="borderless" placeholder="请输入搜索内容" />
+                    <SearchOutlined onClick={search} className="hg-fs" />
                 </div>
             </div>
-
 
             <div className="count-box flex al-center space-between">
                 {
@@ -63,16 +98,18 @@ export default function Index() {
                 <Row gutter={22}>
                     <Col span={12}>
                         <div className="block-item fw-bold">
-                            <div className="block-title nm-fs">集团文档案</div>
+                            <div className="block-title nm-fs">{firstOne?.name}</div>
 
                             <div className="flex mgB16 mgT12">
-                                <div className="block-txt mgR24">公文</div>
-                                <div className="block-txt mgR24">新闻</div>
-                                <div className="block-txt">党政学习</div>
+                                {
+                                    firstOne?.sub_spaces?.map(({ name, id }: any) => (<div
+                                        key={id}
+                                        onClick={() => { setPar({ ...par, [firstOne.id]: id }) }}
+                                        className="block-txt mgR24 pointer">{name}</div>))
+                                }
                             </div>
-
                             {
-                                [1, 2, 3, 4, 5, 6].map((v: any) => (<div
+                                firstOne?.sub_spaces?.at(0)?.documents?.map((v: any) => (<div
                                     key={v}
                                     className="flex al-center space-between mgB24">
                                     <div className="news-title elli">集团举办“党建引领帮扶工作”资源大讲堂</div>
@@ -130,18 +167,18 @@ export default function Index() {
                     </Col>
 
                     {
-                        [1, 2, 3, 4].map((v: any) => (<Col key={v} span={12}>
+                        lastItems.map(({ name, id, sub_spaces }: any) => (<Col key={id} span={12}>
                             <div className="block-item fw-bold">
-                                <div className="block-title nm-fs">集团文档案</div>
+                                <div className="block-title nm-fs">{name}</div>
 
                                 <div className="flex mgB16 mgT12">
-                                    <div className="block-txt mgR24">公文</div>
-                                    <div className="block-txt mgR24">新闻</div>
-                                    <div className="block-txt">党政学习</div>
+                                    {sub_spaces.map(({ id: subId, name: subName }: any) => <div
+                                        key={subId}
+                                        onClick={() => { setPar({ ...par, [id]: subId }) }}
+                                        className="block-txt mgR24">{subName}</div>)}
                                 </div>
-
                                 {
-                                    [1, 2, 3, 4, 5, 6].map((v: any) => (<div
+                                    getDocument(id)?.map((v: any) => (<div
                                         key={v}
                                         className="flex al-center space-between mgB24">
                                         <div className="news-title elli">集团举办“党建引领帮扶工作”资源大讲堂</div>

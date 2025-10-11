@@ -1,5 +1,5 @@
 import utils from "@/utils";
-import _opts from "@/config/_opts"
+import _opts from "@/config/opts"
 import api_frontend from "@/api/api_frontend";
 import { Form, Input, message, Modal, Select } from "antd";
 import { useForm } from "antd/es/form/Form";
@@ -47,6 +47,7 @@ export default function AssignRoles({ open, setOpen, item, getSpaces }: IProps) 
             destroyOnClose
             onCancel={() => { setOpen('') }}
             onOk={() => { form.submit() }}
+            width={580}
         >
             <Form
                 form={form}

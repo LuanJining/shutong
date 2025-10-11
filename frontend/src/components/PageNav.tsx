@@ -1,7 +1,7 @@
 import "./styles/page-nav.scss"
 import { useNavigate } from "react-router-dom"
-import { Props_Self_Nav } from "@/types/pages";
-import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, PlusCircleOutlined } from "@ant-design/icons"
+import {  Props_Self_Nav } from "@/types/pages";
+import { ArrowLeftOutlined, BorderOuterOutlined, DeleteOutlined, EditOutlined, PlusCircleOutlined } from "@ant-design/icons"
 import PageKnowledgeModal from "./PageKnowledgeModal";
 import { useState } from "react";
 import { message, Popconfirm } from "antd";
@@ -9,8 +9,8 @@ import utils from "@/utils";
 import api_frontend from "@/api/api_frontend";
 
 interface IProps {
-    pathKey: number | string;
-    setPathKey: (par: string) => void;
+    pathKey: number;
+    setPathKey: (par: number) => void;
     pathArray: Props_Self_Nav[];
     getSpaces: () => void
 }
@@ -49,11 +49,17 @@ export default function PageNav({ pathKey, pathArray, setPathKey, getSpaces }: I
                     pathArray.map(({ key, label }: Props_Self_Nav & any) => {
                         return (<div
                             key={key}
-                            onClick={() => { setPathKey(key.toString()) }}
-                            className={`nav-item flex space-between sm-fs ${pathKey.toString() === key.toString() ? 'nav-item-active' : ''}`}>
+                            onClick={() => { setPathKey(+key) }}
+                            className={`nav-item flex space-between sm-fs ${+pathKey === +key ? 'nav-item-active' : ''}`}>
                             <span>{label}</span>
                             <div className="flex al-ceter icons-box">
-                                <EditOutlined onClick={(e) => { e.stopPropagation(); setMType('update') }} className="pointer nav-icon" />
+                                <BorderOuterOutlined
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        setPathKey(+key )
+                                    }}
+                                    title="管理" className="pointer nav-icon" />
+                                <EditOutlined title='编辑' onClick={(e) => { e.stopPropagation(); setMType('update') }} className="pointer mgL12 nav-icon" />
                                 <Popconfirm
                                     title="删除知识库"
                                     description="确认要删除知识库吗？"
@@ -62,7 +68,7 @@ export default function PageNav({ pathKey, pathArray, setPathKey, getSpaces }: I
                                     onPopupClick={(e) => { e.stopPropagation() }}
                                     onConfirm={(e) => { e?.stopPropagation(); onDelete(key) }}
                                 >
-                                    <DeleteOutlined onClick={(e) => { e.stopPropagation() }} className="mgL12 pointer nav-icon" />
+                                    <DeleteOutlined title='删除' onClick={(e) => { e.stopPropagation() }} className="mgL12 pointer nav-icon" />
                                 </Popconfirm>
                             </div>
                         </div>)
@@ -70,7 +76,7 @@ export default function PageNav({ pathKey, pathArray, setPathKey, getSpaces }: I
                 }
             </div>
             <PageKnowledgeModal getSpaces={getSpaces} open={Boolean(modalType)} setOpen={() => { setMType('') }} item={
-                modalType === 'update' ? pathArray.find(({ key }: Props_Self_Nav) => key.toString() === pathKey.toString()) : null
+                modalType === 'update' ? pathArray.find(({ key }: Props_Self_Nav) => +key === +pathKey) : null
             } />
         </div>
     )

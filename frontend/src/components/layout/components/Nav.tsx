@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import subRoutes from '@/router/subRoutes'
 import { ROUTESELF_TYPE } from "@/types/common";
 import { useMemo } from "react";
-import _caches from "@/config/_caches";
+import _caches from "@/config/caches";
 
 export default function Nav() {
     const navigate = useNavigate()

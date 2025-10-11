@@ -3,7 +3,7 @@ import dayjs from 'dayjs'
 import { Form, Tag, } from "antd"
 import { useEffect, useState } from "react"
 import FileUploader from "./Preview"
-import _opts from '@/config/_opts';
+import _opts from '@/config/opts';
 import api_frontend from "@/api/api_frontend"
 import { useLocation } from 'react-router-dom';
 import { DownloadOutlined } from "@ant-design/icons"

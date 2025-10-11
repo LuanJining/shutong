@@ -1,5 +1,5 @@
 import api_frontend from "@/api/api_frontend";
-import _options from "@/config/_options";
+import _options from "@/config/options";
 import { Par_Common_Params } from "@/types/api";
 import { Col, Input, Row, Space, Table, TableProps } from "antd";
 import { useEffect, useState } from "react";

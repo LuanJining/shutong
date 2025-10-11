@@ -2,7 +2,7 @@ import "./index.scss"
 import api_frontend from "@/api/api_frontend";
 import { Button, Checkbox, Form, Input, message } from "antd";
 import storage from "@/utils/storage";
-import _cache from "@/config/_caches";
+import _cache from "@/config/caches";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setIsLogin, setUserInfo } from "@/store/systemSlice";

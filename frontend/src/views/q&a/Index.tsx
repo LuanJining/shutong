@@ -7,7 +7,7 @@ import { OPTIONS_TYPE } from "@/types/common"
 import ServiceImg from "@/assets/images/service.png"
 import api_frontend from "@/api/api_frontend"
 import storage from "@/utils/storage"
-import _caches from "@/config/_caches"
+import _caches from "@/config/caches"
 
 export default function Index() {
     const [konwledges, setKonwledges] = useState<OPTIONS_TYPE[]>([])

@@ -43,7 +43,6 @@ export default function CustomFileViewer({ fileType, file, type, styles }: Props
         const reader = new FileReader();
         reader.onload = async (event) => {
             const arrayBuffer = event.target?.result as ArrayBuffer;
-
             try {
                 const result = await mammoth.convertToHtml({ arrayBuffer });
                 const html = result.value;

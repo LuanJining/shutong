@@ -6,6 +6,13 @@
   "description": "",
   "glyphs": [
     {
+      "icon_id": "18531286",
+      "name": "exchange",
+      "font_class": "exchange",
+      "unicode": "e700",
+      "unicode_decimal": 59136
+    },
+    {
       "icon_id": "41908163",
       "name": "doc、docx",
       "font_class": "a-docdocx",

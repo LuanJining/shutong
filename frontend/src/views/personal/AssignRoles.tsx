@@ -1,5 +1,5 @@
 import utils from "@/utils";
-import _opts from "@/config/_opts"
+import _opts from "@/config/opts"
 import api_frontend from "@/api/api_frontend";
 import { useEffect, useState } from "react";
 import { Checkbox, message, Modal } from "antd";

@@ -1,0 +1,30 @@
+.app-subspaces {
+  .subspaces-box {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    width: 350px;
+    box-sizing: border-box;
+    padding: 16px;
+    margin: 16px;
+    min-height: 300px;
+    .subspace-item {
+      height: 32px;
+      width: 168px;
+      display: flex;
+      align-items: center;
+      padding-left: 12px;
+      border-radius: 5px;
+      font-size: calc(var(--base-size) - 2px);
+      cursor: pointer;
+      margin-bottom: 12px;
+      &:hover {
+        background-color: #e3efff;
+      }
+    }
+
+    .space-active {
+        background-color: #bbd6f9 !important;
+        color: #000;
+    }
+  }
+}
