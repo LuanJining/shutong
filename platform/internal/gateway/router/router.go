@@ -113,8 +113,8 @@ func Setup(cfg *configs.Config) *gin.Engine {
 			// 任务管理
 			tasks := workflow.Group("/tasks")
 			{
-				tasks.GET("", workflowHandler.ProxyToWorkflowClient)              // 获取任务列表
-				tasks.POST("/:id/approve", workflowHandler.ProxyToWorkflowClient) // 审批任务
+				tasks.GET("", workflowHandler.ProxyToWorkflowClient)          // 获取任务列表
+				tasks.POST("/approve", workflowHandler.ProxyToWorkflowClient) // 审批任务
 			}
 		}
 

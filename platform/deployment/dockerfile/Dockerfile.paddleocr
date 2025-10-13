@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM --platform=linux/amd64 python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -6,17 +6,21 @@ ENV PYTHONUNBUFFERED=1 \
     MKL_THREADING_LAYER=GNU \
     FLAGS_use_mkldnn=false
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    libgl1 \
-    libgomp1 \
-    poppler-utils \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        wget \
+        poppler-utils \
+        libglib2.0-0 \
+        libgomp1 \
+        libsm6 \
+        libxext6 \
+        libxrender1 \
+        libfontconfig1 \
+        ffmpeg \
+        libsm6 \
+        libxext6 \
+        ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 
 WORKDIR /app
