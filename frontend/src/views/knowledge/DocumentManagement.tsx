@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { Par_Common_Params } from '@/types/api';
 import { DeleteOutlined, DownloadOutlined } from '@ant-design/icons';
 import { message, Popconfirm, Space, Switch, Table, TableProps } from 'antd';
+import optsEnum from '@/config/optsEnum';
 
 interface DataType {
     id: string;
@@ -59,6 +60,12 @@ export default function DocumentManagement({ space_id }: IProps) {
         }
     }
 
+    const docOpera = async (checked: boolean, documentId: number) => {
+        await api_frontend.docOpera({ documentId, status: checked ? 'publish' : 'unpublish' })
+        getDocument()
+        message.success(`${checked ? '发布' : '取消发布'}成功`)
+    }
+
     const columns: TableProps<DataType>['columns'] = [
         {
             title: '名称',
@@ -72,7 +79,12 @@ export default function DocumentManagement({ space_id }: IProps) {
         },
         {
             title: '上传人',
-            dataIndex: 'created_by',
+            dataIndex: 'creator_nick_name',
+        },
+        {
+            title: '状态',
+            dataIndex: 'status',
+            render: (status: keyof typeof optsEnum.DOC_STATUS) => optsEnum.DOC_STATUS[status]
         },
         {
             title: '上传时间',
@@ -90,7 +102,12 @@ export default function DocumentManagement({ space_id }: IProps) {
             align: 'center',
             render: (item: any) => (
                 <Space size='large' className='flex al-center jf-center'>
-                    <Switch size='small' defaultChecked />
+                    <Switch
+                        size='small'
+                        onChange={(checked: boolean) => { docOpera(checked, item.id) }}
+                        checked={item?.status === 'published'}
+                        disabled={!['pending_publish','published'].includes(item.status)}
+                    />
                     <DownloadOutlined onClick={() => { download(item.id, item.file_name) }} className='pointer lg-fs' style={{ color: '#4190FF' }} />
                     <Popconfirm
                         title="删除文档"

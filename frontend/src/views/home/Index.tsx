@@ -1,20 +1,21 @@
 import "./index.scss"
-import BannerImg from "@/assets/images/banner.png"
+import dayjs from 'dayjs'
+import api_frontend from "@/api/api_frontend"
 import LogoImg from "@/assets/images/logo.png"
+import IconFile from "@/assets/icons/icon-file.png"
+import BannerImg from "@/assets/images/banner.png"
 import IconMouse from "@/assets/icons/icon-mouse.png"
 import IconFileAdd from "@/assets/icons/icon-file-add.png"
-import IconFile from "@/assets/icons/icon-file.png"
 import IconTarget from "@/assets/icons/icon-target.png"
 import IconFloder from "@/assets/icons/icon-floder.png"
 import IconResume from "@/assets/icons/icon-resume.png"
-import IconFloderAdd from "@/assets/icons/icon-floder-add.png"
 import IconRight from "@/assets/icons/icon-right.png"
+import IconFloderAdd from "@/assets/icons/icon-floder-add.png"
+import React, { useEffect, useMemo, useState } from "react"
 
-import { SearchOutlined } from "@ant-design/icons"
 import { Col, Empty, Input, Row } from "antd"
 import { useNavigate } from "react-router-dom"
-import React, { useEffect, useMemo, useState } from "react"
-import api_frontend from "@/api/api_frontend"
+import { SearchOutlined } from "@ant-design/icons"
 
 const countArray: any[] = [
     { label: '制度汇总', desc: '公司各部门制定指引', icon: <img src={IconFile} />, },
@@ -124,11 +125,12 @@ export default function Index() {
                                     {
                                         firstOne?.sub_spaces?.at(0)?.documents?.map((v: any) => (<div
                                             key={v}
-                                            className="flex al-center space-between mgB24">
-                                            <div className="news-title elli">集团举办“党建引领帮扶工作”资源大讲堂</div>
+                                            onClick={() => { navigate('/document/detail', { state: { documentId: v.id } }) }}
+                                            className="flex al-center space-between mgB24 pointer">
+                                            <div className="news-title elli">{v.summary}</div>
                                             <div className="news-txt white-nowrap flex primary-gray">
-                                                <div className="mgR24">张某</div>
-                                                <div className="mgL24">2025-09</div>
+                                                <div className="mgR24">{v.creator_nick_name}</div>
+                                                <div className="mgL24">{dayjs(v.updated_at).format('YYYY-MM')}</div>
                                             </div>
                                         </div>))
                                     }
@@ -193,7 +195,8 @@ export default function Index() {
                                         {
                                             getDocument(id)?.map((v: any) => (<div
                                                 key={v}
-                                                className="flex al-center space-between mgB24">
+                                                onClick={() => { navigate('/document/detail', { state: { documentId: v.id } }) }}
+                                                className="flex al-center space-between mgB24 pointer">
                                                 <div className="news-title elli">集团举办“党建引领帮扶工作”资源大讲堂</div>
                                                 <div className="news-txt white-nowrap flex primary-gray">
                                                     <div className="mgR24">张某</div>
@@ -208,7 +211,6 @@ export default function Index() {
                     </div>
                 </React.Fragment>
             }
-
             {
                 documents.length !== 0 && <div className="documents-box">
                     {documents.map((v: any) => (<div
@@ -219,9 +221,7 @@ export default function Index() {
                     </div>))}
                 </div>
             }
-
             {isEmpty && <Empty style={{ marginTop: '10%' }} />}
-
         </div>
     )
 }

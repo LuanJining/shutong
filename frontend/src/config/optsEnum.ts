@@ -20,8 +20,16 @@ const URGENCY: ENUM_TYPE = {
     urgent: '紧急',
 }
 
+const DOC_STATUS: ENUM_TYPE = {
+    uploading: '上传中',
+    pending_approval: '待审批',
+    pending_publish: '待发布',
+    published: '已发布',
+    failed: '失败'
+}
+
 const optsEnum = {
-    ROLES, SPACE_TYPE, URGENCY
+    ROLES, SPACE_TYPE, URGENCY, DOC_STATUS
 };
 
 type EnumOType = typeof optsEnum;

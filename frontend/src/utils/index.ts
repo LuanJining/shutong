@@ -42,13 +42,8 @@ function normFile(e: any) {
     return e?.fileList;
 };
 
-/**
- * binary 文件封装
- * @param key:string
- * @param value:File
- * @returns formData
- */
-function getFormData(values: {}) {
+/** @returns formData*/
+function getFormData(values: { [key: string]: any }) {
     if (!values || _.isEmpty(values)) return values
 
     const formData: any = new FormData();
@@ -57,7 +52,6 @@ function getFormData(values: {}) {
     })
     return formData;
 }
-
 
 function downloadFromFlow(res: any, filename: string) {
     let blob = new Blob([res], {
@@ -76,5 +70,3 @@ function downloadFromFlow(res: any, filename: string) {
 export default {
     setLoading, isFalseValue, normFile, getFormData, downloadFromFlow
 }
-
-

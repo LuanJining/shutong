@@ -1,17 +1,18 @@
-import { Checkbox, DatePicker, DatePickerProps, Form, GetProps, Input, message, Radio, Select, Upload } from "antd"
 import "./styles/add-knowledge.scss"
+import utils from "@/utils"
+import opts from "@/config/opts"
+import FileUploader from "./Preview"
+import CateSelect from "./CateSelect"
 import Dragger from "antd/es/upload/Dragger"
+import api_frontend from "@/api/api_frontend"
 import IconPdf from '@/assets/icons/icon-pdf.png'
 import IconWendang from '@/assets/icons/icon-wendang.png'
-import { CheckCircleFilled, CloudUploadOutlined, DeleteOutlined, EyeFilled } from "@ant-design/icons"
-import CateSelect from "./CateSelect"
-import { useEffect, useState } from "react"
-import utils from "@/utils"
-import FileUploader from "./Preview"
 import { useSelector } from "react-redux"
 import { useForm } from "antd/es/form/Form"
-import _opts from '@/config/opts';
-import api_frontend from "@/api/api_frontend"
+import { useEffect, useState } from "react"
+import { Checkbox, Form, Input, message, Radio, Select, Upload } from "antd"
+import { CheckCircleFilled, CloudUploadOutlined, DeleteOutlined, EyeFilled } from "@ant-design/icons"
+
 // type RangePickerProps = GetProps<typeof DatePicker.RangePicker>;
 
 const initFileInfo: any = {
@@ -28,7 +29,6 @@ export default function AddKnowledge() {
 
     useEffect(() => { form.setFieldValue('department', userInfo?.department) }, [userInfo])
 
-
     // const onOk = (value: DatePickerProps['value'] | RangePickerProps['value']) => {
     //     console.log('onOk: ', value);
     // };
@@ -41,7 +41,7 @@ export default function AddKnowledge() {
             'text/plain'
         ]
         if (!whiteArr.includes(file.type)) {
-            message.error("doc/docx/pdf", 1)
+            message.error("doc/docx/pdf/txt", 1)
         }
         return whiteArr.includes(file.type) || Upload.LIST_IGNORE
     }
@@ -60,9 +60,6 @@ export default function AddKnowledge() {
                     : 'pdf'
             })
             form.setFieldValue('file_name', file.name)
-            // const formatData = utils.getFormData('file', file)
-            // await api_upload.dataFlowUpload(formatData, curFlowerId)
-            message.success("上传成功", 1)
             onSuccess()
             utils.setLoading(false)
         } catch {
@@ -193,8 +190,8 @@ export default function AddKnowledge() {
             是
         </Form.Item>
 
-        <Form.Item initialValue={_opts.URGENCY[0].value} name='urgency' label='紧急程度'>
-            <Select options={_opts.URGENCY} />
+        <Form.Item initialValue={opts.URGENCY[0].value} name='urgency' label='紧急程度'>
+            <Select options={opts.URGENCY} />
         </Form.Item>
 
         <Form.Item name='remark' label='备注'>
@@ -271,10 +268,10 @@ export default function AddKnowledge() {
 
                         <div className="flex flex1 jf-end al-center">
 
-                            <div className="flex al-center white-nowrap" style={{ marginRight: 100 }}>
+                            {/* <div className="flex al-center white-nowrap" style={{ marginRight: 100 }}>
                                 <CheckCircleFilled style={{ color: '#52CC6F' }} />
                                 <span className="mgL12">处理完成</span>
-                            </div>
+                            </div> */}
 
                             <div className="flex al-center">
                                 <EyeFilled className="mgR12" />
@@ -300,12 +297,11 @@ export default function AddKnowledge() {
                             type='file'
                             fileType={fileInfo.fileType}
                             styles={{
+                                maxWidth: 'calc(100vw - 680px)',
                                 maxHeight: 'calc(100vh - 380px)',
-                                maxWidth: ' calc(100vw - 680px)'
                             }}
                         />
                     </Form.Item>
-
                 </div>
             </Form>
 

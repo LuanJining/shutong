@@ -115,7 +115,6 @@ export default function Index() {
                     const line = rawLine.trim();
                     if (!line) continue;
 
-                    // 尝试解析 event/data 行
                     if (line.startsWith('event:')) {
                         currentEvent = line.replace('event:', '').trim();
                         continue;
@@ -125,24 +124,15 @@ export default function Index() {
                         try {
                             const data = JSON.parse(dataStr);
                             if (currentEvent === 'token') {
-                                // ✅ 拼接 AI 生成的 token 内容
                                 const content = data.content;
                                 if (content) {
                                     accumulatedText += content;
                                     messageDiv.innerHTML = marked.parse(accumulatedText).toString();
                                     scrollToBottom()
-                                    // console.log('🧠 拼接 token 内容:', content, '→ 当前全文:', accumulatedText);
                                 }
                             } else if (currentEvent === 'done') {
-                                // ✅ 流结束，data 可能包含完整回复（如 message 字段）
-                                // const message = data.message; // 假定后端返回 { message: "完整的..." }
-                                // if (message) {
-                                //     accumulatedText += message; // 可选：如果你想把 done 的 message 也拼上去
-                                //     console.log('✅ 流结束，完整消息:', message);
-                                // }
                                 console.log('done')
                             } else if (currentEvent === 'sources') {
-                                // ✅ 可选：处理引用来源
                                 const sources = data; // 假如是数组或对象
                                 console.log('📚 来源信息:', sources);
                             }
