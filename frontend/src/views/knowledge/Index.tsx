@@ -52,7 +52,6 @@ export default function Index() {
                         ? <DocumentManagement space_id={+pathKey} />
                         : <SubPaceManagement
                             space_id={+pathKey}
-                            curSpace={items.find(({ key }: any) => +key === +pathKey)}
                             getSpaces={getSpaces} />
                 }
             </div>

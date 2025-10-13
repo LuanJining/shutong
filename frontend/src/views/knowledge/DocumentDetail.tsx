@@ -12,16 +12,43 @@ import utils from "@/utils"
 export default function KonwledgeDetail() {
     const fromPage: any = useLocation().state
     const [info, setInfo] = useState<any>(null)
+    const [classesName, setClassesName] = useState<string>('')
 
     useEffect(() => { fromPage?.documentId && getInfo() }, [fromPage?.documentId])
+    useEffect(() => { info && getSpaces() }, [info])
 
     const getInfo = async () => {
         const r: any = await api_frontend.documentDetail(fromPage?.documentId)
         setInfo(r.data)
     }
 
+    const getSpaces = async () => {
+        const { data: { spaces } } = await api_frontend.getSpaces()
+        spaces.map(({ name, id }: any) => ({ label: name, value: id }))
+        const lv1 = getClass(spaces, info?.space_id, 'sub_spaces')
+        const lv2 = getClass(lv1?.subArray, info?.sub_space_id, 'classes')
+        const lv3 = getClass(lv2?.subArray, info?.class_id,)
+        setClassesName(`${lv1?.name}/${lv2?.name}/${lv3?.name}`)
+    }
+
+    const getClass = (spaceArray: any[], spaceId: number, subKey?: string) => {
+        const result: any = {
+            name: '',
+            subArray: []
+        }
+        spaceArray.map((v: any) => {
+            if (v.id === spaceId) {
+                subKey && (result.subArray = v[subKey])
+                result.name = v.name
+            }
+        })
+        return result
+    }
+
+
+
     const BaseInfo = () => (<div className="form-box">
-        <Form.Item label='创建者'>{info?.creator?.nickname}</Form.Item>
+        <Form.Item label='创建者'>{info?.creator_nick_name}</Form.Item>
 
         <Form.Item label='所属部门'>
             {info?.department}
@@ -29,6 +56,12 @@ export default function KonwledgeDetail() {
 
         <Form.Item label='创建时间'>
             {dayjs(info?.created_at).format('YYYY-MM-DD HH:mm')}
+        </Form.Item>
+
+        <Form.Item label='所属分类'>
+            <div className="flex flex-wrap al-start">
+                {classesName}
+            </div>
         </Form.Item>
 
         <Form.Item label='标签'>
@@ -39,6 +72,10 @@ export default function KonwledgeDetail() {
 
         <Form.Item label='摘要'>
             {info?.summary}
+        </Form.Item>
+
+        <Form.Item label='版本'>
+            {info?.version}
         </Form.Item>
     </div>)
 
@@ -74,7 +111,7 @@ export default function KonwledgeDetail() {
 
                     <Form.Item className="h-100p" wrapperCol={{ offset: 1 }}>
                         <FileUploader
-                            styles={{maxHeight: 'calc(100vh - 190px)'}}
+                            styles={{ maxHeight: 'calc(100vh - 190px)' }}
                             file={null} type={"url"} fileType={info?.file_type === '.pdf' ? 'pdf' : 'docx'} />
                     </Form.Item>
                 </div>

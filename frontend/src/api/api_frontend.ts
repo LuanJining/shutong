@@ -65,7 +65,9 @@ const getFile = (documentId: string | number): Promise<any> => get(`/kb/${docume
 const getTasks = (par: Par_Common_Params): Promise<any> => get(`/workflow/tasks`, par);
 
 /** @return 审批任务 */
-const taskAgree = (taskId: string | number, comment: string): Promise<any> => post(`/workflow/tasks/${taskId}/approve`, { comment });
+const taskOpear = (par: {
+    task_id: number, comment: string, status: string
+}): Promise<any> => post(`/workflow/tasks/approve`, par);
 
 /** @return 用户看审批进度 */
 const userTasks = (): Promise<any> => get(`/workflow/instances/user`);
@@ -94,7 +96,7 @@ const homePage = (): Promise<any> => get(`/kb/homepage`);
 export default {
     login, createUser, assignRoles, getUsers, getRoles, getPermissions, createSpace, getSpaces,
     getSpaceById, checkPermission, updateSpace, deleteSpace, getRolePermissions, getUserById, getRoleById,
-    getPermissionById, uploadFile, getFile, getTasks, taskAgree, userTasks, documentDetail, documentList,
-    changePwd, search, addSubSpaces, addClasses,homePage
+    getPermissionById, uploadFile, getFile, getTasks, taskOpear, userTasks, documentDetail, documentList,
+    changePwd, search, addSubSpaces, addClasses, homePage
 }
 

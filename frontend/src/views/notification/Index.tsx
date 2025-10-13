@@ -1,12 +1,12 @@
-import { ArrowLeftOutlined } from "@ant-design/icons"
-import "./index.scss"
-import { useNavigate } from "react-router-dom"
-import { Menu, MenuProps } from "antd"
-import IconBook from '@/assets/icons/icon-book.png'
-import IconNotifications from "@/assets/icons/icon-notifications.png"
 import { useState } from "react"
 import WaitDeal from "./WaitDeal"
 import DoneDeal from "./DoneDeal"
+import "./index.scss"
+import { Menu, MenuProps } from "antd"
+import { useNavigate } from "react-router-dom"
+import IconBook from '@/assets/icons/icon-book.png'
+import { ArrowLeftOutlined } from "@ant-design/icons"
+// import IconNotifications from "@/assets/icons/icon-notifications.png"
 
 type MenuItem = Required<MenuProps>['items'][number];
 

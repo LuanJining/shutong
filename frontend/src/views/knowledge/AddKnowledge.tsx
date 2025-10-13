@@ -24,6 +24,7 @@ export default function AddKnowledge() {
     const [isBase, setIsBase] = useState<boolean>(true)
     const [fileInfo, setFileInfo] = useState<any>(initFileInfo)
     const userInfo: any = useSelector((state: any) => state.systemSlice.userInfo)
+    const [showTxt, setShowTxt] = useState<string>('')
 
     useEffect(() => { form.setFieldValue('department', userInfo?.department) }, [userInfo])
 
@@ -37,6 +38,7 @@ export default function AddKnowledge() {
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'application/pdf',
+            'text/plain'
         ]
         if (!whiteArr.includes(file.type)) {
             message.error("doc/docx/pdf", 1)
@@ -103,8 +105,10 @@ export default function AddKnowledge() {
             {userInfo?.department}
         </Form.Item>
 
-        <Form.Item name='class_id' label='知识分类' rules={[{required:true,message:'请选择分类'}]}>
-            <div onClick={() => { setCopen(true) }} className="konw-cate-box"></div>
+        <Form.Item name='class_id' label='知识分类' rules={[{ required: true, message: '请选择分类' }]}>
+            <div onClick={() => { setCopen(true) }}
+                style={{ boxSizing: 'border-box' }}
+                className="konw-cate-box flex al-center pdL12">{showTxt}</div>
         </Form.Item>
 
         <Form.Item rules={[{ required: true, message: '请选择标签' }]} name='tags' label='知识标签'>
@@ -206,7 +210,7 @@ export default function AddKnowledge() {
     const onFinish = async () => {
         utils.setLoading(true)
         const values: any = form.getFieldsValue([
-            'urgency', 'tags', 'summary', 'need_approval', 'space_id', 'file_name'
+            'version', 'urgency', 'tags', 'summary', 'need_approval', 'space_id', 'file_name', 'sub_space_id', 'class_id'
         ])
         const par: any = utils.getFormData({
             ...values,
@@ -305,7 +309,14 @@ export default function AddKnowledge() {
                 </div>
             </Form>
 
-            <CateSelect open={cateOpen} setOpen={setCopen} callback={(values: any) => { }} />
+            <CateSelect open={cateOpen} setOpen={setCopen} callback={(values: any) => {
+                form.setFieldsValue({
+                    class_id: values?.classes?.id,
+                    space_id: values?.space?.id,
+                    sub_space_id: values?.subSpace?.id
+                })
+                setShowTxt(`${values?.space?.name}>${values?.subSpace?.name}>${values?.classes?.name}`)
+            }} />
         </div>
     )
 }

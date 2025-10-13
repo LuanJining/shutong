@@ -1,7 +1,7 @@
 import "./styles/page-nav.scss"
 import { useNavigate } from "react-router-dom"
-import {  Props_Self_Nav } from "@/types/pages";
-import { ArrowLeftOutlined, BorderOuterOutlined, DeleteOutlined, EditOutlined, PlusCircleOutlined } from "@ant-design/icons"
+import { Props_Self_Nav } from "@/types/pages";
+import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, PlusCircleOutlined } from "@ant-design/icons"
 import PageKnowledgeModal from "./PageKnowledgeModal";
 import { useState } from "react";
 import { message, Popconfirm } from "antd";
@@ -53,12 +53,6 @@ export default function PageNav({ pathKey, pathArray, setPathKey, getSpaces }: I
                             className={`nav-item flex space-between sm-fs ${+pathKey === +key ? 'nav-item-active' : ''}`}>
                             <span>{label}</span>
                             <div className="flex al-ceter icons-box">
-                                <BorderOuterOutlined
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        setPathKey(+key )
-                                    }}
-                                    title="管理" className="pointer nav-icon" />
                                 <EditOutlined title='编辑' onClick={(e) => { e.stopPropagation(); setMType('update') }} className="pointer mgL12 nav-icon" />
                                 <Popconfirm
                                     title="删除知识库"

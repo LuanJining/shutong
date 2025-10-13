@@ -3,18 +3,29 @@ import AddModal from './AddModal';
 import _optsEnum from '@/config/optsEnum';
 import { Button, } from 'antd';
 import { useEffect, useMemo, useState } from "react";
+import api_frontend from "@/api/api_frontend";
 interface IProps {
     getSpaces: () => void;
     space_id: number;
-    curSpace: any
 }
 
-export default function SubPaceManagement({ space_id, getSpaces, curSpace }: IProps) {
+export default function SubPaceManagement({ space_id }: IProps) {
     const [curItem, setCur] = useState<any>(null)
     const [open, setOpen] = useState<boolean>(false)
     const [subSpaceId, setSubSpaceId] = useState<string>('')
+    const [curSpace, setCurSpace] = useState<any>(null)
 
-    useEffect(() => { setSubSpaceId(curSpace?.sub_spaces?.at(0)?.id) }, [curSpace?.sub_spaces])
+    useEffect(() => { 
+        space_id && getCurSpace() 
+        setSubSpaceId('')
+    }, [space_id])
+
+    useEffect(() => { !subSpaceId&& setSubSpaceId(curSpace?.sub_spaces?.at(0)?.id) }, [curSpace?.sub_spaces])
+
+    const getCurSpace = async () => {
+        const r: any = await api_frontend.getSpaceById(space_id.toString())
+        setCurSpace(r.data)
+    }
 
     const classes: any[] = useMemo(() => curSpace?.sub_spaces?.find(({ id }: any) => id === subSpaceId)?.classes, [curSpace, subSpaceId])
     return (
@@ -57,7 +68,7 @@ export default function SubPaceManagement({ space_id, getSpaces, curSpace }: IPr
                         {name}</div>))}
                 </div>
             </div>
-            <AddModal open={open} setOpen={setOpen} callback={() => { getSpaces() }} item={curItem} />
+            <AddModal open={open} setOpen={setOpen} callback={() => { getCurSpace() }} item={curItem} />
         </div>
     )
 }

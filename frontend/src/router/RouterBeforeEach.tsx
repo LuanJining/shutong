@@ -2,7 +2,7 @@ import router from "./index";
 import _utils from "@/utils";
 import storage from "@/utils/storage";
 import { useEffect } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useLocation, useNavigate, useRoutes } from "react-router-dom";
 
 const whitelist = ["/login"];

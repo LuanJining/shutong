@@ -13,7 +13,6 @@ const initialState: {
 };
 
 export const systemSlice = createSlice({
-    //创建 slice
     name: "systemSlice",
     initialState,
     reducers: {

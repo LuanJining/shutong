@@ -1,10 +1,9 @@
 import "./index.scss"
 import { useState } from "react"
-import { ArrowLeftOutlined } from "@ant-design/icons"
+import { ArrowLeftOutlined, TeamOutlined, UserOutlined } from "@ant-design/icons"
 import { useNavigate } from "react-router-dom"
 import { Menu, MenuProps } from "antd"
 import IconBook from '@/assets/icons/icon-book.png'
-import IconNotifications from "@/assets/icons/icon-notifications.png"
 import Personal from "./Personal"
 import RolesManament from "./RolesManament"
 import UsersManagement from "./UsersManagement"
@@ -15,17 +14,17 @@ const items: MenuItem[] = [
     {
         key: 'personal',
         label: '个人信息',
-        icon: <img style={{ width: 20, height: 20, objectFit: 'cover' }} src={IconBook} />,
+        icon: <UserOutlined style={{fontSize:18}}/>,
     },
     {
         key: 'users',
         label: '用户管理',
-        icon: <img style={{ width: 20, height: 20, objectFit: 'cover' }} src={IconNotifications} />,
+        icon:<TeamOutlined style={{fontSize:18}}/>,
     },
     {
         key: 'roles',
         label: '角色管理',
-        icon: <img style={{ width: 20, height: 20, objectFit: 'cover' }} src={IconNotifications} />,
+        icon: <img style={{ width: 20, height: 20, objectFit: 'cover' }} src={IconBook} />,
     },
 ];
 

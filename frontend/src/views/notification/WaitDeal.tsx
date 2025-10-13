@@ -23,19 +23,16 @@ export default function WaitDeal() {
         setPar({ ...params, total })
     }
 
-    const opera = async (type: 'agree' | 'refuse', data: any) => {
-        if (type === 'refuse') {
-            message.info('敬请期待')
-            return
-        }
-
+    const opera = async (type: 'approved' | 'rejected', data: any) => {
         if (!comment.trim()) {
             message.warning('请输入审批意见！')
             return
         }
 
         utils.setLoading(true)
-        await api_frontend.taskAgree(data.id, comment)
+        await api_frontend.taskOpear({
+            task_id: data.id, comment, status: type
+        })
         await getList()
         message.success('操作成功')
         setComment('')
@@ -50,21 +47,26 @@ export default function WaitDeal() {
                     message.info('敬请期待')
                     //  navigate('/document/detail', { state: { documentId: data?.documentId, pageOrigin: 'approve' } }) 
                 }}
-            >{data.instance.title}</div>,
-            width: '50%',
+            >{data?.workflow?.name}</div>,
+            width: 200,
             ellipsis: true,
             className: 'pointer',
         },
         {
             title: '描述',
-            render: (data: any) => data.instance.description,
-            width: 200,
+            render: (data: any) => data?.workflow?.description,
+            width: '40%',
             ellipsis: true
         },
 
         {
+            title: '审核员',
+            dataIndex: 'approver_nick_name'
+        },
+
+        {
             title: '发起人',
-            render: (data: any) => data.instance.created_by
+            render: (data: any) => data?.workflow?.creator_nick_name
         },
 
         {
@@ -87,10 +89,10 @@ export default function WaitDeal() {
                                 onChange={(e: any) => { setComment(e.target.value) }}
                                 style={{ resize: 'none' }} rows={2} />
                         </div>}
-                        okText="确认"
+                        okText="同意"
                         cancelText="取消"
                         onCancel={() => { setComment('') }}
-                        onConfirm={() => { opera('agree', data) }}
+                        onConfirm={() => { opera('approved', data) }}
                     >
                         <div className='flex al-center pointer'>
                             <img className='mgR6' style={{ width: 20, height: 20, objectFit: "cover" }} src={IconAgree} alt="" />
@@ -107,9 +109,9 @@ export default function WaitDeal() {
                                 onChange={(e: any) => { setComment(e.target.value) }}
                                 style={{ resize: 'none' }} rows={2} />
                         </div>}
-                        okText="确认"
+                        okText="驳回"
                         cancelText="取消"
-                        onConfirm={() => { opera('refuse', data) }}
+                        onConfirm={() => { opera('rejected', data) }}
                     >
                         <div className='flex al-center pointer'>
                             <img className='mgR6' style={{ width: 20, height: 20, objectFit: "cover" }} src={IconRefuse} alt="" />
@@ -120,6 +122,7 @@ export default function WaitDeal() {
             ),
         },
     ];
+    // processing
 
     return (
         <div className="app-common-deal">

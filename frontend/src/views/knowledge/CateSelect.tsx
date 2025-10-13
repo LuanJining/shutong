@@ -23,8 +23,8 @@ export default function CateSelect({ open, setOpen, callback }: IProps) {
         setSpaces(spaces)
     }
 
-    const sub_spaces: any[] = useMemo(() => spaces.find(({ id }: any) => id === par?.spaceId)?.sub_spaces ?? [], [spaces, par?.spaceId])
-    const classes: any[] = useMemo(() => sub_spaces.find(({ id }: any) => id === par?.subSpaceId)?.classes ?? [], [sub_spaces, par?.subSpaceId])
+    const sub_spaces: any[] = useMemo(() => spaces.find(({ id }: any) => id === par?.space?.id)?.sub_spaces ?? [], [spaces, par?.space])
+    const classes: any[] = useMemo(() => sub_spaces.find(({ id }: any) => id === par?.subSpace?.id)?.classes ?? [], [sub_spaces, par?.subSpace])
 
     return (
         <Modal
@@ -35,12 +35,12 @@ export default function CateSelect({ open, setOpen, callback }: IProps) {
             width='50%'
             onCancel={() => { setOpen(false) }}
             onOk={() => {
-                if (!par?.spaceId || !par?.subSpaceId || !par?.classesId) {
+                if (!par?.space?.id || !par?.subSpace?.id || !par?.classes?.id) {
                     message.error('请完善分类选择')
                     return
                 }
                 callback(par)
-                setOpen(false) 
+                setOpen(false)
             }}
         >
             <div className="cate-content flex mgT24">
@@ -49,8 +49,8 @@ export default function CateSelect({ open, setOpen, callback }: IProps) {
                         {
                             spaces.map(({ id, name }: any) => (<div
                                 key={id}
-                                onClick={() => { setPar({ spaceId: id }) }}
-                                className={`cate-item ${par?.spaceId === id ? 'cate-active' : ''}`}>{name}</div>))
+                                onClick={() => { setPar({ space: { id, name } }) }}
+                                className={`cate-item ${par?.space?.id === id ? 'cate-active' : ''}`}>{name}</div>))
                         }
                     </div>
                     <div className="flex-center"><RightOutlined className="lg-fs pointer" /></div>
@@ -60,8 +60,8 @@ export default function CateSelect({ open, setOpen, callback }: IProps) {
                         {
                             sub_spaces?.map(({ id, name }: any) => (<div
                                 key={id}
-                                onClick={() => { setPar({ ...par, subSpaceId: id, classesId: '' }) }}
-                                className={`cate-item ${par?.subSpaceId === id ? 'cate-active' : ''}`}>{name}</div>))
+                                onClick={() => { setPar({ ...par, subSpace: { id, name }, classes: {} }) }}
+                                className={`cate-item ${par?.subSpace?.id === id ? 'cate-active' : ''}`}>{name}</div>))
                         }
 
                     </div>
@@ -72,8 +72,8 @@ export default function CateSelect({ open, setOpen, callback }: IProps) {
                         {
                             classes?.map(({ id, name }: any) => (<div
                                 key={id}
-                                onClick={() => { setPar({ ...par, classesId: id }) }}
-                                className={`cate-item ${par?.classesId === id ? 'cate-active' : ''}`}>{name}</div>))
+                                onClick={() => { setPar({ ...par, classes: { id, name } }) }}
+                                className={`cate-item ${par?.classes?.id === id ? 'cate-active' : ''}`}>{name}</div>))
                         }
                     </div>
                 </div>
