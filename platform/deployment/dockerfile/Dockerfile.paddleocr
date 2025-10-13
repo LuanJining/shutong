@@ -4,10 +4,15 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     KMP_DUPLICATE_LIB_OK=TRUE \
     MKL_THREADING_LAYER=GNU \
-    FLAGS_use_mkldnn=false
+    FLAGS_use_mkldnn=false \
+    OMP_NUM_THREADS=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    NUMEXPR_NUM_THREADS=1
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+        build-essential \
         wget \
         poppler-utils \
         libglib2.0-0 \
@@ -17,8 +22,6 @@ RUN apt-get update && \
         libxrender1 \
         libfontconfig1 \
         ffmpeg \
-        libsm6 \
-        libxext6 \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 

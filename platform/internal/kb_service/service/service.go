@@ -1160,3 +1160,11 @@ func buildSnippet(content string, maxRunes int) string {
 	}
 	return strings.TrimSpace(string(runes[:maxRunes])) + "..."
 }
+
+func (s *DocumentService) PublishDocument(ctx context.Context, document *model.Document) error {
+	return s.db.WithContext(ctx).Model(document).Update("status", document.Status).Error
+}
+
+func (s *DocumentService) UnpublishDocument(ctx context.Context, document *model.Document) error {
+	return s.db.WithContext(ctx).Model(document).Update("status", document.Status).Error
+}

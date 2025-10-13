@@ -129,10 +129,8 @@ func Setup(cfg *configs.Config) *gin.Engine {
 			kb.DELETE("/:id", kbHandler.ProxyToKbClient)
 			kb.POST("/search", kbHandler.ProxyToKbClient)
 
-			// 文档流程相关
-			kb.POST("/:id/submit", kbHandler.ProxyToKbClient)
-			kb.POST("/:id/approve", kbHandler.ProxyToKbClient)
 			kb.POST("/:id/publish", kbHandler.ProxyToKbClient)
+			kb.POST("/:id/unpublish", kbHandler.ProxyToKbClient)
 
 			// 文档对话
 			kb.POST("/:id/chat", kbHandler.ProxyToKbClient)

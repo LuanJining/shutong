@@ -511,32 +511,64 @@ func (h *DocumentHandler) PublishDocument(c *gin.Context) {
 		return
 	}
 
-	// 检查审批是否结束
-	workflowID := document.WorkflowID
-	status, err := h.documentService.CheckWorkflowStatus(c.Request.Context(), uint(workflowID))
-	log.Printf("workflowID: %d, status: %s", workflowID, status)
+	document.Status = model.DocumentStatusPublished
+	err = h.documentService.PublishDocument(c.Request.Context(), document)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, &model.APIResponse{
 			Code:    http.StatusInternalServerError,
-			Message: "Failed to check workflow status: " + err.Error(),
+			Message: "Failed to publish document: " + err.Error(),
 		})
 		return
 	}
-	if status == "pending" {
+	c.JSON(http.StatusOK, &model.APIResponse{
+		Code:    http.StatusOK,
+		Message: "Document published successfully",
+		Data:    document,
+	})
+}
+
+func (h *DocumentHandler) UnpublishDocument(c *gin.Context) {
+	documentIDStr := c.Param("id")
+	documentID, err := strconv.ParseUint(documentIDStr, 10, 32)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, &model.APIResponse{
 			Code:    http.StatusBadRequest,
-			Message: "Document is pending approval",
+			Message: "Invalid document ID",
 		})
 		return
 	}
 
-	// TODO审批通过 发布文档
-	// if status == "approved" {
-	// 	document.Status = model.DocumentStatusPublished
-	// 	h.documentService.PublishDocument(c.Request.Context(), document)
-	// 	c.JSON(http.StatusOK, document)
-	// 	return
-	// }
+	document, err := h.documentService.GetDocument(c.Request.Context(), uint(documentID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, &model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to get document: " + err.Error(),
+		})
+		return
+	}
+
+	if document.Status != model.DocumentStatusPublished {
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Document is not published",
+		})
+		return
+	}
+
+	document.Status = model.DocumentStatusPendingApproval
+	err = h.documentService.UnpublishDocument(c.Request.Context(), document)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, &model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to unpublish document: " + err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, &model.APIResponse{
+		Code:    http.StatusOK,
+		Message: "Document unpublished successfully",
+		Data:    document,
+	})
 }
 
 func (h *DocumentHandler) ChatDocument(c *gin.Context) {

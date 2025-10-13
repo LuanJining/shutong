@@ -50,7 +50,7 @@ func Setup(cfg *config.Config, db *gorm.DB, iamClient *client.IamClient) *gin.En
 			{
 				tasks.GET("", middleware.FetchUserFromHeader(db),
 					handler.GetTasks) // 获取任务
-				tasks.POST("/:id/approve", middleware.FetchUserFromHeader(db),
+				tasks.POST("/approve", middleware.FetchUserFromHeader(db),
 					handler.ApproveTask) // 审批任务
 			}
 		}

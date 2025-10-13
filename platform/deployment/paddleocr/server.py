@@ -9,6 +9,12 @@ from typing import Dict, List, Optional, Sequence
 import numpy as np
 from docx import Document as DocxDocument
 from fastapi import FastAPI, HTTPException
+
+# Disable all CPU optimizations before importing PaddleOCR
+os.environ['FLAGS_use_mkldnn'] = 'false'
+os.environ['CPU_NUM_THREADS'] = '1'
+os.environ['FLAGS_eager_delete_tensor_gb'] = '0.0'
+
 from paddleocr import PaddleOCR
 from pdf2image import convert_from_bytes
 from PIL import Image, UnidentifiedImageError
@@ -45,7 +51,10 @@ def _load_ocr(language: str) -> PaddleOCR:
                 show_log=False,
                 use_gpu=False,
                 enable_mkldnn=False,  # Disable MKL-DNN to avoid SIGILL
-                cpu_threads=2,  # Limit CPU threads for stability
+                cpu_threads=1,  # Single thread for maximum compatibility
+                use_tensorrt=False,
+                precision='fp32',
+                use_pdserving=False,
             )
     return _ocr_models[lang]
 

@@ -169,7 +169,7 @@ echo "Task ID: $TASK_ID"
 
 # 用审核员账号审批任务
 echo "=== 审核员审批任务 ==="
-APPROVE_RESPONSE=$(curl -s -X POST "$BASE_URL/workflow/tasks/$TASK_ID/approve" \
+APPROVE_RESPONSE=$(curl -s -X POST "$BASE_URL/workflow/tasks/approve" \
   -H "Authorization: Bearer $AUDIT_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
