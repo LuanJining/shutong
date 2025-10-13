@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BASE_URL="http://localhost:8080/api/v1"
+BASE_URL="http://182.140.132.5:30368/api/v1"
 
 LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/iam/auth/login" \
   -H "Content-Type: application/json" \

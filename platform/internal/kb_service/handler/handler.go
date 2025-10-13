@@ -503,7 +503,7 @@ func (h *DocumentHandler) PublishDocument(c *gin.Context) {
 		return
 	}
 
-	if document.Status != model.DocumentStatusPendingApproval {
+	if document.Status != model.DocumentStatusPendingPublish {
 		c.JSON(http.StatusBadRequest, &model.APIResponse{
 			Code:    http.StatusBadRequest,
 			Message: "Document is not pending approval",
@@ -555,7 +555,7 @@ func (h *DocumentHandler) UnpublishDocument(c *gin.Context) {
 		return
 	}
 
-	document.Status = model.DocumentStatusPendingApproval
+	document.Status = model.DocumentStatusPendingPublish
 	err = h.documentService.UnpublishDocument(c.Request.Context(), document)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, &model.APIResponse{

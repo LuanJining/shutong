@@ -194,10 +194,19 @@ else
 fi
 
 
-curl -X POST "$BASE_URL/kb/search" \
-  -H "Authorization: Bearer $UPLOAD_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "沈个好远",
-    "limit": 10
-  }' | jq .
+# curl -X POST "$BASE_URL/kb/search" \
+#   -H "Authorization: Bearer $UPLOAD_TOKEN" \
+#   -H "Content-Type: application/json" \
+#   -d '{
+#     "query": "沈个好远",
+#     "limit": 10
+#   }' | jq .
+
+curl -X POST "$BASE_URL/kb/$DOC_ID/publish" \
+  -H "Authorization: Bearer $UPLOAD_TOKEN"
+
+DOC_INFO_RESPONSE=$(curl -s -X GET "$BASE_URL/kb/$DOC_ID/info" \
+  -H "Authorization: Bearer $UPLOAD_TOKEN")
+echo "$DOC_INFO_RESPONSE" | jq .
+DOC_STATUS=$(echo "$DOC_INFO_RESPONSE" | jq -r '.data.status')
+echo "Document Status: $DOC_STATUS"
