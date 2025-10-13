@@ -51,6 +51,7 @@ func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, workfl
 			documents.DELETE("/:id", middleware.FetchUserFromHeader(db), documentHandler.DeleteDocument)
 
 			documents.POST("/:id/publish", middleware.FetchUserFromHeader(db), documentHandler.PublishDocument)
+			documents.POST("/:id/unpublish", middleware.FetchUserFromHeader(db), documentHandler.UnpublishDocument)
 
 			// 文档对话
 			documents.POST("/:id/chat", documentHandler.ChatDocument)

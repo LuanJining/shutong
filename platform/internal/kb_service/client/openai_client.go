@@ -201,7 +201,7 @@ func buildChatMessages(question string, fileContents []string) ([]openai.ChatCom
 	}
 
 	var promptBuilder strings.Builder
-	promptBuilder.WriteString("你是一个智能助手，可以基于提供的文件内容回答问题。请根据以下文件内容来回答用户的问题：\n\n")
+	promptBuilder.WriteString("你是一个智能助手，可以基于提供的知识库内容回答问题。请根据以下文件内容来回答用户的问题：\n\n")
 	for idx, content := range fileContents {
 		trimmed := strings.TrimSpace(content)
 		if trimmed == "" {
@@ -209,7 +209,7 @@ func buildChatMessages(question string, fileContents []string) ([]openai.ChatCom
 		}
 		fmt.Fprintf(&promptBuilder, "文件 %d 内容：\n%s\n\n", idx+1, trimmed)
 	}
-	promptBuilder.WriteString("请基于以上文件内容回答用户的问题。如果问题与文件内容无关，请说明无法从提供的文件中找到相关信息。\n\n")
+	promptBuilder.WriteString("请基于以上知识库内容回答用户的问题。如果问题与文件内容无关，请说明无法从提供的文件中找到相关信息。\n\n")
 	promptBuilder.WriteString("用户问题：\n")
 	promptBuilder.WriteString(question)
 
@@ -218,6 +218,7 @@ func buildChatMessages(question string, fileContents []string) ([]openai.ChatCom
 	// log.Println("prompt", prompt)
 
 	messages := []openai.ChatCompletionMessageParamUnion{
+		openai.SystemMessage(promptBuilder.String()),
 		openai.UserMessage(question),
 	}
 	return messages, nil

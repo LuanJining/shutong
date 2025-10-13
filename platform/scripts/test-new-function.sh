@@ -1,6 +1,6 @@
 # BASE_URL="http://localhost:8080/api/v1"
 BASE_URL="http://182.140.132.5:30368/api/v1"
-TEST_FILE="./test.txt"
+TEST_FILE="./test.pdf"
 
 # 登录管理员账户
 LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/iam/auth/login" \
@@ -133,7 +133,7 @@ echo "=== 上传文档 ==="
 UPLOAD_DOC_RESPONSE=$(curl -s -X POST "$BASE_URL/kb/upload" \
   -H "Authorization: Bearer $UPLOAD_TOKEN" \
   -F "file=@$TEST_FILE" \
-  -F "file_name=test.txt" \
+  -F "file_name=test.pdf" \
   -F "space_id=$SPACE_ID" \
   -F "sub_space_id=$SUBSPACE_ID" \
   -F "class_id=$CLASS_ID" \
@@ -169,7 +169,7 @@ echo "Task ID: $TASK_ID"
 
 # 用审核员账号审批任务
 echo "=== 审核员审批任务 ==="
-APPROVE_RESPONSE=$(curl -s -X POST "$BASE_URL/workflow/tasks/$TASK_ID/approve" \
+APPROVE_RESPONSE=$(curl -s -X POST "$BASE_URL/workflow/tasks/approve" \
   -H "Authorization: Bearer $AUDIT_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
@@ -194,13 +194,19 @@ else
 fi
 
 
-curl -X POST "$BASE_URL/kb/search" \
-  -H "Authorization: Bearer $UPLOAD_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "沈个好远",
-    "space_id": 23,
-    "sub_space_id": 23,
-    "class_id": 23,
-    "limit": 10
-  }' | jq .
+# curl -X POST "$BASE_URL/kb/search" \
+#   -H "Authorization: Bearer $UPLOAD_TOKEN" \
+#   -H "Content-Type: application/json" \
+#   -d '{
+#     "query": "沈个好远",
+#     "limit": 10
+#   }' | jq .
+
+curl -X POST "$BASE_URL/kb/$DOC_ID/publish" \
+  -H "Authorization: Bearer $UPLOAD_TOKEN"
+
+DOC_INFO_RESPONSE=$(curl -s -X GET "$BASE_URL/kb/$DOC_ID/info" \
+  -H "Authorization: Bearer $UPLOAD_TOKEN")
+echo "$DOC_INFO_RESPONSE" | jq .
+DOC_STATUS=$(echo "$DOC_INFO_RESPONSE" | jq -r '.data.status')
+echo "Document Status: $DOC_STATUS"
