@@ -213,9 +213,7 @@ func buildChatMessages(question string, fileContents []string) ([]openai.ChatCom
 	promptBuilder.WriteString("用户问题：\n")
 	promptBuilder.WriteString(question)
 
-	// prompt := promptBuilder.String()
 	log.Println("成功构建prompt")
-	// log.Println("prompt", prompt)
 
 	messages := []openai.ChatCompletionMessageParamUnion{
 		openai.SystemMessage(promptBuilder.String()),
