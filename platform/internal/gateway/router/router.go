@@ -91,6 +91,7 @@ func Setup(cfg *configs.Config) *gin.Engine {
 				spaces.DELETE("/:id/members/:user_id", iamHandler.ProxyToIamClient)
 				spaces.PUT("/:id/members/:user_id", iamHandler.ProxyToIamClient)
 				spaces.GET("/:id/members/role/:role", iamHandler.ProxyToIamClient) // 根据角色获取成员
+				spaces.GET("/members/:user_id", iamHandler.ProxyToIamClient)
 
 				spaces.POST("/subspaces", iamHandler.ProxyToIamClient)
 

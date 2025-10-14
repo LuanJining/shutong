@@ -83,7 +83,7 @@ ADD_UPLOAD_USER_RESPONSE=$(curl -s -X POST "$BASE_URL/iam/spaces/$SPACE_ID/membe
   -H "Authorization: Bearer $TOKEN" \
   -d "{
     \"user_id\": $UPLOAD_USER_ID,
-    \"role\": \"editor\"
+    \"roles\": [\"editor\", \"approver\"]
   }")
 echo "$ADD_UPLOAD_USER_RESPONSE" | jq .
 
@@ -112,7 +112,7 @@ ADD_AUDIT_USER_RESPONSE=$(curl -s -X POST "$BASE_URL/iam/spaces/$SPACE_ID/member
   -H "Authorization: Bearer $TOKEN" \
   -d "{
     \"user_id\": $AUDIT_USER_ID,
-    \"role\": \"approver\"
+    \"roles\": [\"approver\"]
   }")
 echo "$ADD_AUDIT_USER_RESPONSE" | jq .
 

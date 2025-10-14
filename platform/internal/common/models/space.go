@@ -57,9 +57,9 @@ type Class struct {
 
 // SpaceMember 空间成员关联表
 type SpaceMember struct {
-	SpaceID uint            `json:"space_id" gorm:"primaryKey"`
-	UserID  uint            `json:"user_id" gorm:"primaryKey"`
-	Role    SpaceMemberRole `json:"role" gorm:"not null;size:20;comment:空间角色:owner,admin,editor,viewer"`
+	SpaceID uint              `json:"space_id" gorm:"primaryKey"`
+	UserID  uint              `json:"user_id" gorm:"primaryKey"`
+	Roles   []SpaceMemberRole `json:"roles" gorm:"serializer:json;not null;comment:空间角色:owner,admin,editor,viewer"`
 
 	// 关联关系
 	User User `json:"user,omitempty" gorm:"foreignKey:UserID"`
