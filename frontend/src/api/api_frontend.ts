@@ -96,10 +96,13 @@ const homePage = (): Promise<any> => get(`/kb/homepage`);
 /** @return 启用 / 不启用 */
 const docOpera = ({ documentId, status }: { documentId: number, status: 'publish' | 'unpublish' }): Promise<any> => post(`/kb/${documentId}/${status}`);
 
+/** @return 获取标签云 */
+const getTags = (): Promise<any> => get(`/kb/tag-cloud`);
+
 export default {
     login, createUser, assignRoles, getUsers, getRoles, getPermissions, createSpace, getSpaces,
     getSpaceById, checkPermission, updateSpace, deleteSpace, getRolePermissions, getUserById, getRoleById,
     getPermissionById, uploadFile, getFile, getTasks, taskOpear, userTasks, documentDetail, documentList,
-    changePwd, search, addSubSpaces, addClasses, homePage,docOpera
+    changePwd, search, addSubSpaces, addClasses, homePage,docOpera,getTags
 }
 

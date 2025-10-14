@@ -39,7 +39,6 @@ export default function Index() {
     const scrollToBottom = () => {
         const chatContainer = chatContainerRef.current;
         if (chatContainer) {
-            // 强制触发重排后再滚动（确保高度计算准确）
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
     };
@@ -52,12 +51,9 @@ export default function Index() {
 
             setInit(false)
 
-            chatBox.innerHTML += `
-            <div class="user-message"> <span>${messages}</span></div>
-        `;
+            chatBox.innerHTML += `<div class="user-message"> <span>${messages}</span></div> `;
             setWords('')
             setloading(true)
-            // 发送消息到后端
             fetchLogStream(messages);
             scrollToBottom()
         } else if (loading) {
@@ -97,7 +93,6 @@ export default function Index() {
             let accumulatedText = '';
             let messageDiv = null;
 
-            // 先创建消息容器
             messageDiv = document.createElement('div');
             messageDiv.className = 'ai-message';
             chatBox.appendChild(messageDiv);
@@ -134,7 +129,7 @@ export default function Index() {
                                 console.log('done')
                             } else if (currentEvent === 'sources') {
                                 const sources = data; // 假如是数组或对象
-                                console.log('📚 来源信息:', sources);
+                                console.log('来源信息:', sources);
                             }
                             currentEvent = ''
                         } catch (e) {

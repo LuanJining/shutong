@@ -51,7 +51,6 @@ export const usePDFStreamRenderer = (
             }
             try {
                 const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-
                 const renderedPages: JSX.Element[] = [];
 
                 for (let i = 1; i <= pdf.numPages; i++) {
@@ -61,7 +60,6 @@ export const usePDFStreamRenderer = (
                             <canvas
                                 ref={(el) => {
                                     if (!el) return;
-
                                     const canvasEl = el as HTMLCanvasElement;
                                     const context = canvasEl.getContext('2d');
                                     if (!context) return;

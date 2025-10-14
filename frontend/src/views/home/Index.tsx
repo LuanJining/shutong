@@ -32,8 +32,9 @@ export default function Index() {
     const [keywords, setKeywords] = useState<string>('')
     const [documents, setDocuments] = useState<any[]>([])
     const [isEmpty, setEmpty] = useState<boolean>(false)
+    const [tags, setTags] = useState<any[]>([])
 
-    useEffect(() => { getHomePage() }, [])
+    useEffect(() => { getHomePage(); getTags() }, [])
 
     const getHomePage = async () => {
         const { data: { spaces } }: any = await api_frontend.homePage()
@@ -43,6 +44,11 @@ export default function Index() {
             tempPar[id] = sub_spaces?.at(0)?.id
         })
         setPar(tempPar)
+    }
+
+    const getTags = async () => {
+        const { data: { items } }: any = await api_frontend.getTags()
+        setTags(items)
     }
 
     const search = async () => {
@@ -169,11 +175,10 @@ export default function Index() {
                                         <div style={{ color: '#010101' }} className="mgB16 nm-fs fw-bold">标签云</div>
                                         <div className="tag-box flex flex-wrap">
                                             {
-                                                ['合同', '招标方案', '建筑法', '合同', '招标方案', '建筑法', '合同', '招标方案', '建筑法',]
-                                                    .map((v: any, i: number) => (<div
-                                                        className="tag-item mgR24 mn-fs pointer mgB12" key={i}>
-                                                        {v}
-                                                    </div>))
+                                                tags.map(({ tag }: any, i: number) => (<div
+                                                    className="tag-item mgR24 mn-fs mgB12" key={i}>
+                                                    {tag}
+                                                </div>))
                                             }
                                         </div>
                                     </div>

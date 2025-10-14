@@ -3,7 +3,7 @@ import _ from 'lodash';
 import mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.js?url';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { usePDFStreamRenderer } from '@/hooks/usePDFStreamRenderer';
 import { Props_File_View } from '@/types/pages';
 import { useLocation } from 'react-router-dom';
@@ -11,6 +11,7 @@ import { useLocation } from 'react-router-dom';
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
 export default function CustomFileViewer({ fileType, file, type, styles }: Props_File_View) {
+    const pdfRef = useRef<any>(null)
     const [docxHtml, setDocxHtml] = useState<string>('');
 
     const documentId: any = useLocation().state?.documentId
@@ -24,7 +25,7 @@ export default function CustomFileViewer({ fileType, file, type, styles }: Props
         return result
     }, [type, fileType])
 
-    const { pdfPages } = usePDFStreamRenderer(source)
+    const { pdfPages,loading } = usePDFStreamRenderer(source)
 
     useEffect(() => {
         fileType === 'docx' && handleFileChange()
@@ -55,8 +56,15 @@ export default function CustomFileViewer({ fileType, file, type, styles }: Props
         reader.readAsArrayBuffer(file);
     };
 
+    const onScroll = (e:any) => {
+        console.log(e)
+        console.log(pdfRef.current.clientHeight)
+    }
+
     return (
-        <div className='pdf-container' style={styles}>
+        <div ref={pdfRef} 
+        onScroll={onScroll}
+        className='pdf-container' style={styles}>
             {fileType === 'pdf' && pdfPages.length !== 0
                 ? pdfPages
                 : fileType === 'docx' && docxHtml ? (
