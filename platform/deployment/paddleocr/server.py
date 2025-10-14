@@ -11,6 +11,11 @@ os.environ['FLAGS_use_mkldnn'] = 'false'
 os.environ['FLAGS_use_dnnl'] = 'false'
 os.environ['FLAGS_eager_delete_tensor_gb'] = '0.0'
 
+# Disable IR optimization passes that may use unsupported CPU instructions
+os.environ['FLAGS_new_executor_use_inplace'] = 'false'
+os.environ['FLAGS_apply_pass_to_program'] = 'false'
+os.environ['FLAGS_enable_new_ir_in_executor'] = 'false'
+
 os.environ['CPU_NUM_THREADS'] = '1'
 os.environ['OMP_NUM_THREADS'] = '1'
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
@@ -98,10 +103,12 @@ def _load_ocr(language: str):
         candidate_params = {
             "lang": lang,
             "use_angle_cls": True,
-            "use_gpu": False,
             "cpu_threads": 1,
             "enable_mkldnn": False,
             "precision": "fp32",
+            # Disable document orientation classification that causes CPU instruction issues
+            # This is the feature causing the std::exception in doc_ori_classify_model
+            "use_doc_orientation_classify": False,
         }
 
         # Inspect PaddleOCR constructor and pick only accepted args (defensive)
