@@ -16,13 +16,13 @@ export default function Index() {
     const [pageType, setPageType] = useState<'document' | 'management'>('document')
     const [items, setItems] = useState<(Props_Self_Nav & any)[]>([])
 
-    useEffect(() => { setPathKey(items?.[0]?.key ?? '') }, [items])
+    useEffect(() => { setPathKey(items?.[0]?.key ?? -1) }, [items])
     useEffect(() => { getSpaces() }, [])
 
     const getSpaces = useCallback(async () => {
         const { data: { spaces } }: any = await api_frontend.getSpaces()
         setItems(spaces.map((v: any) => ({ ...v, label: v.name, key: v.id })))
-        setPathKey(spaces?.at(0)?.id)
+        setPathKey(spaces?.at(0)?.id ?? -1)
     }, [pathKey])
 
     return (
@@ -49,9 +49,9 @@ export default function Index() {
                 </Row>
                 {
                     pageType === 'document'
-                        ? <DocumentManagement space_id={+pathKey} />
+                        ? <DocumentManagement space_id={pathKey} />
                         : <SubPaceManagement
-                            space_id={+pathKey}
+                            space_id={pathKey}
                             getSpaces={getSpaces} />
                 }
             </div>

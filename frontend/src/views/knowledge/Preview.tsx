@@ -12,6 +12,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
 export default function CustomFileViewer({ fileType, file, type, styles }: Props_File_View) {
     const pdfRef = useRef<any>(null)
+    const [scrollTop, setScrollTop] = useState<number>(0)
     const [docxHtml, setDocxHtml] = useState<string>('');
 
     const documentId: any = useLocation().state?.documentId
@@ -23,9 +24,9 @@ export default function CustomFileViewer({ fileType, file, type, styles }: Props
             ? result.file = file
             : result.documentId = documentId
         return result
-    }, [type, fileType])
+    }, [type, fileType,scrollTop])
 
-    const { pdfPages,loading } = usePDFStreamRenderer(source)
+    const { pdfPages, loading, } = usePDFStreamRenderer(source)
 
     useEffect(() => {
         fileType === 'docx' && handleFileChange()
@@ -56,15 +57,15 @@ export default function CustomFileViewer({ fileType, file, type, styles }: Props
         reader.readAsArrayBuffer(file);
     };
 
-    const onScroll = (e:any) => {
-        console.log(e)
-        console.log(pdfRef.current.clientHeight)
+    const onScroll = (e: any) => {
+        const sTop: number = e.target.scrollTop
+        // setScrollTop(sTop ?? 0)
     }
 
     return (
-        <div ref={pdfRef} 
-        onScroll={onScroll}
-        className='pdf-container' style={styles}>
+        <div ref={pdfRef}
+            onScroll={onScroll}
+            className='pdf-container' style={styles}>
             {fileType === 'pdf' && pdfPages.length !== 0
                 ? pdfPages
                 : fileType === 'docx' && docxHtml ? (

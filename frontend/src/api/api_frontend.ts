@@ -11,7 +11,12 @@ const createUser = (par: Par_Users): Promise<any> => post('/iam/users', par);
 const getUsers = (par: Par_Common_Params): Promise<any> => get('/iam/users', par);
 
 /** @returns 分配角色*/
-const assignRoles = (par: { role_id: number, userId: string }): Promise<any> => post(`/iam/users/${par.userId}/roles`, { role_id: par.role_id });
+const assignRoles = (par: { roles: string[], userId: string ,space_id:number}): Promise<any> => post(`/iam/spaces/${par.space_id}/members`, {
+    user_id: par.userId, roles: par.roles
+});
+
+/** @returns 获取用户角色*/
+const getUserRoles = (userId: string): Promise<any> => get(`iam/spaces/members/${userId}`);
 
 /** @returns 角色列表 */
 const getRoles = (par: Par_Common_Params): Promise<any> => get('/iam/roles', par);
@@ -103,6 +108,6 @@ export default {
     login, createUser, assignRoles, getUsers, getRoles, getPermissions, createSpace, getSpaces,
     getSpaceById, checkPermission, updateSpace, deleteSpace, getRolePermissions, getUserById, getRoleById,
     getPermissionById, uploadFile, getFile, getTasks, taskOpear, userTasks, documentDetail, documentList,
-    changePwd, search, addSubSpaces, addClasses, homePage,docOpera,getTags
+    changePwd, search, addSubSpaces, addClasses, homePage, docOpera, getTags,getUserRoles
 }
 

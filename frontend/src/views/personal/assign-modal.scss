@@ -1,0 +1,27 @@
+.assign-modal {
+  .assign-box {
+    margin: 16px 0;
+    padding: 16px 24px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    .space-box {
+      width: 30%;
+      .space-item {
+        height: 36px;
+        display: flex;
+        align-items: center;
+        padding-left: 12px;
+        box-sizing: border-box;
+        border-radius: 5px;
+        cursor: pointer;
+        &:hover {
+            background-color: #9dd0fd;
+        }
+      }
+
+      .active-space-item {
+        background-color: #8bc9ff;
+      }
+    }
+  }
+}
