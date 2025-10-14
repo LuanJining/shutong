@@ -128,6 +128,7 @@ func Setup(cfg *configs.Config) *gin.Engine {
 			kb.GET("/homepage", kbHandler.ProxyToKbClient)
 			kb.DELETE("/:id", kbHandler.ProxyToKbClient)
 			kb.POST("/search", kbHandler.ProxyToKbClient)
+			kb.GET("/tag-cloud", kbHandler.ProxyToKbClient)
 
 			kb.POST("/:id/publish", kbHandler.ProxyToKbClient)
 			kb.POST("/:id/unpublish", kbHandler.ProxyToKbClient)
