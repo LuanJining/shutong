@@ -199,13 +199,13 @@ export default function Index() {
                                         </div>
                                         {
                                             getDocument(id)?.map((v: any) => (<div
-                                                key={v}
+                                                key={v.id}
                                                 onClick={() => { navigate('/document/detail', { state: { documentId: v.id } }) }}
                                                 className="flex al-center space-between mgB24 pointer">
-                                                <div className="news-title elli">集团举办“党建引领帮扶工作”资源大讲堂</div>
+                                                <div className="news-title elli">{v.summary}</div>
                                                 <div className="news-txt white-nowrap flex primary-gray">
-                                                    <div className="mgR24">张某</div>
-                                                    <div className="mgL24">2025-09</div>
+                                                    <div className="mgR24">{v.creator_nick_name}</div>
+                                                    <div className="mgL24">{dayjs(v.updated_at).format('YYYY-MM')}</div>
                                                 </div>
                                             </div>))
                                         }
