@@ -129,8 +129,8 @@ export default function Index() {
                                         }
                                     </div>
                                     {
-                                        firstOne?.sub_spaces?.at(0)?.documents?.map((v: any) => (<div
-                                            key={v}
+                                        getDocument(firstOne?.id)?.map((v: any) => (<div
+                                            key={v.id}
                                             onClick={() => { navigate('/document/detail', { state: { documentId: v.id } }) }}
                                             className="flex al-center space-between mgB24 pointer">
                                             <div className="news-title elli">{v.summary}</div>
