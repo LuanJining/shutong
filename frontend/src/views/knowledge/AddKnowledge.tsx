@@ -38,7 +38,6 @@ export default function AddKnowledge() {
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'application/pdf',
-            'text/plain'
         ]
         if (!whiteArr.includes(file.type)) {
             message.error("doc/docx/pdf/txt", 1)
