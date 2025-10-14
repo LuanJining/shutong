@@ -1,30 +1,55 @@
+# -*- coding: utf-8 -*-
+# server.py — PaddleOCR 服务（兼容多版本）
+# IMPORTANT: environment variables MUST be set before importing numpy/paddle/paddleocr
+
+import os
+
+# -----------------------
+# Conservative environment settings — must be set before any heavy imports
+# -----------------------
+# Try to disable MKL / oneDNN aggressive optimizations early
+os.environ['FLAGS_use_mkldnn'] = 'false'
+os.environ['FLAGS_use_dnnl'] = 'false'
+os.environ['FLAGS_eager_delete_tensor_gb'] = '0.0'
+
+# Restrict BLAS / threading to single thread for maximum compatibility
+os.environ['CPU_NUM_THREADS'] = '1'
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['NUMEXPR_NUM_THREADS'] = '1'
+
+# Allow duplicate lib loading if necessary (keep your original behavior)
+os.environ.setdefault('KMP_DUPLICATE_LIB_OK', 'TRUE')
+os.environ.setdefault('MKL_THREADING_LAYER', 'GNU')
+
+# -----------------------
+# Now safe to import other modules
+# -----------------------
 import base64
 import io
 import logging
-import os
 import threading
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
+import inspect
 import numpy as np
 from docx import Document as DocxDocument
 from fastapi import FastAPI, HTTPException
 
-# Disable all CPU optimizations before importing PaddleOCR
-os.environ['FLAGS_use_mkldnn'] = 'false'
-os.environ['CPU_NUM_THREADS'] = '1'
-os.environ['FLAGS_eager_delete_tensor_gb'] = '0.0'
-
-from paddleocr import PaddleOCR
+# Deliberately import paddleocr lazily inside _load_ocr to reduce chances of early native init
 from pdf2image import convert_from_bytes
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("server")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s:%(name)s: %(message)s")
 
 app = FastAPI(title="PaddleOCR Service", version="1.0.0")
 
-_ocr_models: Dict[str, PaddleOCR] = {}
+# store loaded PaddleOCR instances per language
+_ocr_models: Dict[str, object] = {}
 _ocr_lock = threading.RLock()
 _default_language = os.getenv("PADDLE_LANG", "ch")
 
@@ -40,23 +65,95 @@ class OCRResponse(BaseModel):
     lines: List[str]
 
 
-def _load_ocr(language: str) -> PaddleOCR:
+def _load_ocr(language: str):
+    """
+    Lazily load PaddleOCR for a given language.
+    Uses runtime inspection to avoid passing unsupported args across PaddleOCR versions.
+    """
     lang = language or _default_language
     with _ocr_lock:
-        if lang not in _ocr_models:
-            logger.info("Loading PaddleOCR model for language: %s", lang)
-            _ocr_models[lang] = PaddleOCR(
-                use_angle_cls=True,
-                lang=lang,
-                show_log=False,
-                use_gpu=False,
-                enable_mkldnn=False,  # Disable MKL-DNN to avoid SIGILL
-                cpu_threads=1,  # Single thread for maximum compatibility
-                use_tensorrt=False,
-                precision='fp32',
-                use_pdserving=False,
-            )
-    return _ocr_models[lang]
+        if lang in _ocr_models:
+            return _ocr_models[lang]
+
+        logger.info("Initializing PaddleOCR for language=%s", lang)
+
+        # Import inside function to ensure env vars already set
+        try:
+            import paddle
+            import paddleocr
+            # Import actual class
+            from paddleocr import PaddleOCR
+        except Exception as exc:
+            logger.exception("Failed to import paddle/paddleocr. This may indicate an incompatible wheel or missing libs.")
+            raise RuntimeError(
+                "Failed to import paddle/paddleocr. Ensure the installed wheel matches the platform and Python version."
+            ) from exc
+
+        # Log versions for diagnostics
+        try:
+            paddle_version = getattr(paddle, "__version__", "unknown")
+        except Exception:
+            paddle_version = "unknown"
+        try:
+            paddleocr_version = getattr(paddleocr, "__version__", "unknown")
+        except Exception:
+            paddleocr_version = "unknown"
+
+        logger.info("Detected paddle version=%s, paddleocr version=%s", paddle_version, paddleocr_version)
+
+        # Candidate parameters we prefer to pass if the constructor supports them
+        candidate_params = {
+            "lang": lang,
+            "use_angle_cls": True,
+            "use_gpu": False,
+            # try to request single-threaded behaviour if supported
+            "cpu_threads": 1,
+            # try to disable mkldnn/dnnl if supported (some versions accept enable_mkldnn)
+            "enable_mkldnn": False,
+            # precision if supported
+            "precision": "fp32",
+        }
+
+        # Inspect PaddleOCR constructor and pick only accepted args (defensive)
+        try:
+            sig = inspect.signature(PaddleOCR.__init__)
+            ctor_params = set(sig.parameters.keys())
+            # remove 'self'
+            ctor_params.discard("self")
+            accepted_kwargs = {k: v for k, v in candidate_params.items() if k in ctor_params}
+            logger.info("PaddleOCR ctor accepted args: %s", sorted(list(accepted_kwargs.keys())))
+        except Exception as exc:
+            # If introspection fails, fall back to trying with minimal args
+            logger.warning("Failed to inspect PaddleOCR.__init__ signature: %s. Falling back to minimal args.", exc)
+            accepted_kwargs = {"lang": lang} if "lang" in candidate_params else {}
+
+        # Finally, try to construct the PaddleOCR object with accepted args
+        try:
+            model = PaddleOCR(**accepted_kwargs) if accepted_kwargs else PaddleOCR()
+        except Exception as exc:
+            # Detect if the failure looks like a native crash / illegal instruction by message or chained C++ traces
+            logger.exception("PaddleOCR initialization failed. Inspecting error...")
+            # Provide a detailed runtime hint in the raised exception for the caller
+            raise RuntimeError(
+                "PaddleOCR initialization failed.\n"
+                f"Paddle version: {paddle_version}\n"
+                f"PaddleOCR version: {paddleocr_version}\n"
+                "Possible causes:\n"
+                "  - Incompatible paddle/paddleocr wheel for this CPU/platform (SIGILL / Illegal instruction).\n"
+                "  - Native libs were preloaded with incompatible optimizations before env vars were set.\n"
+                "  - Model-specific IR fusion pass triggered an illegal instruction for this build.\n\n"
+                "Suggested actions:\n"
+                "  1) Ensure env vars in server.py are at file top before any heavy imports (they are).\n"
+                "  2) Check host CPU flags: run `lscpu | grep -i avx` on the host.\n"
+                "  3) If the host lacks AVX, use a no-AVX paddle wheel or build from source.\n"
+                "  4) If problem persists only for particular language/model, try a different language model (e.g., 'en') to isolate model-specific fuse issues.\n"
+                "  5) As a fallback, try an earlier paddle/paddleocr combination known to be stable on this host (e.g., paddlepaddle 2.5.x + paddleocr 2.x).\n\n"
+                f"Original error: {exc}"
+            ) from exc
+
+        _ocr_models[lang] = model
+        logger.info("PaddleOCR initialized successfully for language=%s", lang)
+        return model
 
 
 def _decode_base64(data_base64: str) -> bytes:
@@ -119,14 +216,51 @@ def _run_ocr_on_images(images: Sequence[np.ndarray], language: str) -> List[str]
     ocr = _load_ocr(language or _default_language)
     lines: List[str] = []
     for image in images:
-        results = ocr.ocr(image, det=True, rec=True)
-        for page in results:
-            for item in page:
-                if len(item) < 2:
-                    continue
-                text = item[1][0]
-                if text:
-                    lines.append(text)
+        try:
+            # PaddleOCR.ocr API changed in 3.x: the instance may expose ocr(image) or a pipeline API.
+            # We attempt to call the high-level .ocr(...) and if it fails, raise a helpful error.
+            results = ocr.ocr(image)
+        except TypeError:
+            # Older/newer APIs accept multiple params; try a more explicit call
+            try:
+                results = ocr.ocr(image, det=True, rec=True)
+            except Exception as exc:
+                logger.exception("OCR runtime error on image page with fallback signature.")
+                raise HTTPException(status_code=500, detail=f"OCR runtime error: {exc}") from exc
+        except Exception as exc:
+            logger.exception("OCR runtime error on image page.")
+            raise HTTPException(status_code=500, detail=f"OCR runtime error: {exc}") from exc
+
+        # Normalize results from various PaddleOCR versions:
+        # Some versions return list of pages -> list of items; others return list directly.
+        # We'll flatten conservatively.
+        flattened = []
+        if not results:
+            flattened = []
+        else:
+            # If results is a list of lists of items (page -> items), flatten two levels
+            if isinstance(results, list) and results and isinstance(results[0], list) and results[0] and isinstance(results[0][0], list):
+                for page in results:
+                    for item in page:
+                        flattened.append(item)
+            else:
+                flattened = results
+
+        for item in flattened:
+            # item commonly: [box, (text, confidence)] or [box, text] depending on version
+            try:
+                if isinstance(item, (list, tuple)) and len(item) >= 2:
+                    # If second element is tuple/list with text at index 0
+                    second = item[1]
+                    if isinstance(second, (list, tuple)) and len(second) >= 1:
+                        text = second[0]
+                    else:
+                        text = second
+                    if text:
+                        lines.append(text)
+            except Exception:
+                # ignore malformed items
+                continue
 
     if not lines:
         raise HTTPException(status_code=422, detail="OCR did not return any text")
@@ -135,7 +269,7 @@ def _run_ocr_on_images(images: Sequence[np.ndarray], language: str) -> List[str]
 
 
 @app.get("/healthz")
-def healthz() -> Dict[str, str]:
+def healthz() -> dict:
     return {"status": "ok"}
 
 

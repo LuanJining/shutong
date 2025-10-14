@@ -1,15 +1,20 @@
-FROM --platform=linux/amd64 python:3.11-slim
+# syntax=docker/dockerfile:1
+FROM python:3.11-slim
 
+# Keep same envs; duplicate settings align with server.py top-level env settings.
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     KMP_DUPLICATE_LIB_OK=TRUE \
     MKL_THREADING_LAYER=GNU \
     FLAGS_use_mkldnn=false \
+    FLAGS_use_dnnl=false \
     OMP_NUM_THREADS=1 \
     OPENBLAS_NUM_THREADS=1 \
     MKL_NUM_THREADS=1 \
-    NUMEXPR_NUM_THREADS=1
+    NUMEXPR_NUM_THREADS=1 \
+    CPU_NUM_THREADS=1
 
+# Install system deps needed by pdf2image/Pillow and potential build deps
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
@@ -26,9 +31,9 @@ RUN apt-get update && \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-
 WORKDIR /app
 
+# Copy requirements and install
 COPY deployment/paddleocr/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -42,8 +47,10 @@ RUN mkdir -p /root/.paddleocr/whl && \
     wget -q https://paddleocr.bj.bcebos.com/dygraph_v2.0/ch/ch_ppocr_mobile_v2.0_cls_infer.tar && \
     tar -xf ch_ppocr_mobile_v2.0_cls_infer.tar && rm ch_ppocr_mobile_v2.0_cls_infer.tar
 
+# Copy app code (server.py should be the modified version above)
 COPY deployment/paddleocr/server.py ./server.py
 
 EXPOSE 8500
 
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8500"]
+# Use a simple, explicit CMD; keep uvicorn logging minimal
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8500", "--log-level", "info"]

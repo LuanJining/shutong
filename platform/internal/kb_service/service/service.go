@@ -534,7 +534,6 @@ func (s *DocumentService) GetTagCloud(ctx context.Context, spaceID, subSpaceID u
 		Where("tags IS NOT NULL AND tags <> ''").
 		Where("status IN ?", []model.DocumentStatus{
 			model.DocumentStatusPublished,
-			model.DocumentStatusPendingPublish,
 		})
 
 	if spaceID > 0 {
@@ -564,7 +563,7 @@ func (s *DocumentService) GetTagCloud(ctx context.Context, spaceID, subSpaceID u
 		tags := make([]string, 0)
 		if err := json.Unmarshal([]byte(raw), &tags); err != nil {
 			// 尝试以逗号分隔的字符串解析
-			for _, tag := range strings.Split(raw, ",") {
+			for tag := range strings.SplitSeq(raw, ",") {
 				tag = strings.TrimSpace(tag)
 				tag = strings.Trim(tag, "\"'")
 				if tag != "" {
