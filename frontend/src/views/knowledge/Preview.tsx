@@ -19,14 +19,16 @@ export default function CustomFileViewer({ fileType, file, type, styles }: Props
 
     const source: any = useMemo(() => {
         if (fileType !== 'pdf') return null;
-        const result: any = { type }
+        const result: any = { type, scrollTop }
         type === 'file'
             ? result.file = file
             : result.documentId = documentId
         return result
-    }, [type, fileType,scrollTop])
+    }, [type, fileType, scrollTop])
 
-    const { pdfPages, loading, } = usePDFStreamRenderer(source)
+    const { pdfPages, loading,totalPage } = usePDFStreamRenderer(source)
+
+    console.log(pdfPages)
 
     useEffect(() => {
         fileType === 'docx' && handleFileChange()
@@ -59,7 +61,7 @@ export default function CustomFileViewer({ fileType, file, type, styles }: Props
 
     const onScroll = (e: any) => {
         const sTop: number = e.target.scrollTop
-        // setScrollTop(sTop ?? 0)
+        setScrollTop(sTop ?? 0)
     }
 
     return (
@@ -67,7 +69,7 @@ export default function CustomFileViewer({ fileType, file, type, styles }: Props
             onScroll={onScroll}
             className='pdf-container' style={styles}>
             {fileType === 'pdf' && pdfPages.length !== 0
-                ? pdfPages
+                ? <div style={{height:`${totalPage * 1100}px`}}>{pdfPages}</div>
                 : fileType === 'docx' && docxHtml ? (
                     <div className='pdL24 pdR24 pdT16 pdT16' dangerouslySetInnerHTML={{ __html: docxHtml }}
                     />
