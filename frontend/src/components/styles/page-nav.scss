@@ -1,8 +1,10 @@
 .page-nav {
   width: 283px;
+  min-width: 283px;
   height: 100%;
   background-color: #efefef;
   box-sizing: border-box;
+  white-space: nowrap;
 
   .nav-icon {
     transition: all 0.3s;
