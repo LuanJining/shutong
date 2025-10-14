@@ -282,8 +282,13 @@ func (s *DocumentService) prepareChatDocument(ctx context.Context, spaceID uint,
 		return "", nil, nil, err
 	}
 
+	// 如果向量搜索没有结果，降级：获取该space所有chunks
 	if len(chunks) == 0 {
-		return "", nil, nil, model.ErrNoDocumentsAvailable
+		log.Printf("Vector search returned no results for space %d, falling back to all chunks", spaceID)
+		chunks, err = s.getAllSpaceChunks(ctx, spaceID, limit)
+		if err != nil {
+			return "", nil, nil, err
+		}
 	}
 
 	fileContents := make([]string, 0, len(chunks))
@@ -311,6 +316,7 @@ func (s *DocumentService) prepareChatDocument(ctx context.Context, spaceID uint,
 		}
 	}
 
+	// 如果chunks内容都为空，说明该space真的没有可用内容
 	if len(fileContents) == 0 {
 		return "", nil, nil, model.ErrNoDocumentsAvailable
 	}
@@ -320,7 +326,11 @@ func (s *DocumentService) prepareChatDocument(ctx context.Context, spaceID uint,
 
 func (s *DocumentService) prepareChatDocumentFromFiles(ctx context.Context, spaceID uint, question string, req *model.ChatDocumentRequest, limit int) (string, []string, []model.ChatDocumentSource, error) {
 	query := s.db.WithContext(ctx).
-		Where("space_id = ?", spaceID)
+		Where("space_id = ?", spaceID).
+		Where("status IN ?", []model.DocumentStatus{
+			model.DocumentStatusPublished,
+			model.DocumentStatusPendingPublish,
+		})
 
 	if len(req.DocumentIDs) > 0 {
 		query = query.Where("id IN ?", req.DocumentIDs)
@@ -660,6 +670,67 @@ func (s *DocumentService) SearchKnowledge(ctx context.Context, req *model.Knowle
 	return &model.KnowledgeSearchResponse{
 		Items: results,
 	}, nil
+}
+
+// getAllSpaceChunks 获取space下所有chunks（降级策略）
+func (s *DocumentService) getAllSpaceChunks(ctx context.Context, spaceID uint, limit int) ([]chunkSearchResult, error) {
+	// 查询该space下已发布的文档
+	var documents []model.Document
+	if err := s.db.WithContext(ctx).
+		Where("space_id = ?", spaceID).
+		Where("status IN ?", []model.DocumentStatus{
+			model.DocumentStatusPublished,
+			model.DocumentStatusPendingPublish,
+		}).
+		Order("updated_at DESC").
+		Find(&documents).Error; err != nil {
+		return nil, fmt.Errorf("failed to load documents: %w", err)
+	}
+
+	if len(documents) == 0 {
+		return nil, model.ErrNoDocumentsAvailable
+	}
+
+	// 提取document IDs
+	docIDs := make([]uint, len(documents))
+	docMap := make(map[uint]*model.Document)
+	for i, doc := range documents {
+		docIDs[i] = doc.ID
+		docCopy := doc
+		docMap[doc.ID] = &docCopy
+	}
+
+	// 查询这些文档的chunks
+	var dbChunks []model.DocumentChunk
+	if err := s.db.WithContext(ctx).
+		Where("document_id IN ?", docIDs).
+		Order("document_id DESC, index ASC").
+		Limit(limit).
+		Find(&dbChunks).Error; err != nil {
+		return nil, fmt.Errorf("failed to load chunks: %w", err)
+	}
+
+	if len(dbChunks) == 0 {
+		return nil, model.ErrNoDocumentsAvailable
+	}
+
+	// 转换为chunkSearchResult格式
+	results := make([]chunkSearchResult, 0, len(dbChunks))
+	for _, chunk := range dbChunks {
+		doc, exists := docMap[chunk.DocumentID]
+		if !exists {
+			continue
+		}
+		results = append(results, chunkSearchResult{
+			Document: doc,
+			ChunkID:  chunk.ID,
+			Content:  chunk.Content,
+			Score:    1.0, // 降级策略，没有相关性分数
+			FileName: doc.FileName,
+		})
+	}
+
+	return results, nil
 }
 
 func (s *DocumentService) searchChunks(ctx context.Context, spaceID uint, query string, subSpaceID, classID uint, limit int) ([]chunkSearchResult, error) {
@@ -1014,36 +1085,64 @@ func simpleEmbedding(content string) []float64 {
 	words := strings.Fields(content)
 	wordCount := len(words)
 
+	// Count runes (characters) for better Chinese support
+	runes := []rune(content)
+	runeCount := len(runes)
+
 	uniqueWords := make(map[string]struct{}, wordCount)
 	var totalWordLen int
-	var digitCount, upperCount int
+	var digitCount, upperCount, chineseCount int
 
 	for _, w := range words {
 		uniqueWords[strings.ToLower(w)] = struct{}{}
 		totalWordLen += len(w)
 	}
 
-	for _, r := range content {
+	for _, r := range runes {
 		if unicode.IsDigit(r) {
 			digitCount++
 		}
 		if unicode.IsUpper(r) {
 			upperCount++
 		}
+		// Check if character is Chinese (CJK Unified Ideographs)
+		if unicode.Is(unicode.Han, r) {
+			chineseCount++
+		}
 	}
 
-	var avgWordLen float64
-	if wordCount > 0 {
-		avgWordLen = float64(totalWordLen) / float64(wordCount)
+	// For Chinese-dominant text, use character count; otherwise use word count
+	var effectiveTokenCount float64
+	var uniqueTokenCount float64
+	var avgTokenLen float64
+
+	chineseRatio := float64(chineseCount) / float64(runeCount)
+	if chineseRatio > 0.3 {
+		// Chinese-dominant text: use character-based metrics
+		effectiveTokenCount = float64(runeCount)
+		// For Chinese, estimate unique characters
+		uniqueChars := make(map[rune]struct{})
+		for _, r := range runes {
+			uniqueChars[r] = struct{}{}
+		}
+		uniqueTokenCount = float64(len(uniqueChars))
+		avgTokenLen = 1.0 // Each Chinese character is one unit
+	} else {
+		// English/Latin-dominant text: use word-based metrics
+		effectiveTokenCount = float64(wordCount)
+		uniqueTokenCount = float64(len(uniqueWords))
+		if wordCount > 0 {
+			avgTokenLen = float64(totalWordLen) / float64(wordCount)
+		}
 	}
 
 	return []float64{
-		float64(len(content)),            // 文本长度
-		float64(wordCount),               // 单词数
-		float64(len(uniqueWords)),        // 去重单词数
+		float64(runeCount),               // 字符数（更准确的文本长度）
+		effectiveTokenCount,              // 有效token数（中文用字符数，英文用单词数）
+		uniqueTokenCount,                 // 去重token数
 		float64(digitCount),              // 数字字符数
 		float64(upperCount),              // 大写字母数
-		avgWordLen,                       // 平均词长度
+		avgTokenLen,                      // 平均token长度
 		float64(countSentences(content)), // 句子数
 	}
 }
