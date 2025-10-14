@@ -97,8 +97,8 @@ export default function UsersManagement() {
                 }}
             />
 
-            <CreatUser open={open} setOpen={setOpen} callback={() => { }} />
-            <AssignRoles open={Boolean(assign)} setOpen={setAssign} callback={() => { getUsers() }} userId={assign} />
+            <CreatUser open={open} setOpen={setOpen} callback={() => { getUsers() }} />
+            <AssignRoles open={Boolean(assign)} setOpen={setAssign} callback={() => { }} userId={assign} />
         </div>
     )
 }
