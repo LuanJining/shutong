@@ -771,13 +771,13 @@ func (h *Handler) GetSpaceMembers(c *gin.Context) {
 }
 
 // @Summary 添加空间成员
-// @Description 将用户添加到指定空间
+// @Description 将用户添加到指定空间，支持分配多个角色
 // @Tags Spaces
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "空间ID"
-// @Param member body object true "成员信息 {user_id: uint, role: string}"
+// @Param member body object true "成员信息 {user_id: uint, roles: []string}"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Router /api/v1/spaces/{id}/members [post]
@@ -789,8 +789,8 @@ func (h *Handler) AddSpaceMember(c *gin.Context) {
 	}
 
 	var req struct {
-		UserID uint                  `json:"user_id" binding:"required"`
-		Role   model.SpaceMemberRole `json:"role" binding:"required"`
+		UserID uint                    `json:"user_id" binding:"required"`
+		Roles  []model.SpaceMemberRole `json:"roles" binding:"required,min=1"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -799,22 +799,17 @@ func (h *Handler) AddSpaceMember(c *gin.Context) {
 	}
 
 	// 验证角色是否有效
-	validRoles := []model.SpaceMemberRole{
-		model.SpaceMemberRoleApprover,
-		model.SpaceMemberRoleAdmin,
-		model.SpaceMemberRoleEditor,
-		model.SpaceMemberRoleReader,
+	validRolesMap := map[model.SpaceMemberRole]bool{
+		model.SpaceMemberRoleApprover: true,
+		model.SpaceMemberRoleAdmin:    true,
+		model.SpaceMemberRoleEditor:   true,
+		model.SpaceMemberRoleReader:   true,
 	}
-	roleValid := false
-	for _, validRole := range validRoles {
-		if req.Role == validRole {
-			roleValid = true
-			break
+	for _, role := range req.Roles {
+		if !validRolesMap[role] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色类型，支持: admin, approver, editor, reader"})
+			return
 		}
-	}
-	if !roleValid {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色类型，支持: admin, approver, editor, reader"})
-		return
 	}
 
 	// 检查空间是否存在
@@ -841,28 +836,58 @@ func (h *Handler) AddSpaceMember(c *gin.Context) {
 
 	// 检查用户是否已经在空间中
 	var existingMember model.SpaceMember
+	var member model.SpaceMember
+	var message string
+
 	if err := h.db.Where("space_id = ? AND user_id = ?", id, req.UserID).First(&existingMember).Error; err == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "用户已在该空间中"})
-		return
-	}
+		// 用户已存在
+		if len(req.Roles) == 0 {
+			// 空角色表示删除成员
+			if err := h.db.Delete(&existingMember).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"message": "移除空间成员成功",
+			})
+			return
+		}
+		// 更新权限
+		existingMember.Roles = req.Roles
+		if err := h.db.Save(&existingMember).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		member = existingMember
+		message = "更新空间成员权限成功"
+	} else {
+		// 用户不存在
+		if len(req.Roles) == 0 {
+			// 空角色且用户不存在，无需操作
+			c.JSON(http.StatusOK, gin.H{
+				"message": "用户不在空间中，无需移除",
+			})
+			return
+		}
+		// 添加新成员
+		member = model.SpaceMember{
+			SpaceID: uint(id),
+			UserID:  req.UserID,
+			Roles:   req.Roles,
+		}
 
-	// 添加成员
-	member := model.SpaceMember{
-		SpaceID: uint(id),
-		UserID:  req.UserID,
-		Role:    req.Role,
-	}
-
-	if err := h.db.Create(&member).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+		if err := h.db.Create(&member).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		message = "添加空间成员成功"
 	}
 
 	// 预加载用户信息
 	h.db.Preload("User").First(&member, "space_id = ? AND user_id = ?", id, req.UserID)
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "添加空间成员成功",
+		"message": message,
 		"data":    member,
 	})
 }
@@ -913,14 +938,14 @@ func (h *Handler) RemoveSpaceMember(c *gin.Context) {
 }
 
 // @Summary 更新空间成员角色
-// @Description 更新用户在空间中的角色
+// @Description 更新用户在空间中的角色，支持设置多个角色
 // @Tags Spaces
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "空间ID"
 // @Param user_id path int true "用户ID"
-// @Param role body object true "新角色 {role: string}"
+// @Param roles body object true "新角色列表 {roles: []string}"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Failure 404 {object} map[string]string
@@ -939,7 +964,7 @@ func (h *Handler) UpdateSpaceMemberRole(c *gin.Context) {
 	}
 
 	var req struct {
-		Role model.SpaceMemberRole `json:"role" binding:"required"`
+		Roles []model.SpaceMemberRole `json:"roles" binding:"required,min=1"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -948,22 +973,17 @@ func (h *Handler) UpdateSpaceMemberRole(c *gin.Context) {
 	}
 
 	// 验证角色是否有效
-	validRoles := []model.SpaceMemberRole{
-		model.SpaceMemberRoleAdmin,
-		model.SpaceMemberRoleApprover,
-		model.SpaceMemberRoleEditor,
-		model.SpaceMemberRoleReader,
+	validRolesMap := map[model.SpaceMemberRole]bool{
+		model.SpaceMemberRoleApprover: true,
+		model.SpaceMemberRoleAdmin:    true,
+		model.SpaceMemberRoleEditor:   true,
+		model.SpaceMemberRoleReader:   true,
 	}
-	roleValid := false
-	for _, validRole := range validRoles {
-		if req.Role == validRole {
-			roleValid = true
-			break
+	for _, role := range req.Roles {
+		if !validRolesMap[role] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色类型，支持: admin, approver, editor, reader"})
+			return
 		}
-	}
-	if !roleValid {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的角色类型，支持: admin, approver, editor, reader"})
-		return
 	}
 
 	// 检查成员是否存在
@@ -978,7 +998,7 @@ func (h *Handler) UpdateSpaceMemberRole(c *gin.Context) {
 	}
 
 	// 更新角色
-	member.Role = req.Role
+	member.Roles = req.Roles
 	if err := h.db.Save(&member).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -1167,7 +1187,9 @@ func (h *Handler) GetSpaceMembersByRole(c *gin.Context) {
 	}
 
 	var members []model.SpaceMember
-	if err := h.db.Preload("User").Where("space_id = ? AND role = ?", spaceID, role).Find(&members).Error; err != nil {
+	// 使用 JSON_CONTAINS 或类似方法查询数组中包含指定角色的成员
+	// 对于 PostgreSQL，使用 jsonb 查询语法
+	if err := h.db.Preload("User").Where("space_id = ? AND roles::jsonb @> ?::jsonb", spaceID, `"`+role+`"`).Find(&members).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, model.APIResponse{
 			Code:    http.StatusInternalServerError,
 			Message: "获取空间成员失败: " + err.Error(),
@@ -1179,6 +1201,67 @@ func (h *Handler) GetSpaceMembersByRole(c *gin.Context) {
 		Code:    http.StatusOK,
 		Message: "获取空间成员成功",
 		Data:    members,
+	})
+}
+
+// @Summary 通过用户ID获取成员信息
+// @Description 获取指定用户所属的所有空间成员关系
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "用户ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/users/{id}/members [get]
+func (h *Handler) GetMembersByUserId(c *gin.Context) {
+	userID, err := strconv.Atoi(c.Param("user_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "无效的用户ID",
+		})
+		return
+	}
+
+	var members []model.SpaceMember
+	// 查询该用户所属的所有空间成员关系，并预加载空间信息
+	if err := h.db.Preload("User").Where("user_id = ?", userID).Find(&members).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "获取成员信息失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 为了提供更多信息，同时加载每个成员关系对应的空间信息
+	type MemberWithSpace struct {
+		SpaceID   uint                    `json:"space_id"`
+		SpaceName string                  `json:"space_name"`
+		UserID    uint                    `json:"user_id"`
+		Roles     []model.SpaceMemberRole `json:"roles"`
+		User      model.User              `json:"user,omitempty"`
+	}
+
+	var results []MemberWithSpace
+	for _, member := range members {
+		var space model.Space
+		if err := h.db.First(&space, member.SpaceID).Error; err == nil {
+			results = append(results, MemberWithSpace{
+				SpaceID:   member.SpaceID,
+				SpaceName: space.Name,
+				UserID:    member.UserID,
+				Roles:     member.Roles,
+				User:      member.User,
+			})
+		}
+	}
+
+	c.JSON(http.StatusOK, model.APIResponse{
+		Code:    http.StatusOK,
+		Message: "获取成员信息成功",
+		Data:    results,
 	})
 }
 

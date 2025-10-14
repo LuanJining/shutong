@@ -105,6 +105,7 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			spaces.GET("/:id/members", h.GetSpaceMembers)
 			spaces.POST("/:id/members", h.AddSpaceMember)
 			spaces.DELETE("/:id/members/:user_id", h.RemoveSpaceMember)
+			spaces.GET("/members/:user_id", h.GetMembersByUserId)
 			spaces.PUT("/:id/members/:user_id", h.UpdateSpaceMemberRole)
 			spaces.GET("/:id/members/role/:role", h.GetSpaceMembersByRole)
 			spaces.POST("/subspaces", h.CreateSubSpace)
