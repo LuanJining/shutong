@@ -69,7 +69,7 @@ export default function CustomFileViewer({ fileType, file, type, styles }: Props
             onScroll={onScroll}
             className='pdf-container' style={styles}>
             {fileType === 'pdf' && pdfPages.length !== 0
-                ? <div style={{height:`${totalPage * 1100}px`}}>{pdfPages}</div>
+                ? <div className="flex flex-col al-center" style={{height:`${totalPage * 1100}px`}}>{pdfPages}</div>
                 : fileType === 'docx' && docxHtml ? (
                     <div className='pdL24 pdR24 pdT16 pdT16' dangerouslySetInnerHTML={{ __html: docxHtml }}
                     />

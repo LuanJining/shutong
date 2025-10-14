@@ -15,7 +15,7 @@ interface UsePDFStreamRendererReturn {
     pdfPages: JSX.Element[];
     loading: boolean;
     error: Error | null;
-    totalPage:number
+    totalPage: number
 }
 
 const CanvasWidth: number = 1100
@@ -75,14 +75,10 @@ export const usePDFStreamRenderer = (
         const renderedPages: JSX.Element[] = [];
         for (let i = 1; i <= end; i++) {
             const page = await pdf.getPage(i);
-            renderedPages.push(
-                <div key={i} className='flex-center'>
-                    <PagePdf page={page} />
-                </div>
-            );
+            renderedPages.push(<PagePdf key={i} page={page} />);
         }
         setPdfPages(renderedPages);
     }
 
-    return { pdfPages, loading, error ,totalPage};
+    return { pdfPages, loading, error, totalPage };
 };
