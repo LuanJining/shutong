@@ -120,23 +120,8 @@ func (s *DocumentService) UploadDocument(ctx context.Context, req *model.UploadD
 		return nil, fmt.Errorf("failed to create document record: %w", err)
 	}
 
-	// 如果需要审批，则创建审批流程
-	if document.NeedApproval {
-		document, err = s.CreateWorkflow(ctx, document)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create workflow: %w", err)
-		}
-		document, err = s.StartWorkflow(ctx, document)
-		if err != nil {
-			return nil, fmt.Errorf("failed to start workflow: %w", err)
-		}
-	} else {
-		// 不需要审批，直接设置为已发布
-		s.db.Model(document).Update("status", model.DocumentStatusPendingPublish)
-		document.Status = model.DocumentStatusPendingPublish
-	}
-
 	// 异步处理文档（OCR/向量化）
+	// 处理完成后会根据NeedApproval字段决定后续状态
 	go func(docID uint) {
 		if err := s.ProcessDocument(context.Background(), docID); err != nil {
 			log.Printf("failed to process document %d: %v", docID, err)
@@ -276,10 +261,15 @@ func (s *DocumentService) prepareChatDocument(ctx context.Context, spaceID uint,
 
 	chunks, err := s.searchChunks(ctx, spaceID, question, 0, 0, limit)
 	if err != nil {
+		// 向量搜索失败时的降级策略
 		if errors.Is(err, model.ErrVectorClientNotConfigured) {
+			log.Printf("Vector client not configured, falling back to PostgreSQL")
 			return s.prepareChatDocumentFromFiles(ctx, spaceID, question, req, limit)
 		}
-		return "", nil, nil, err
+
+		// embedding生成失败或其他向量搜索错误，也降级到PostgreSQL
+		log.Printf("Vector search failed (%v), falling back to PostgreSQL", err)
+		return s.prepareChatDocumentFromFiles(ctx, spaceID, question, req, limit)
 	}
 
 	// 如果向量搜索没有结果，降级：获取该space所有chunks
@@ -330,6 +320,7 @@ func (s *DocumentService) prepareChatDocumentFromFiles(ctx context.Context, spac
 		Where("status IN ?", []model.DocumentStatus{
 			model.DocumentStatusPublished,
 			model.DocumentStatusPendingPublish,
+			model.DocumentStatusPendingApproval, // 支持待审批的文档
 		})
 
 	if len(req.DocumentIDs) > 0 {
@@ -373,6 +364,49 @@ func (s *DocumentService) prepareChatDocumentFromFiles(ctx context.Context, spac
 	}
 
 	return question, fileContents, sources, nil
+}
+
+// createAndStartWorkflow 创建并启动审批流程（内部方法）
+func (s *DocumentService) createAndStartWorkflow(ctx context.Context, document *model.Document) error {
+	if s.workflowClient == nil {
+		return errors.New("workflow client is not configured")
+	}
+
+	step := model.Step{
+		StepName:     "文档发布审批",
+		StepOrder:    1,
+		StepRole:     string(model.SpaceMemberRoleApprover),
+		IsRequired:   true,
+		TimeoutHours: 24 * 7,
+		Status:       model.StepStatusProcessing,
+	}
+	workflow := model.Workflow{
+		Name:         "文档发布审批流程",
+		Description:  "用于文档发布的审批流程",
+		SpaceID:      document.SpaceID,
+		Status:       model.WorkflowStatusProcessing,
+		Steps:        []model.Step{step},
+		ResourceType: "document",
+		ResourceID:   document.ID,
+	}
+
+	workflowID, err := s.workflowClient.CreateWorkflow(ctx, &workflow, document.CreatedBy)
+	if err != nil {
+		return fmt.Errorf("failed to create workflow: %w", err)
+	}
+
+	// 更新文档的workflow_id
+	if err := s.db.Model(document).Update("workflow_id", workflowID).Error; err != nil {
+		return fmt.Errorf("failed to update document workflow_id: %w", err)
+	}
+
+	// 启动审批流程
+	_, err = s.workflowClient.StartWorkflow(ctx, workflowID, document.CreatedBy)
+	if err != nil {
+		return fmt.Errorf("failed to start workflow: %w", err)
+	}
+
+	return nil
 }
 
 func (s *DocumentService) CreateWorkflow(ctx context.Context, document *model.Document) (*model.Document, error) {
@@ -643,7 +677,21 @@ func (s *DocumentService) SearchKnowledge(ctx context.Context, req *model.Knowle
 
 	chunks, err := s.searchChunks(ctx, req.SpaceID, query, req.SubSpaceID, req.ClassID, limit)
 	if err != nil {
-		return nil, err
+		// 向量搜索失败时降级到PostgreSQL全量搜索
+		log.Printf("Vector search failed (%v), falling back to database chunks", err)
+		chunks, err = s.getAllSpaceChunks(ctx, req.SpaceID, limit)
+		if err != nil {
+			return nil, fmt.Errorf("vector search and database fallback both failed: %w", err)
+		}
+	}
+
+	// 如果向量搜索无结果，也降级
+	if len(chunks) == 0 {
+		log.Printf("Vector search returned no results, falling back to database chunks")
+		chunks, err = s.getAllSpaceChunks(ctx, req.SpaceID, limit)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get fallback chunks: %w", err)
+		}
 	}
 
 	results := make([]model.KnowledgeSearchResult, 0, len(chunks))
@@ -674,13 +722,14 @@ func (s *DocumentService) SearchKnowledge(ctx context.Context, req *model.Knowle
 
 // getAllSpaceChunks 获取space下所有chunks（降级策略）
 func (s *DocumentService) getAllSpaceChunks(ctx context.Context, spaceID uint, limit int) ([]chunkSearchResult, error) {
-	// 查询该space下已发布的文档
+	// 查询该space下已处理完成的文档（包括待审批、待发布、已发布）
 	var documents []model.Document
 	if err := s.db.WithContext(ctx).
 		Where("space_id = ?", spaceID).
 		Where("status IN ?", []model.DocumentStatus{
 			model.DocumentStatusPublished,
 			model.DocumentStatusPendingPublish,
+			model.DocumentStatusPendingApproval, // 支持待审批的文档
 		}).
 		Order("updated_at DESC").
 		Find(&documents).Error; err != nil {
@@ -829,6 +878,7 @@ func (s *DocumentService) searchChunks(ctx context.Context, spaceID uint, query 
 		Where("status IN ?", []model.DocumentStatus{
 			model.DocumentStatusPublished,
 			model.DocumentStatusPendingPublish,
+			model.DocumentStatusPendingApproval, // 支持待审批的文档（已处理完成）
 		})
 
 	if spaceID > 0 {
@@ -877,6 +927,9 @@ func (s *DocumentService) ProcessDocument(ctx context.Context, documentID uint) 
 		return fmt.Errorf("failed to load document %d: %w", documentID, err)
 	}
 
+	// 更新状态为处理中
+	s.updateDocumentStatus(documentID, model.DocumentStatusProcessing, 10, "开始处理文档...")
+
 	reader, err := s.minioClient.DownloadFile(ctx, document.FilePath)
 	if err != nil {
 		s.markDocumentProcessingError(document.ID, fmt.Errorf("failed to download file: %w", err))
@@ -884,11 +937,15 @@ func (s *DocumentService) ProcessDocument(ctx context.Context, documentID uint) 
 	}
 	defer reader.Close()
 
+	s.updateDocumentStatus(documentID, model.DocumentStatusProcessing, 20, "下载文件完成，开始读取...")
+
 	fileBytes, err := io.ReadAll(reader)
 	if err != nil {
 		s.markDocumentProcessingError(document.ID, fmt.Errorf("failed to read file: %w", err))
 		return err
 	}
+
+	s.updateDocumentStatus(documentID, model.DocumentStatusProcessing, 30, "开始文本提取...")
 
 	text, err := extractPlainText(document.FileType, fileBytes)
 	if err != nil {
@@ -898,6 +955,7 @@ func (s *DocumentService) ProcessDocument(ctx context.Context, documentID uint) 
 				s.markDocumentProcessingError(document.ID, err)
 				return err
 			}
+			s.updateDocumentStatus(documentID, model.DocumentStatusProcessing, 40, "开始OCR识别...")
 			text, err = s.ocrClient.Recognize(ctx, document.FileName, fileBytes)
 			if err != nil {
 				err = fmt.Errorf("ocr recognition failed: %w", err)
@@ -916,11 +974,29 @@ func (s *DocumentService) ProcessDocument(ctx context.Context, documentID uint) 
 		return err
 	}
 
+	s.updateDocumentStatus(documentID, model.DocumentStatusProcessing, 60, "文本提取完成，开始分块...")
+
 	chunks := splitIntoChunks(text, 800, 120)
+
+	s.updateDocumentStatus(documentID, model.DocumentStatusVectorizing, 70, "开始向量化处理...")
 
 	if err := s.storeChunks(ctx, &document, chunks); err != nil {
 		s.markDocumentProcessingError(document.ID, err)
 		return err
+	}
+
+	// 处理完成后，根据是否需要审批决定状态
+	if document.NeedApproval {
+		// 需要审批：创建审批流程
+		if err := s.createAndStartWorkflow(ctx, &document); err != nil {
+			log.Printf("failed to create workflow for document %d: %v", documentID, err)
+			s.updateDocumentStatus(documentID, model.DocumentStatusPendingPublish, 100, "处理完成，但审批流程创建失败，已设为待发布")
+		} else {
+			s.updateDocumentStatus(documentID, model.DocumentStatusPendingApproval, 100, "处理完成，等待审批")
+		}
+	} else {
+		// 不需要审批：直接设为待发布
+		s.updateDocumentStatus(documentID, model.DocumentStatusPendingPublish, 100, "处理完成，待发布")
 	}
 
 	return nil
@@ -1023,19 +1099,42 @@ func (s *DocumentService) storeChunks(ctx context.Context, document *model.Docum
 	})
 }
 
+// updateDocumentStatus 更新文档状态和进度
+func (s *DocumentService) updateDocumentStatus(documentID uint, status model.DocumentStatus, progress int, message string) {
+	updateData := map[string]any{
+		"status":           status,
+		"process_progress": progress,
+	}
+
+	// 如果有错误信息，清空之前的错误
+	if status != model.DocumentStatusProcessFailed && status != model.DocumentStatusFailed {
+		updateData["parse_error"] = ""
+	}
+
+	if err := s.db.Model(&model.Document{}).Where("id = ?", documentID).Updates(updateData).Error; err != nil {
+		log.Printf("failed to update document %d status to %s: %v", documentID, status, err)
+	} else {
+		log.Printf("document %d status updated: %s (%d%%) - %s", documentID, status, progress, message)
+	}
+}
+
 func (s *DocumentService) markDocumentProcessingError(documentID uint, procErr error) {
 	if procErr == nil {
 		return
 	}
 
 	updateData := map[string]any{
-		"parse_error":  procErr.Error(),
-		"vector_count": 0,
-		"processed_at": nil,
+		"status":           model.DocumentStatusProcessFailed,
+		"parse_error":      procErr.Error(),
+		"vector_count":     0,
+		"processed_at":     nil,
+		"process_progress": 0,
 	}
 
 	if err := s.db.Model(&model.Document{}).Where("id = ?", documentID).Updates(updateData).Error; err != nil {
 		log.Printf("failed to update document %d after processing error: %v", documentID, err)
+	} else {
+		log.Printf("document %d marked as process_failed: %v", documentID, procErr)
 	}
 }
 
@@ -1102,36 +1201,74 @@ func countTokens(content string) int {
 	return len(strings.Fields(content))
 }
 
-// generateEmbedding 生成单个文本的向量，优先使用OpenAI，降级到简单统计特征
+// generateEmbedding 生成单个文本的向量，优先使用OpenAI
+// 如果失败且向量维度不匹配，返回错误让上层降级到PostgreSQL
 func (s *DocumentService) generateEmbedding(ctx context.Context, text string) ([]float64, error) {
 	if s.openaiClient != nil {
 		embedding, err := s.openaiClient.CreateEmbedding(ctx, text)
 		if err != nil {
-			log.Printf("OpenAI embedding failed, falling back to simple embedding: %v", err)
+			log.Printf("❌ Embedding API failed: %v", err)
+
+			// 如果向量数据库需要特定维度（如1024），不应该降级到7维
+			// 返回错误，让上层降级到PostgreSQL全量检索
+			if s.vectorClient != nil && s.vectorClient.VectorSize() > 7 {
+				log.Printf("⚠️  Cannot use 7-dim fallback (required: %d-dim), error will trigger PostgreSQL fallback", s.vectorClient.VectorSize())
+				return nil, fmt.Errorf("embedding API failed (required dim: %d): %w", s.vectorClient.VectorSize(), err)
+			}
+
+			// 如果向量维度是7，可以降级
+			log.Printf("⚠️  Falling back to simple 7-dim embedding")
 			return simpleEmbedding(text), nil
 		}
+		log.Printf("✅ Generated embedding with %d dimensions", len(embedding))
 		return embedding, nil
 	}
-	// 降级策略：使用简单统计特征
+
+	// OpenAI未配置时，检查是否可以用简单向量
+	if s.vectorClient != nil && s.vectorClient.VectorSize() > 7 {
+		return nil, fmt.Errorf("OpenAI client not configured and simple embedding (7-dim) incompatible with required dim: %d", s.vectorClient.VectorSize())
+	}
+
+	log.Printf("⚠️  OpenAI client not configured, using simple 7-dim embedding")
 	return simpleEmbedding(text), nil
 }
 
 // generateEmbeddingBatch 批量生成向量
+// 如果失败且向量维度不匹配，返回错误（文档处理会失败，可重试）
 func (s *DocumentService) generateEmbeddingBatch(ctx context.Context, texts []string) ([][]float64, error) {
 	if s.openaiClient != nil {
 		embeddings, err := s.openaiClient.CreateEmbeddingBatch(ctx, texts)
 		if err != nil {
-			log.Printf("OpenAI batch embedding failed, falling back to simple embedding: %v", err)
-			// 降级策略：逐个生成简单向量
+			log.Printf("❌ Batch embedding API failed: %v", err)
+
+			// 如果向量数据库需要特定维度（如1024），不能降级到7维
+			// 返回错误，文档状态会变为process_failed，可以重试
+			if s.vectorClient != nil && s.vectorClient.VectorSize() > 7 {
+				log.Printf("⚠️  Cannot use 7-dim fallback (required: %d-dim), document processing will fail and can be retried", s.vectorClient.VectorSize())
+				return nil, fmt.Errorf("batch embedding API failed (required dim: %d): %w", s.vectorClient.VectorSize(), err)
+			}
+
+			// 如果向量维度是7，可以降级
+			log.Printf("⚠️  Falling back to simple 7-dim embeddings")
 			result := make([][]float64, len(texts))
 			for i, text := range texts {
 				result[i] = simpleEmbedding(text)
 			}
 			return result, nil
 		}
+
+		if len(embeddings) > 0 && len(embeddings[0]) > 0 {
+			log.Printf("✅ Generated %d embeddings with %d dimensions each", len(embeddings), len(embeddings[0]))
+		}
 		return embeddings, nil
 	}
-	// 降级策略：使用简单统计特征
+
+	// OpenAI未配置时，检查是否可以用简单向量
+	if s.vectorClient != nil && s.vectorClient.VectorSize() > 7 {
+		return nil, fmt.Errorf("OpenAI client not configured and simple embedding (7-dim) incompatible with required dim: %d", s.vectorClient.VectorSize())
+	}
+
+	log.Printf("⚠️  OpenAI client not configured, using simple 7-dim embeddings for %d texts", len(texts))
 	result := make([][]float64, len(texts))
 	for i, text := range texts {
 		result[i] = simpleEmbedding(text)
@@ -1324,4 +1461,66 @@ func (s *DocumentService) PublishDocument(ctx context.Context, document *model.D
 
 func (s *DocumentService) UnpublishDocument(ctx context.Context, document *model.Document) error {
 	return s.db.WithContext(ctx).Model(document).Update("status", document.Status).Error
+}
+
+// RetryProcessDocument 重试处理文档
+func (s *DocumentService) RetryProcessDocument(ctx context.Context, documentID uint, forceRetry bool) (*model.RetryProcessResponse, error) {
+	var document model.Document
+	if err := s.db.WithContext(ctx).First(&document, documentID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("document not found")
+		}
+		return nil, fmt.Errorf("failed to get document: %w", err)
+	}
+
+	// 检查文档状态是否允许重试
+	if !forceRetry {
+		if document.Status != model.DocumentStatusProcessFailed && document.Status != model.DocumentStatusFailed {
+			return &model.RetryProcessResponse{
+				DocumentID: documentID,
+				Status:     document.Status,
+				Message:    fmt.Sprintf("文档状态为 %s，无需重试", document.Status),
+				RetryCount: document.RetryCount,
+			}, nil
+		}
+
+		// 检查重试次数限制
+		const maxRetryCount = 3
+		if document.RetryCount >= maxRetryCount {
+			return &model.RetryProcessResponse{
+				DocumentID: documentID,
+				Status:     document.Status,
+				Message:    fmt.Sprintf("已达到最大重试次数 %d，请联系管理员", maxRetryCount),
+				RetryCount: document.RetryCount,
+			}, nil
+		}
+	}
+
+	// 更新重试计数和时间
+	now := time.Now()
+	updateData := map[string]any{
+		"retry_count":      document.RetryCount + 1,
+		"last_retry_at":    &now,
+		"status":           model.DocumentStatusProcessing,
+		"process_progress": 0,
+		"parse_error":      "",
+	}
+
+	if err := s.db.Model(&model.Document{}).Where("id = ?", documentID).Updates(updateData).Error; err != nil {
+		return nil, fmt.Errorf("failed to update retry info: %w", err)
+	}
+
+	// 异步重新处理文档
+	go func(docID uint) {
+		if err := s.ProcessDocument(context.Background(), docID); err != nil {
+			log.Printf("retry processing document %d failed: %v", docID, err)
+		}
+	}(documentID)
+
+	return &model.RetryProcessResponse{
+		DocumentID: documentID,
+		Status:     model.DocumentStatusProcessing,
+		Message:    "重试处理已开始",
+		RetryCount: document.RetryCount + 1,
+	}, nil
 }

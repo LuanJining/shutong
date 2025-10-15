@@ -350,6 +350,33 @@ func (h *DocumentHandler) SearchKnowledge(c *gin.Context) {
 	})
 }
 
+// RetryProcessDocument 重试处理文档
+func (h *DocumentHandler) RetryProcessDocument(c *gin.Context) {
+	var req model.RetryProcessRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, &model.APIResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid request body: " + err.Error(),
+		})
+		return
+	}
+
+	result, err := h.documentService.RetryProcessDocument(c.Request.Context(), req.DocumentID, req.ForceRetry)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, &model.APIResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to retry process document: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, &model.APIResponse{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    result,
+	})
+}
+
 // PreviewDocument 预览文档（支持浏览器内嵌显示）
 func (h *DocumentHandler) PreviewDocument(c *gin.Context) {
 	documentIDStr := c.Param("id")

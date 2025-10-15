@@ -1,5 +1,5 @@
-BASE_URL="http://localhost:8080/api/v1"
-# BASE_URL="http://182.140.132.5:30368/api/v1"
+# BASE_URL="http://localhost:8080/api/v1"
+BASE_URL="http://182.140.132.5:30368/api/v1"
 TEST_FILE="./test.txt"
 
 # 登录管理员账户
@@ -22,8 +22,8 @@ SPACE_RESPONSE=$(curl -s -X POST "$BASE_URL/iam/spaces" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
-    "name": "测试知识空间",
-    "description": "测试用知识空间",
+    "name": "数通智汇知识库",
+    "description": "数通智汇知识库",
     "type": "department"
   }')
 echo "$SPACE_RESPONSE" | jq .
@@ -37,8 +37,8 @@ SUBSPACE_RESPONSE=$(curl -s -X POST "$BASE_URL/iam/spaces/subspaces" \
   -H "Authorization: Bearer $TOKEN" \
   -d "{
     \"space_id\": $SPACE_ID,
-    \"name\": \"测试二级知识空间\",
-    \"description\": \"测试用二级知识空间\"
+    \"name\": \"可信数据空间相关文档\",
+    \"description\": \"可信数据空间相关文档\"
   }")
 echo "$SUBSPACE_RESPONSE" | jq .
 SUBSPACE_ID=$(echo "$SUBSPACE_RESPONSE" | jq -r '.data.id')

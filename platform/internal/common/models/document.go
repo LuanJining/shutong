@@ -13,10 +13,13 @@ type DocumentStatus string
 
 const (
 	DocumentStatusUploading       DocumentStatus = "uploading"        // 上传中
+	DocumentStatusProcessing      DocumentStatus = "processing"       // 解析中（OCR/文本提取）
+	DocumentStatusVectorizing     DocumentStatus = "vectorizing"      // 向量化中
 	DocumentStatusPendingApproval DocumentStatus = "pending_approval" // 待审批
 	DocumentStatusPendingPublish  DocumentStatus = "pending_publish"  // 待发布
 	DocumentStatusPublished       DocumentStatus = "published"        // 已发布
 	DocumentStatusFailed          DocumentStatus = "failed"           // 失败
+	DocumentStatusProcessFailed   DocumentStatus = "process_failed"   // 处理失败（可重试）
 )
 
 // Document 文档模型
@@ -53,9 +56,12 @@ type Document struct {
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 
 	// 处理相关字段
-	ParseError  string     `json:"parse_error" gorm:"type:text"`  // 解析错误信息
-	ProcessedAt *time.Time `json:"processed_at"`                  // 处理完成时间
-	VectorCount int        `json:"vector_count" gorm:"default:0"` // 向量数量
+	ParseError      string     `json:"parse_error" gorm:"type:text"`      // 解析错误信息
+	ProcessedAt     *time.Time `json:"processed_at"`                      // 处理完成时间
+	VectorCount     int        `json:"vector_count" gorm:"default:0"`     // 向量数量
+	ProcessProgress int        `json:"process_progress" gorm:"default:0"` // 处理进度(0-100)
+	RetryCount      int        `json:"retry_count" gorm:"default:0"`      // 重试次数
+	LastRetryAt     *time.Time `json:"last_retry_at"`                     // 最后重试时间
 
 	// 关联实体
 	Workflow Workflow `json:"workflow" gorm:"foreignKey:WorkflowID"`
@@ -191,4 +197,18 @@ type KnowledgeSearchResult struct {
 
 type KnowledgeSearchResponse struct {
 	Items []KnowledgeSearchResult `json:"items"`
+}
+
+// RetryProcessRequest 重试处理请求
+type RetryProcessRequest struct {
+	DocumentID uint `json:"document_id" binding:"required"`
+	ForceRetry bool `json:"force_retry"` // 是否强制重试（忽略重试次数限制）
+}
+
+// RetryProcessResponse 重试处理响应
+type RetryProcessResponse struct {
+	DocumentID uint           `json:"document_id"`
+	Status     DocumentStatus `json:"status"`
+	Message    string         `json:"message"`
+	RetryCount int            `json:"retry_count"`
 }

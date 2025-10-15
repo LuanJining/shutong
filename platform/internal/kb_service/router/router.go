@@ -53,6 +53,9 @@ func Setup(cfg *config.Config, db *gorm.DB, minioClient *client.S3Client, workfl
 			documents.POST("/:id/publish", middleware.FetchUserFromHeader(db), documentHandler.PublishDocument)
 			documents.POST("/:id/unpublish", middleware.FetchUserFromHeader(db), documentHandler.UnpublishDocument)
 
+			// 重试处理
+			documents.POST("/retry-process", middleware.FetchUserFromHeader(db), documentHandler.RetryProcessDocument)
+
 			// 文档对话
 			documents.POST("/:id/chat", documentHandler.ChatDocument)
 			documents.POST("/:id/chat/stream", documentHandler.ChatDocumentStream)

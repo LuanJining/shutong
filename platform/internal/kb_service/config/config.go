@@ -147,6 +147,9 @@ func bindEnvVars(v *viper.Viper) {
 	// OpenAI配置
 	v.BindEnv("openai.api_key", "KBASE_OPENAI_API_KEY", "OPENAI_API_KEY")
 	v.BindEnv("openai.url", "KBASE_OPENAI_URL", "OPENAI_URL")
+	v.BindEnv("openai.embedding_url", "KBASE_OPENAI_EMBEDDING_URL", "OPENAI_EMBEDDING_URL")
+	v.BindEnv("openai.embedding_api_key", "KBASE_OPENAI_EMBEDDING_API_KEY", "OPENAI_EMBEDDING_API_KEY")
+	v.BindEnv("openai.embedding_model", "KBASE_OPENAI_EMBEDDING_MODEL", "OPENAI_EMBEDDING_MODEL")
 
 	// OCR配置
 	v.BindEnv("ocr.base_url", "KBASE_OCR_BASE_URL", "OCR_BASE_URL")
@@ -193,6 +196,9 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("log.db_log_level", "warn")
 	v.SetDefault("openai.api_key", "")
 	v.SetDefault("openai.url", "https://api.deepseek.com/v1")
+	v.SetDefault("openai.embedding_url", "https://api.jina.ai/v1")
+	v.SetDefault("openai.embedding_api_key", "")
+	v.SetDefault("openai.embedding_model", "jina-embeddings-v3")
 
 	// 默认 OCR 配置（可选）
 	v.SetDefault("ocr.base_url", "")
