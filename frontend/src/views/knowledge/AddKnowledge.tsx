@@ -11,7 +11,7 @@ import { useSelector } from "react-redux"
 import { useForm } from "antd/es/form/Form"
 import { useEffect, useState } from "react"
 import { Checkbox, Form, Input, message, Radio, Select, Upload } from "antd"
-import { CheckCircleFilled, CloudUploadOutlined, DeleteOutlined, EyeFilled } from "@ant-design/icons"
+import { CloudUploadOutlined, DeleteOutlined, EyeFilled } from "@ant-design/icons"
 
 // type RangePickerProps = GetProps<typeof DatePicker.RangePicker>;
 

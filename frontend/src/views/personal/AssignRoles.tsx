@@ -63,6 +63,7 @@ export default function AssignRoles({ open, setOpen, callback, userId }: IProps)
                 <div className="space-box pd24 mgR24">
                     {spaces.map(({ id, name }: any) => (<div
                         key={id}
+                        onClick={()=> {setActiveSpace(id)}}
                         className={`space-item ${activeSpace === id ? 'active-space-item' : ''}`}
                     >{name}</div>))}
                 </div>
