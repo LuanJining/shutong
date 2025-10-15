@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# server.py — PaddleOCR 服务（兼容多版本，增强日志）
+# server.py — PaddleOCR 服务（兼容多版本，增强日志与调试）
 # IMPORTANT: environment variables MUST be set before importing numpy/paddle/paddleocr
 
 import os
@@ -45,10 +45,10 @@ from fastapi import FastAPI, HTTPException, Request
 from pdf2image import convert_from_bytes
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel
+from datetime import datetime
 
 # ---- logger setup ----
 logger = logging.getLogger("server")
-# keep a compact, informative format
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s:%(name)s: %(message)s")
 
 app = FastAPI(title="PaddleOCR Service", version="1.0.0")
@@ -70,6 +70,26 @@ class OCRResponse(BaseModel):
     lines: List[str]
 
 
+# -----------------------
+# Utility helpers
+# -----------------------
+def _to_primitive(obj):
+    """helper to convert nested raw results into json-safe primitives (best-effort)"""
+    if isinstance(obj, (str, int, float, bool)) or obj is None:
+        return obj
+    if isinstance(obj, (list, tuple)):
+        return [_to_primitive(x) for x in obj]
+    if isinstance(obj, dict):
+        return {k: _to_primitive(v) for k, v in obj.items()}
+    try:
+        return str(obj)
+    except Exception:
+        return repr(obj)
+
+
+# -----------------------
+# PaddleOCR lazy loader
+# -----------------------
 def _load_ocr(language: str):
     """
     Lazily load PaddleOCR for a given language.
@@ -106,8 +126,7 @@ def _load_ocr(language: str):
             "cpu_threads": 1,
             "enable_mkldnn": False,
             "precision": "fp32",
-            # Disable document orientation classification that causes CPU instruction issues
-            # This is the feature causing the std::exception in doc_ori_classify_model
+            # Prefer to disable doc orientation classify by default (some hosts/models cause issues)
             "use_doc_orientation_classify": False,
         }
 
@@ -150,6 +169,102 @@ def _load_ocr(language: str):
         return model
 
 
+# -----------------------
+# Robust OCR call with fallbacks
+# -----------------------
+def _safe_ocr_call(ocr, image, language, page_index):
+    """
+    尝试多种 ocr.ocr 调用方式并逐级降级（禁用文档预处理/方向分类/去畸变等）。
+    返回 (raw_results, used_kwargs) 或抛出异常。
+    该函数会把每次尝试的结果/异常写入 /tmp/ocr_debug_* 文件以便事后分析。
+    """
+    attempts = []
+
+    # candidate kwargs to try (ordered: most-featured -> most-conservative)
+    candidate_kwlist = [
+        {},  # no kwargs
+        {"det": True, "rec": True},
+        {"use_doc_preprocessor": False},
+        {"use_doc_orientation_classify": False},
+        {"use_doc_unwarping": False},
+        {"use_doc_preprocessor": False, "use_doc_orientation_classify": False, "use_doc_unwarping": False},
+        {"use_angle_cls": False, "use_doc_preprocessor": False},
+    ]
+
+    # inspect available signature for ocr.ocr
+    try:
+        sig = inspect.signature(ocr.ocr)
+        available_params = set(sig.parameters.keys())
+    except Exception:
+        available_params = None
+
+    for idx, cand in enumerate(candidate_kwlist, start=1):
+        # filter cand by signature if possible
+        if available_params is not None:
+            filtered = {k: v for k, v in cand.items() if k in available_params}
+        else:
+            filtered = cand.copy()
+
+        # try both array-mode and path-mode (if supported)
+        modes = []
+        if isinstance(image, str):
+            modes.append(("path", image))
+        else:
+            modes.append(("array", image))
+
+        for mode_name, call_arg in modes:
+            attempt_meta = {"time": datetime.utcnow().isoformat(), "mode": mode_name, "kwargs": filtered}
+            attempt_record = {"attempt": attempt_meta, "result": None, "exception": None}
+            attempts.append(attempt_record)
+            try:
+                if filtered:
+                    raw = ocr.ocr(call_arg, **filtered)
+                else:
+                    raw = ocr.ocr(call_arg)
+                attempt_record["result"] = _to_primitive(raw)
+                # dump raw attempt to tmp
+                dump_path = f"/tmp/ocr_debug_{language}_page{page_index}_attempt{idx}_{mode_name}.json"
+                try:
+                    with open(dump_path, "w", encoding="utf-8") as fh:
+                        json.dump(_to_primitive(raw), fh, ensure_ascii=False, indent=2)
+                except Exception:
+                    try:
+                        with open(dump_path, "w", encoding="utf-8") as fh:
+                            fh.write(str(raw))
+                    except Exception:
+                        pass
+                # success -> return raw and used kwargs
+                return raw, filtered or {}
+            except Exception as exc:
+                attempt_record["exception"] = repr(exc)
+                # write exception to file for later inspection
+                err_path = f"/tmp/ocr_debug_{language}_page{page_index}_attempt{idx}_{mode_name}_error.txt"
+                try:
+                    with open(err_path, "w", encoding="utf-8") as fh:
+                        fh.write("KWARGS: " + json.dumps(filtered, ensure_ascii=False) + "\n\n")
+                        fh.write(str(exc) + "\n\n")
+                        import traceback
+                        traceback.print_exc(file=fh)
+                except Exception:
+                    pass
+                # continue to next attempt
+
+    # if we exit loop, all attempts failed
+    # write a summary attempts file
+    try:
+        summary_path = f"/tmp/ocr_debug_{language}_page{page_index}_attempts_summary.json"
+        with open(summary_path, "w", encoding="utf-8") as fh:
+            json.dump(attempts, fh, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+    # raise a consolidated exception
+    raise RuntimeError(f"All OCR attempts failed for page {page_index}; see /tmp/ocr_debug_{language}_page{page_index}_* for details")
+
+
+# -----------------------
+# Decoding / rendering helpers
+# -----------------------
 def _decode_base64(data_base64: str) -> bytes:
     if not data_base64:
         logger.warning("Empty content_base64 payload received")
@@ -219,6 +334,9 @@ def _extract_docx_text(data: bytes) -> List[str]:
     return lines
 
 
+# -----------------------
+# Main OCR processing
+# -----------------------
 def _run_ocr_on_images(images: Sequence[np.ndarray], language: str) -> List[str]:
     if not images:
         logger.warning("No pages/images provided to OCR")
@@ -239,20 +357,15 @@ def _run_ocr_on_images(images: Sequence[np.ndarray], language: str) -> List[str]
         except Exception as exc:
             logger.warning("Failed to save debug image for page %d: %s", page_index, exc)
 
-        # Run OCR and capture raw results
-        raw_results = None
+        # Run OCR via the safe wrapper
         try:
-            try:
-                raw_results = ocr.ocr(image)
-                logger.debug("ocr(image) succeeded for page %d", page_index)
-            except TypeError:
-                raw_results = ocr.ocr(image, det=True, rec=True)
-                logger.debug("ocr(image, det=True, rec=True) used for page %d", page_index)
+            raw_results, used_kwargs = _safe_ocr_call(ocr, image, language, page_index)
+            logger.info("OCR page %d raw_results obtained; used_kwargs=%s", page_index, used_kwargs)
         except Exception as exc:
             logger.exception("OCR runtime error on image page %d: %s", page_index, exc)
-            # Save exception text to debug file
+            # Save condensed exception file
             try:
-                with open(f"/tmp/ocr_debug_{language}_page{page_index}_error.txt", "w") as fh:
+                with open(f"/tmp/ocr_debug_{language}_page{page_index}_error.txt", "w", encoding="utf-8") as fh:
                     fh.write(str(exc))
             except Exception:
                 pass
@@ -261,68 +374,44 @@ def _run_ocr_on_images(images: Sequence[np.ndarray], language: str) -> List[str]
         # Dump raw results to disk for inspection (JSON-serializable best-effort)
         try:
             dump_path = f"/tmp/ocr_debug_{language}_page{page_index}_results.json"
-            # Try to convert complex objects to primitives
-            def _to_primitive(obj):
-                if isinstance(obj, (str, int, float, bool)) or obj is None:
-                    return obj
-                if isinstance(obj, (list, tuple)):
-                    return [_to_primitive(x) for x in obj]
-                if isinstance(obj, dict):
-                    return {k: _to_primitive(v) for k, v in obj.items()}
-                try:
-                    return str(obj)
-                except Exception:
-                    return repr(obj)
-
             serializable = _to_primitive(raw_results)
             with open(dump_path, "w", encoding="utf-8") as fh:
                 json.dump(serializable, fh, ensure_ascii=False, indent=2)
-            logger.info("Saved OCR raw results to %s (truncated): %s", dump_path,
-                        json.dumps(serializable)[:200])
+            logger.info("Saved OCR raw results to %s (truncated): %s", dump_path, json.dumps(serializable)[:200])
         except Exception as exc:
             logger.warning("Failed to dump raw OCR results for page %d: %s", page_index, exc)
 
         # Normalize results from various PaddleOCR/PaddleX versions
-        # Support two main formats:
-        # 1. PaddleX format: [{"rec_texts": [...], "rec_scores": [...], ...}]
-        # 2. PaddleOCR format: [[[box, (text, conf)], ...]] or [[box, (text, conf)], ...]
-        
         if not raw_results:
             logger.warning("OCR returned empty result for page %d", page_index)
             continue
-        
-        # Check for PaddleX format (dict with rec_texts field)
+
+        # PaddleX format: list of dicts with "rec_texts"
         if isinstance(raw_results, list) and raw_results and isinstance(raw_results[0], dict):
-            # PaddleX format
-            result_dict = raw_results[0]
-            if "rec_texts" in result_dict:
-                texts = result_dict["rec_texts"]
-                scores = result_dict.get("rec_scores", [])
-                logger.info("OCR page %d (PaddleX format): extracted %d texts", page_index, len(texts))
-                for i, text in enumerate(texts):
-                    if text and text.strip():  # Skip empty strings
+            first = raw_results[0]
+            if "rec_texts" in first:
+                texts = first.get("rec_texts", [])
+                scores = first.get("rec_scores", [])
+                logger.info("OCR page %d (PaddleX format): %d texts", page_index, len(texts))
+                for i, t in enumerate(texts):
+                    if t and isinstance(t, str) and t.strip():
                         score = scores[i] if i < len(scores) else 0.0
-                        logger.debug("  Text %d (score=%.3f): %s", i, score, text[:50])
-                        lines.append(text)
-            else:
-                logger.warning("OCR page %d returned dict but no 'rec_texts' field", page_index)
-            continue
-        
-        # PaddleOCR original format: nested lists
+                        logger.debug("  Text %d (score=%.3f): %s", i, score, t[:100])
+                        lines.append(t)
+                continue
+
+        # PaddleOCR format: nested or flat lists
         flattened = []
         if isinstance(raw_results, list) and raw_results and isinstance(raw_results[0], list) and raw_results[0] and isinstance(raw_results[0][0], list):
-            # Nested: [[[box, text], ...]]
             for page in raw_results:
                 for item in page:
                     flattened.append(item)
             logger.info("OCR page %d (PaddleOCR nested format): flattened %d items", page_index, len(flattened))
         elif isinstance(raw_results, list):
-            # Flat: [[box, text], ...]
             flattened = raw_results
             logger.info("OCR page %d (PaddleOCR flat format): %d items", page_index, len(flattened))
-        
+
         for item in flattened:
-            # item: [box, (text, confidence)] or [box, text]
             try:
                 if isinstance(item, (list, tuple)) and len(item) >= 2:
                     second = item[1]
@@ -339,10 +428,13 @@ def _run_ocr_on_images(images: Sequence[np.ndarray], language: str) -> List[str]
     logger.info("Total OCR lines extracted: %d", len(lines))
     if not lines:
         logger.warning("OCR did not return any text for language=%s; images_count=%d", language, len(images))
-        raise HTTPException(status_code=422, detail="OCR did not return any text — try a clearer image, different language model, or check OCR initialization logs")
-
+        raise HTTPException(status_code=422, detail="OCR did not return any text — see /tmp/ocr_debug_* files")
     return lines
 
+
+# -----------------------
+# Endpoints
+# -----------------------
 @app.get("/healthz")
 def healthz() -> dict:
     return {"status": "ok"}
@@ -353,11 +445,9 @@ def run_ocr(request: OCRRequest) -> OCRResponse:
     """
     Entrypoint for OCR requests. Logs basic request metadata and provides clearer 4xx/5xx messages.
     """
-    # Log request arrival minimally (do not log base64 body)
     logger.info("Received OCR request: file_name=%s, language=%s", request.file_name, request.language)
     suffix = Path(request.file_name).suffix.lower()
 
-    # Decode base64 and log size
     file_bytes = _decode_base64(request.content_base64)
     logger.info("Decoded payload: file_name=%s, suffix=%s, bytes=%d", request.file_name, suffix, len(file_bytes))
 
@@ -385,9 +475,7 @@ def run_ocr(request: OCRRequest) -> OCRResponse:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {suffix}")
 
     except HTTPException:
-        # Re-raise known HTTPExceptions (they are already user-facing)
         raise
     except Exception as exc:
-        # Catch-all: log with context and return 500
         logger.exception("Unhandled error processing OCR request for file=%s", request.file_name)
         raise HTTPException(status_code=500, detail=f"Internal server error while processing file: {exc}") from exc

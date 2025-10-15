@@ -194,6 +194,87 @@ func (c *OpenAIClient) ExtractMinioFileContents(ctx context.Context, minioClient
 	return fileContents, nil
 }
 
+// CreateEmbedding 调用OpenAI Embeddings API生成向量（使用SDK）
+func (c *OpenAIClient) CreateEmbedding(ctx context.Context, text string) ([]float64, error) {
+	client, err := c.GetClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get OpenAI client: %w", err)
+	}
+
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return nil, errors.New("text is empty")
+	}
+
+	// 使用SDK的正确方式：EmbeddingNewParamsInputUnion的OfString字段
+	response, err := client.Embeddings.New(ctx, openai.EmbeddingNewParams{
+		Input: openai.EmbeddingNewParamsInputUnion{
+			OfString: openai.String(text),
+		},
+		Model: "deepseek-reasoner", // 1536维，性价比高
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create embedding: %w", err)
+	}
+
+	if len(response.Data) == 0 {
+		return nil, errors.New("no embedding data returned")
+	}
+
+	embedding := response.Data[0].Embedding
+	if len(embedding) == 0 {
+		return nil, errors.New("empty embedding returned")
+	}
+
+	return embedding, nil
+}
+
+// CreateEmbeddingBatch 批量生成向量（使用SDK的批量API）
+func (c *OpenAIClient) CreateEmbeddingBatch(ctx context.Context, texts []string) ([][]float64, error) {
+	client, err := c.GetClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get OpenAI client: %w", err)
+	}
+
+	if len(texts) == 0 {
+		return nil, errors.New("texts is empty")
+	}
+
+	// 过滤空文本
+	validTexts := make([]string, 0, len(texts))
+	for _, text := range texts {
+		if strings.TrimSpace(text) != "" {
+			validTexts = append(validTexts, text)
+		}
+	}
+
+	if len(validTexts) == 0 {
+		return nil, errors.New("no valid texts after filtering")
+	}
+
+	// 使用SDK的批量方式：EmbeddingNewParamsInputUnion的OfArrayOfStrings字段
+	response, err := client.Embeddings.New(ctx, openai.EmbeddingNewParams{
+		Input: openai.EmbeddingNewParamsInputUnion{
+			OfArrayOfStrings: validTexts,
+		},
+		Model: "deepseek-reasoner",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create embeddings: %w", err)
+	}
+
+	if len(response.Data) != len(validTexts) {
+		return nil, fmt.Errorf("expected %d embeddings but got %d", len(validTexts), len(response.Data))
+	}
+
+	embeddings := make([][]float64, len(response.Data))
+	for i, data := range response.Data {
+		embeddings[i] = data.Embedding
+	}
+
+	return embeddings, nil
+}
+
 func buildChatMessages(question string, fileContents []string) ([]openai.ChatCompletionMessageParamUnion, error) {
 	question = strings.TrimSpace(question)
 	if question == "" {

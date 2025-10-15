@@ -737,7 +737,12 @@ func (s *DocumentService) searchChunks(ctx context.Context, spaceID uint, query 
 	if s.vectorClient == nil {
 		return nil, model.ErrVectorClientNotConfigured
 	}
-	vector := simpleEmbedding(query)
+
+	// 使用OpenAI生成查询向量
+	vector, err := s.generateEmbedding(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate query embedding: %w", err)
+	}
 	vector = ensureVectorSize(vector, s.vectorClient.VectorSize())
 
 	var must []client.QdrantCondition
@@ -936,14 +941,30 @@ func (s *DocumentService) storeChunks(ctx context.Context, document *model.Docum
 			return fmt.Errorf("failed to marshal chunk metadata: %w", err)
 		}
 
-		points := make([]client.QdrantPoint, 0, len(chunks))
-		createdChunks := 0
+		// 批量生成所有chunk的embeddings
+		validChunks := make([]string, 0, len(chunks))
+		validIndices := make([]int, 0, len(chunks))
 		for idx, content := range chunks {
-			if strings.TrimSpace(content) == "" {
-				continue
+			if strings.TrimSpace(content) != "" {
+				validChunks = append(validChunks, content)
+				validIndices = append(validIndices, idx)
 			}
+		}
 
-			embeddingVector := simpleEmbedding(content)
+		if len(validChunks) == 0 {
+			return errors.New("no valid chunks to store")
+		}
+
+		embeddings, err := s.generateEmbeddingBatch(ctx, validChunks)
+		if err != nil {
+			return fmt.Errorf("failed to generate embeddings: %w", err)
+		}
+
+		points := make([]client.QdrantPoint, 0, len(validChunks))
+		createdChunks := 0
+		for i, content := range validChunks {
+			idx := validIndices[i]
+			embeddingVector := embeddings[i]
 			vectorID := uuid.NewString()
 
 			chunk := model.DocumentChunk{
@@ -1081,6 +1102,44 @@ func countTokens(content string) int {
 	return len(strings.Fields(content))
 }
 
+// generateEmbedding 生成单个文本的向量，优先使用OpenAI，降级到简单统计特征
+func (s *DocumentService) generateEmbedding(ctx context.Context, text string) ([]float64, error) {
+	if s.openaiClient != nil {
+		embedding, err := s.openaiClient.CreateEmbedding(ctx, text)
+		if err != nil {
+			log.Printf("OpenAI embedding failed, falling back to simple embedding: %v", err)
+			return simpleEmbedding(text), nil
+		}
+		return embedding, nil
+	}
+	// 降级策略：使用简单统计特征
+	return simpleEmbedding(text), nil
+}
+
+// generateEmbeddingBatch 批量生成向量
+func (s *DocumentService) generateEmbeddingBatch(ctx context.Context, texts []string) ([][]float64, error) {
+	if s.openaiClient != nil {
+		embeddings, err := s.openaiClient.CreateEmbeddingBatch(ctx, texts)
+		if err != nil {
+			log.Printf("OpenAI batch embedding failed, falling back to simple embedding: %v", err)
+			// 降级策略：逐个生成简单向量
+			result := make([][]float64, len(texts))
+			for i, text := range texts {
+				result[i] = simpleEmbedding(text)
+			}
+			return result, nil
+		}
+		return embeddings, nil
+	}
+	// 降级策略：使用简单统计特征
+	result := make([][]float64, len(texts))
+	for i, text := range texts {
+		result[i] = simpleEmbedding(text)
+	}
+	return result, nil
+}
+
+// simpleEmbedding 简单统计特征向量（降级方案）
 func simpleEmbedding(content string) []float64 {
 	words := strings.Fields(content)
 	wordCount := len(words)

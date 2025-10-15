@@ -39,7 +39,7 @@ vector:
   base_url: http://localhost:6333
   api_key: ""
   collection: kb_documents
-  vector_size: 7
+  vector_size: 1536  # OpenAI text-embedding-3-small 向量维度
   distance: Cosine
   timeout_seconds: 30
 
