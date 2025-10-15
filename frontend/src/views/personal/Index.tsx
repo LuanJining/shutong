@@ -1,5 +1,5 @@
 import "./index.scss"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { ArrowLeftOutlined, TeamOutlined, UserOutlined } from "@ant-design/icons"
 import { useNavigate } from "react-router-dom"
 import { Menu, MenuProps } from "antd"
@@ -7,27 +7,9 @@ import IconBook from '@/assets/icons/icon-book.png'
 import Personal from "./Personal"
 import RolesManament from "./RolesManament"
 import UsersManagement from "./UsersManagement"
+import { useSelector } from "react-redux"
 
 type MenuItem = Required<MenuProps>['items'][number];
-
-const items: MenuItem[] = [
-    {
-        key: 'personal',
-        label: '个人信息',
-        icon: <UserOutlined style={{fontSize:18}}/>,
-    },
-    {
-        key: 'users',
-        label: '用户管理',
-        icon:<TeamOutlined style={{fontSize:18}}/>,
-    },
-    {
-        key: 'roles',
-        label: '角色管理',
-        icon: <img style={{ width: 20, height: 20, objectFit: 'cover' }} src={IconBook} />,
-    },
-];
-
 
 const compEnum: any = {
     personal: <Personal />,
@@ -38,6 +20,36 @@ const compEnum: any = {
 export default function Index() {
     const navigate = useNavigate()
     const [selectKeys, setKeys] = useState<string[]>(['personal'])
+    const userInfo = useSelector((state: any) => state.systemSlice.userInfo)
+
+    const items: MenuItem[] = useMemo(() => {
+        const hasRole: boolean = userInfo?.roles.findIndex(({ name }: any) => name === 'super_admin') !== -1
+        return hasRole
+            ? [
+                {
+                    key: 'personal',
+                    label: '个人信息',
+                    icon: <UserOutlined style={{ fontSize: 18 }} />,
+                },
+                {
+                    key: 'users',
+                    label: '用户管理',
+                    icon: <TeamOutlined style={{ fontSize: 18 }} />,
+                },
+                {
+                    key: 'roles',
+                    label: '角色管理',
+                    icon: <img style={{ width: 20, height: 20, objectFit: 'cover' }} src={IconBook} />,
+                },
+            ]
+            : [
+                {
+                    key: 'personal',
+                    label: '个人信息',
+                    icon: <UserOutlined style={{ fontSize: 18 }} />,
+                },
+            ]
+    }, [userInfo])
 
     const menuClick: MenuProps['onClick'] = (e) => {
         setKeys([e.key])

@@ -22,9 +22,6 @@ export default function Personal() {
         setPers(permissions.map((v: any) => v.display_name).join('、'))
     }
 
-
-
-
     return (
         <div className="app-common-deal">
             <div className="personal-item">
@@ -70,13 +67,14 @@ export default function Personal() {
                     {
                         rolesInfo.map((v: string, i: number) => (<div className='mgB12' key={i}>{v}</div>))
                     }
+                    {rolesInfo.length === 0 ? '--' : ''}
                 </div>
             </div>
 
 
             <div className="personal-item" style={{ alignItems: 'flex-start' }}>
                 <div className="personal-title">拥有权限：</div>
-                <div className="personal-desc">{permis} </div>
+                <div className="personal-desc">{permis ? permis : '--'} </div>
             </div>
 
             <div className="personal-item">
