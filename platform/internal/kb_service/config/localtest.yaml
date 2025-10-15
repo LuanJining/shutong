@@ -39,10 +39,18 @@ vector:
   base_url: http://localhost:6333
   api_key: ""
   collection: kb_documents
-  vector_size: 1536  # OpenAI text-embedding-3-small 向量维度
+  vector_size: 1024  # Jina embeddings-v3 向量维度
   distance: Cosine
   timeout_seconds: 30
 
 openai:
-  url: https://api.deepseek.com/v3.1_terminus_expires_on_20251015
+  url: https://api.deepseek.com/v1  # 用于chat
   api_key: sk-bd26f4335716448889f4be844fb8e4a3
+  # 如果要用embedding，需要单独配置支持embedding的服务
+  # 选项1: Jina AI (免费) - https://jina.ai/embeddings/
+  # 选项2: OpenAI (付费) - https://api.openai.com/v1
+  # 选项3: 本地模型
+
+  embedding_url: https://api.jina.ai/v1
+  embedding_api_key: jina_852e03eb2f084084886ddbc2a447be751ABxRjI7yCutvf00nLsUw-_RQ-rg
+  embedding_model: jina-embeddings-v3

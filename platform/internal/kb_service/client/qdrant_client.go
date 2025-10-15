@@ -88,7 +88,7 @@ func NewQdrantClient(cfg *config.QdrantConfig) *QdrantClient {
 
 	vectorSize := cfg.VectorSize
 	if vectorSize <= 0 {
-		vectorSize = 1536 // 默认使用OpenAI text-embedding-3-small 向量维度
+		vectorSize = 1024 // 默认使用Jina embeddings-v3 向量维度
 	}
 
 	distance := cfg.Distance

@@ -44,8 +44,11 @@ type MinioConfig struct {
 
 // OpenAIConfig OpenAI 配置（KB Service 特有）
 type OpenAIConfig struct {
-	ApiKey string `mapstructure:"api_key"`
-	Url    string `mapstructure:"url"`
+	ApiKey          string `mapstructure:"api_key"`
+	Url             string `mapstructure:"url"`
+	EmbeddingURL    string `mapstructure:"embedding_url"`     // 独立的embedding服务URL
+	EmbeddingAPIKey string `mapstructure:"embedding_api_key"` // 独立的embedding API key
+	EmbeddingModel  string `mapstructure:"embedding_model"`   // embedding模型名称
 }
 
 // PaddleOCRConfig PaddleOCR 服务配置
