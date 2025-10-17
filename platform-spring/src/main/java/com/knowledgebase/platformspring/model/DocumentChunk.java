@@ -24,11 +24,14 @@ public class DocumentChunk {
     @Column("document_id")
     private Long documentId;
     
-    @Column("chunk_index")
-    private Integer chunkIndex;
+    @Column("index")
+    private Integer index; // 片段序号，对应Go的Index字段
     
     @Column("content")
     private String content;
+    
+    @Column("token_count")
+    private Integer tokenCount; // token数量统计
     
     @Column("vector_id")
     private String vectorId; // UUID in Qdrant
@@ -41,5 +44,8 @@ public class DocumentChunk {
     
     @Column("updated_at")
     private LocalDateTime updatedAt;
+    
+    @Column("deleted_at")
+    private LocalDateTime deletedAt;
 }
 

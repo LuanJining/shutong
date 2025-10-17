@@ -1,7 +1,5 @@
 package com.knowledgebase.platformspring.model;
 
-import java.time.LocalDateTime;
-
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
@@ -49,11 +47,8 @@ public class Workflow {
     @Column("creator_nick_name")
     private String creatorNickName;
     
-    @Column("created_at")
-    private LocalDateTime createdAt;
-    
-    @Column("updated_at")
-    private LocalDateTime updatedAt;
+    // 注意：Go版本的Workflow没有CreatedAt和UpdatedAt字段
+    // 为了完全兼容，不添加这些字段
     
     // Workflow status constants
     public static final String STATUS_PROCESSING = "processing";

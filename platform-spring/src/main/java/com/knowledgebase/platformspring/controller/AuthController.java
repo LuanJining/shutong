@@ -59,6 +59,21 @@ public class AuthController {
                 .map(user -> ApiResponse.success(user));
     }
     
+    @Operation(summary = "修改密码", description = "修改当前用户的登录密码",
+               security = @SecurityRequirement(name = "bearerAuth"))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        description = "修改密码请求",
+        required = true
+    )
+    @org.springframework.web.bind.annotation.PatchMapping("/change-password")
+    public Mono<ApiResponse<Void>> changePassword(
+            @RequestBody com.knowledgebase.platformspring.dto.ChangePasswordRequest request,
+            Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        return authService.changePassword(userId, request.getOldPassword(), request.getNewPassword())
+                .then(Mono.just(ApiResponse.<Void>success("密码修改成功", null)));
+    }
+    
     private record RefreshTokenRequest(String refreshToken) {}
 }
 

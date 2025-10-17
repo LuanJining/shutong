@@ -1,7 +1,5 @@
 package com.knowledgebase.platformspring.model;
 
-import java.time.LocalDateTime;
-
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
@@ -49,11 +47,7 @@ public class Task {
     @Column("comment")
     private String comment;
     
-    @Column("created_at")
-    private LocalDateTime createdAt;
-    
-    @Column("updated_at")
-    private LocalDateTime updatedAt;
+    // 注意：Go版本的Task没有CreatedAt和UpdatedAt字段
     
     // Task status constants
     public static final String STATUS_PROCESSING = "processing";

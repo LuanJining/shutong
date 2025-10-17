@@ -25,15 +25,18 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     
     public Mono<LoginResponse> login(LoginRequest request) {
-        return userRepository.findByUsername(request.getUsername())
-                .switchIfEmpty(Mono.error(BusinessException.unauthorized("Invalid username or password")))
+        // 支持用户名、手机号、邮箱登录
+        return userRepository.findByUsername(request.getLogin())
+                .switchIfEmpty(userRepository.findByPhone(request.getLogin()))
+                .switchIfEmpty(userRepository.findByEmail(request.getLogin()))
+                .switchIfEmpty(Mono.error(BusinessException.unauthorized("用户名或密码错误")))
                 .flatMap(user -> {
                     if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-                        return Mono.error(BusinessException.unauthorized("Invalid username or password"));
+                        return Mono.error(BusinessException.unauthorized("用户名或密码错误"));
                     }
                     
                     if (user.getStatus() == 0) {
-                        return Mono.error(BusinessException.forbidden("User account is disabled"));
+                        return Mono.error(BusinessException.forbidden("用户已被禁用"));
                     }
                     
                     user.setLastLogin(LocalDateTime.now());
@@ -42,6 +45,11 @@ public class AuthService {
                                 String accessToken = jwtUtil.generateToken(savedUser.getId(), savedUser.getUsername());
                                 String refreshToken = jwtUtil.generateRefreshToken(savedUser.getId());
                                 
+                                LocalDateTime accessExpires = LocalDateTime.now()
+                                        .plusSeconds(jwtUtil.getAccessTokenExpiration() / 1000);
+                                LocalDateTime refreshExpires = LocalDateTime.now()
+                                        .plusSeconds(jwtUtil.getRefreshTokenExpiration() / 1000);
+                                
                                 // Clear password before returning
                                 savedUser.setPassword(null);
                                 
@@ -49,6 +57,8 @@ public class AuthService {
                                         .accessToken(accessToken)
                                         .refreshToken(refreshToken)
                                         .user(savedUser)
+                                        .accessTokenExpiresAt(accessExpires)
+                                        .refreshTokenExpiresAt(refreshExpires)
                                         .build();
                             });
                 });
@@ -112,6 +122,21 @@ public class AuthService {
         return userRepository.findById(userId)
                 .switchIfEmpty(Mono.error(BusinessException.notFound("User not found")))
                 .doOnSuccess(user -> user.setPassword(null));
+    }
+    
+    public Mono<Void> changePassword(Long userId, String oldPassword, String newPassword) {
+        return userRepository.findById(userId)
+                .switchIfEmpty(Mono.error(BusinessException.notFound("User not found")))
+                .flatMap(user -> {
+                    if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+                        return Mono.error(new BusinessException("原密码错误"));
+                    }
+                    
+                    user.setPassword(passwordEncoder.encode(newPassword));
+                    user.setUpdatedAt(LocalDateTime.now());
+                    
+                    return userRepository.save(user).then();
+                });
     }
 }
 

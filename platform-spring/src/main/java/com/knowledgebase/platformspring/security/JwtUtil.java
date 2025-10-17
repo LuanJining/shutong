@@ -30,7 +30,9 @@ public class JwtUtil {
         
         return Jwts.builder()
                 .subject(userId.toString())
+                .claim("user_id", userId)
                 .claim("username", username)
+                .claim("type", "access")
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getSigningKey())
@@ -43,10 +45,20 @@ public class JwtUtil {
         
         return Jwts.builder()
                 .subject(userId.toString())
+                .claim("user_id", userId)
+                .claim("type", "refresh")
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getSigningKey())
                 .compact();
+    }
+    
+    public Long getAccessTokenExpiration() {
+        return jwtConfig.getExpiration();
+    }
+    
+    public Long getRefreshTokenExpiration() {
+        return jwtConfig.getRefreshExpiration();
     }
     
     public Long getUserIdFromToken(String token) {

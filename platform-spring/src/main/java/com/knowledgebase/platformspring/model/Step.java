@@ -1,7 +1,5 @@
 package com.knowledgebase.platformspring.model;
 
-import java.time.LocalDateTime;
-
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
@@ -43,11 +41,7 @@ public class Step {
     @Builder.Default
     private String status = STATUS_PROCESSING;
     
-    @Column("created_at")
-    private LocalDateTime createdAt;
-    
-    @Column("updated_at")
-    private LocalDateTime updatedAt;
+    // 注意：Go版本的Step没有CreatedAt和UpdatedAt字段
     
     // Step status constants
     public static final String STATUS_PROCESSING = "processing";

@@ -1,9 +1,10 @@
 package com.knowledgebase.platformspring.service;
 
-import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.knowledgebase.platformspring.dto.PaginationResponse;
 import com.knowledgebase.platformspring.exception.BusinessException;
 import com.knowledgebase.platformspring.model.Task;
 import com.knowledgebase.platformspring.model.Workflow;
@@ -24,8 +25,6 @@ public class WorkflowService {
     public Mono<Workflow> createWorkflow(Workflow workflow, Long userId) {
         workflow.setCreatedBy(userId);
         workflow.setStatus(Workflow.STATUS_PROCESSING);
-        workflow.setCreatedAt(LocalDateTime.now());
-        workflow.setUpdatedAt(LocalDateTime.now());
         
         return workflowRepository.save(workflow);
     }
@@ -43,6 +42,33 @@ public class WorkflowService {
         return taskRepository.findByApproverId(approverId);
     }
     
+    public Mono<PaginationResponse<List<Task>>> getTasksPaginated(Long approverId, Integer page, Integer pageSize) {
+        return taskRepository.findByApproverId(approverId)
+                .collectList()
+                .map(allTasks -> {
+                    long total = allTasks.size();
+                    int offset = (page - 1) * pageSize;
+                    List<Task> pagedTasks = allTasks.stream()
+                            .skip(offset)
+                            .limit(pageSize)
+                            .collect(java.util.stream.Collectors.toList());
+                    
+                    return PaginationResponse.of(pagedTasks, total, page, pageSize);
+                });
+    }
+    
+    public Mono<Workflow> startWorkflow(Long workflowId, Long userId) {
+        return workflowRepository.findById(workflowId)
+                .switchIfEmpty(Mono.error(BusinessException.notFound("Workflow not found")))
+                .flatMap(workflow -> {
+                    if (!Workflow.STATUS_PROCESSING.equals(workflow.getStatus())) {
+                        return Mono.error(new BusinessException("工作流状态不正确"));
+                    }
+                    // 这里可以添加启动逻辑，比如创建第一批任务等
+                    return Mono.just(workflow);
+                });
+    }
+    
     public Mono<Task> approveTask(Long taskId, Long approverId, String comment, boolean approved) {
         return taskRepository.findById(taskId)
                 .switchIfEmpty(Mono.error(BusinessException.notFound("Task not found")))
@@ -57,7 +83,6 @@ public class WorkflowService {
                     
                     task.setStatus(approved ? Task.STATUS_APPROVED : Task.STATUS_REJECTED);
                     task.setComment(comment);
-                    task.setUpdatedAt(LocalDateTime.now());
                     
                     return taskRepository.save(task)
                             .flatMap(savedTask -> updateWorkflowStatus(savedTask.getWorkflowId())
@@ -80,7 +105,6 @@ public class WorkflowService {
                                 .flatMap(workflow -> {
                                     workflow.setStatus(anyRejected ? 
                                             Workflow.STATUS_CANCELLED : Workflow.STATUS_COMPLETED);
-                                    workflow.setUpdatedAt(LocalDateTime.now());
                                     return workflowRepository.save(workflow);
                                 })
                                 .then();

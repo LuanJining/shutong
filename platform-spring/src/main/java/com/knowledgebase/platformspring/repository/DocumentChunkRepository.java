@@ -14,7 +14,7 @@ public interface DocumentChunkRepository extends R2dbcRepository<DocumentChunk, 
     
     Flux<DocumentChunk> findByDocumentId(Long documentId);
     
-    Flux<DocumentChunk> findByDocumentIdOrderByChunkIndexAsc(Long documentId);
+    Flux<DocumentChunk> findByDocumentIdOrderByIndexAsc(Long documentId);
     
     Mono<Long> countByDocumentId(Long documentId);
     

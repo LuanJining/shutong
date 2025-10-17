@@ -1,5 +1,10 @@
 package com.knowledgebase.platformspring.controller;
 
+import java.time.Duration;
+import java.util.List;
+
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,6 +18,13 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.knowledgebase.platformspring.dto.ApiResponse;
+import com.knowledgebase.platformspring.dto.ChatDocumentRequest;
+import com.knowledgebase.platformspring.dto.ChatDocumentResponse;
+import com.knowledgebase.platformspring.dto.HomepageResponse;
+import com.knowledgebase.platformspring.dto.KnowledgeSearchRequest;
+import com.knowledgebase.platformspring.dto.KnowledgeSearchResponse;
+import com.knowledgebase.platformspring.dto.PaginationResponse;
+import com.knowledgebase.platformspring.dto.TagCloudResponse;
 import com.knowledgebase.platformspring.model.Document;
 import com.knowledgebase.platformspring.repository.UserRepository;
 import com.knowledgebase.platformspring.service.DocumentService;
@@ -52,24 +64,85 @@ public class DocumentController {
                 .map(doc -> ApiResponse.success("Document uploaded successfully", doc));
     }
     
-    @Operation(summary = "获取空间文档", description = "获取指定空间下的所有文档")
-    @GetMapping("/space/{spaceId}")
-    public Flux<Document> getDocumentsBySpace(@PathVariable Long spaceId) {
-        return documentService.getDocumentsBySpaceId(spaceId);
-    }
-    
     @Operation(summary = "获取文档详情", description = "根据ID获取文档的详细信息")
-    @GetMapping("/{id}")
+    @GetMapping("/{id}/info")
     public Mono<ApiResponse<Document>> getDocument(@PathVariable Long id) {
         return documentService.getDocumentById(id)
                 .map(ApiResponse::success);
     }
     
-    @Operation(summary = "文档问答", description = "基于知识库文档内容进行智能问答")
-    @PostMapping("/chat")
-    public Mono<ApiResponse<ChatResponse>> chat(@RequestBody ChatRequest request) {
-        return documentService.chatWithDocuments(request.getQuestion(), request.getSpaceId())
-                .map(answer -> ApiResponse.success(new ChatResponse(answer)));
+    @Operation(summary = "获取空间文档", description = "获取指定文档所属空间的所有文档")
+    @GetMapping("/{id}/space")
+    public Mono<ApiResponse<PaginationResponse<List<Document>>>> getDocumentsBySpace(
+            @PathVariable Long id,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "1") Integer page,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "10") Integer pageSize) {
+        return documentService.getDocumentById(id)
+                .flatMap(doc -> documentService.getDocumentsBySpaceIdPaginated(doc.getSpaceId(), page, pageSize))
+                .map(ApiResponse::success);
+    }
+    
+    @Operation(summary = "预览文档", description = "在线预览文档内容")
+    @GetMapping("/{id}/preview")
+    public Mono<Void> previewDocument(@PathVariable Long id, 
+                                      org.springframework.http.server.reactive.ServerHttpResponse response) {
+        return documentService.previewDocument(id, response);
+    }
+    
+    @Operation(summary = "获取首页文档", description = "获取首页展示的知识库和文档")
+    @GetMapping("/homepage")
+    public Mono<ApiResponse<HomepageResponse>> getHomepage() {
+        return documentService.getHomepageDocuments()
+                .map(ApiResponse::success);
+    }
+    
+    @Operation(summary = "获取标签云", description = "获取文档标签云数据")
+    @GetMapping("/tag-cloud")
+    public Mono<ApiResponse<TagCloudResponse>> getTagCloud(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Long spaceId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Long subSpaceId,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "50") Integer limit) {
+        return documentService.getTagCloud(spaceId, subSpaceId, limit)
+                .map(ApiResponse::success);
+    }
+    
+    @Operation(summary = "知识搜索", description = "基于向量搜索的知识检索")
+    @PostMapping("/search")
+    public Mono<ApiResponse<KnowledgeSearchResponse>> searchKnowledge(
+            @RequestBody KnowledgeSearchRequest request) {
+        return documentService.searchKnowledge(request)
+                .map(ApiResponse::success);
+    }
+    
+    @Operation(summary = "文档问答", description = "基于指定文档进行智能问答")
+    @PostMapping("/{id}/chat")
+    public Mono<ApiResponse<ChatDocumentResponse>> chat(
+            @PathVariable Long id,
+            @RequestBody ChatDocumentRequest request) {
+        return documentService.chatWithDocument(id, request)
+                .map(ApiResponse::success);
+    }
+    
+    @Operation(summary = "文档流式问答", description = "基于知识库进行流式问答（SSE）")
+    @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<String>> chatStream(@RequestBody ChatStreamRequest request) {
+        return documentService.chatWithDocumentsStream(request.getQuestion(), request.getSpaceId())
+                .map(chunk -> ServerSentEvent.<String>builder()
+                        .event("message")
+                        .data(chunk)
+                        .build())
+                .concatWith(Flux.just(ServerSentEvent.<String>builder()
+                        .event("done")
+                        .data("[DONE]")
+                        .build()))
+                .delayElements(Duration.ofMillis(10));
+    }
+    
+    @Operation(summary = "重试处理文档", description = "重新处理失败的文档（OCR和向量化）")
+    @PostMapping("/retry-process")
+    public Mono<ApiResponse<Document>> retryProcess(@RequestBody RetryProcessRequest request) {
+        return documentService.retryProcessDocument(request.getDocumentId(), request.isForceRetry())
+                .map(doc -> ApiResponse.success("重试处理已开始", doc));
     }
     
     @Operation(summary = "发布文档", description = "将文档状态设置为已发布，使其可被搜索和使用")
@@ -87,15 +160,15 @@ public class DocumentController {
     }
     
     @Data
-    public static class ChatRequest {
-        private String question;
-        private Long spaceId;
+    public static class RetryProcessRequest {
+        private Long documentId;
+        private boolean forceRetry;
     }
     
     @Data
-    @RequiredArgsConstructor
-    public static class ChatResponse {
-        private final String answer;
+    public static class ChatStreamRequest {
+        private String question;
+        private Long spaceId;
     }
 }
 

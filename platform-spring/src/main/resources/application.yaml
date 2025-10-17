@@ -2,6 +2,14 @@ spring:
   application:
     name: kb-platform
   
+  # Jackson Configuration - 使用下划线命名与Go版本保持一致
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+  
   # R2DBC Configuration (Reactive Database)
   r2dbc:
     url: r2dbc:postgresql://localhost:5432/kb_platform
