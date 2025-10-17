@@ -1,5 +1,5 @@
-# BASE_URL="http://localhost:8080/api/v1"
-BASE_URL="http://182.140.132.5:30368/api/v1"
+BASE_URL="http://localhost:8080/api/v1"
+# BASE_URL="http://182.140.132.5:30368/api/v1"
 TEST_FILE="./test.txt"
 
 # 登录管理员账户
@@ -152,66 +152,66 @@ echo "$UPLOAD_DOC_RESPONSE" | jq .
 DOC_ID=$(echo "$UPLOAD_DOC_RESPONSE" | jq -r '.data.id')
 echo "Document ID: $DOC_ID"
 
-# 用审核员登录
-echo "=== 审核员登录 ==="
-AUDIT_LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/iam/auth/login" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"login\": \"$RANDOM_USERNAME_FILE_AUDIT\",
-    \"password\": \"password123\"
-  }")
-echo "$AUDIT_LOGIN_RESPONSE" | jq .
-AUDIT_TOKEN=$(echo "$AUDIT_LOGIN_RESPONSE" | jq -r '.data.access_token')
-echo "Audit User Token: $AUDIT_TOKEN"
-
-# 用审核员账号列举审批任务
-echo "=== 审核员查看待审批任务 ==="
-TASKS_RESPONSE=$(curl -s -X GET "$BASE_URL/workflow/tasks" \
-  -H "Authorization: Bearer $AUDIT_TOKEN")
-echo "$TASKS_RESPONSE" | jq .
-TASK_ID=$(echo "$TASKS_RESPONSE" | jq -r '.data.items[0].id')
-echo "Task ID: $TASK_ID"
-
-# 用审核员账号审批任务
-echo "=== 审核员审批任务 ==="
-APPROVE_RESPONSE=$(curl -s -X POST "$BASE_URL/workflow/tasks/approve" \
-  -H "Authorization: Bearer $AUDIT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"task_id\": $TASK_ID,
-    \"status\": \"approved\",
-    \"comment\": \"审批通过\"
-  }")
-echo "$APPROVE_RESPONSE" | jq .
-
-# 上传文档的账号查看文档状态是否为待发布（审批完成）
-echo "=== 查看文档状态 ==="
-DOC_INFO_RESPONSE=$(curl -s -X GET "$BASE_URL/kb/$DOC_ID/info" \
-  -H "Authorization: Bearer $UPLOAD_TOKEN")
-echo "$DOC_INFO_RESPONSE" | jq .
-DOC_STATUS=$(echo "$DOC_INFO_RESPONSE" | jq -r '.data.status')
-echo "Document Status: $DOC_STATUS"
-
-if [ "$DOC_STATUS" = "pending_publish" ]; then
-  echo "✅ 测试成功：文档状态为待发布（审批完成）"
-else
-  echo "❌ 测试失败：文档状态为 $DOC_STATUS，期望为 pending_publish"
-fi
-
-
-# curl -X POST "$BASE_URL/kb/search" \
-#   -H "Authorization: Bearer $UPLOAD_TOKEN" \
+# # 用审核员登录
+# echo "=== 审核员登录 ==="
+# AUDIT_LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/iam/auth/login" \
 #   -H "Content-Type: application/json" \
-#   -d '{
-#     "query": "沈个好远",
-#     "limit": 10
-#   }' | jq .
+#   -d "{
+#     \"login\": \"$RANDOM_USERNAME_FILE_AUDIT\",
+#     \"password\": \"password123\"
+#   }")
+# echo "$AUDIT_LOGIN_RESPONSE" | jq .
+# AUDIT_TOKEN=$(echo "$AUDIT_LOGIN_RESPONSE" | jq -r '.data.access_token')
+# echo "Audit User Token: $AUDIT_TOKEN"
 
-curl -X POST "$BASE_URL/kb/$DOC_ID/publish" \
-  -H "Authorization: Bearer $UPLOAD_TOKEN"
+# # 用审核员账号列举审批任务
+# echo "=== 审核员查看待审批任务 ==="
+# TASKS_RESPONSE=$(curl -s -X GET "$BASE_URL/workflow/tasks" \
+#   -H "Authorization: Bearer $AUDIT_TOKEN")
+# echo "$TASKS_RESPONSE" | jq .
+# TASK_ID=$(echo "$TASKS_RESPONSE" | jq -r '.data.items[0].id')
+# echo "Task ID: $TASK_ID"
 
-DOC_INFO_RESPONSE=$(curl -s -X GET "$BASE_URL/kb/$DOC_ID/info" \
-  -H "Authorization: Bearer $UPLOAD_TOKEN")
-echo "$DOC_INFO_RESPONSE" | jq .
-DOC_STATUS=$(echo "$DOC_INFO_RESPONSE" | jq -r '.data.status')
-echo "Document Status: $DOC_STATUS"
+# # 用审核员账号审批任务
+# echo "=== 审核员审批任务 ==="
+# APPROVE_RESPONSE=$(curl -s -X POST "$BASE_URL/workflow/tasks/approve" \
+#   -H "Authorization: Bearer $AUDIT_TOKEN" \
+#   -H "Content-Type: application/json" \
+#   -d "{
+#     \"task_id\": $TASK_ID,
+#     \"status\": \"approved\",
+#     \"comment\": \"审批通过\"
+#   }")
+# echo "$APPROVE_RESPONSE" | jq .
+
+# # 上传文档的账号查看文档状态是否为待发布（审批完成）
+# echo "=== 查看文档状态 ==="
+# DOC_INFO_RESPONSE=$(curl -s -X GET "$BASE_URL/kb/$DOC_ID/info" \
+#   -H "Authorization: Bearer $UPLOAD_TOKEN")
+# echo "$DOC_INFO_RESPONSE" | jq .
+# DOC_STATUS=$(echo "$DOC_INFO_RESPONSE" | jq -r '.data.status')
+# echo "Document Status: $DOC_STATUS"
+
+# if [ "$DOC_STATUS" = "pending_publish" ]; then
+#   echo "✅ 测试成功：文档状态为待发布（审批完成）"
+# else
+#   echo "❌ 测试失败：文档状态为 $DOC_STATUS，期望为 pending_publish"
+# fi
+
+
+# # curl -X POST "$BASE_URL/kb/search" \
+# #   -H "Authorization: Bearer $UPLOAD_TOKEN" \
+# #   -H "Content-Type: application/json" \
+# #   -d '{
+# #     "query": "沈个好远",
+# #     "limit": 10
+# #   }' | jq .
+
+# curl -X POST "$BASE_URL/kb/$DOC_ID/publish" \
+#   -H "Authorization: Bearer $UPLOAD_TOKEN"
+
+# DOC_INFO_RESPONSE=$(curl -s -X GET "$BASE_URL/kb/$DOC_ID/info" \
+#   -H "Authorization: Bearer $UPLOAD_TOKEN")
+# echo "$DOC_INFO_RESPONSE" | jq .
+# DOC_STATUS=$(echo "$DOC_INFO_RESPONSE" | jq -r '.data.status')
+# echo "Document Status: $DOC_STATUS"

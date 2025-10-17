@@ -39,7 +39,7 @@ vector:
   base_url: http://localhost:6333
   api_key: ""
   collection: kb_documents
-  vector_size: 768  # Jina embeddings-v3 向量维度
+  vector_size: 1024  # Jina embeddings-v3 向量维度
   distance: Cosine
   timeout_seconds: 30
 
@@ -56,5 +56,5 @@ openai:
 
   embedding_url: http://182.140.132.5:11434/v1
   embedding_api_key: "111"
-  embedding_model: nomic-embed-text:latest
+  embedding_model: bge-large:latest
 
