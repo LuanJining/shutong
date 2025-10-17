@@ -152,6 +152,22 @@ java -jar target/platform-spring-0.0.1-SNAPSHOT.jar
 
 ## 📚 API 文档
 
+### Swagger UI (推荐)
+
+启动应用后，访问 Swagger UI 查看完整的交互式 API 文档：
+
+```
+http://localhost:8080/swagger-ui.html
+```
+
+或访问 OpenAPI JSON：
+
+```
+http://localhost:8080/v3/api-docs
+```
+
+### API 端点示例
+
 ### 认证 API
 
 #### 用户注册

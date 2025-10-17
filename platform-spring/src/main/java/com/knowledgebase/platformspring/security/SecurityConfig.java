@@ -28,11 +28,16 @@ public class SecurityConfig {
                 .httpBasic(basic -> basic.disable())
                 .formLogin(form -> form.disable())
                 .authorizeExchange(exchanges -> exchanges
-                        // Public endpoints
+                        // Public endpoints - Auth
                         .pathMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/v1/auth/refresh").permitAll()
+                        // Public endpoints - Actuator
                         .pathMatchers("/actuator/**").permitAll()
+                        // Public endpoints - Swagger UI
+                        .pathMatchers("/swagger-ui.html", "/swagger-ui/**").permitAll()
+                        .pathMatchers("/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
+                        .pathMatchers("/webjars/**").permitAll()
                         // All other endpoints require authentication
                         .anyExchange().authenticated()
                 )

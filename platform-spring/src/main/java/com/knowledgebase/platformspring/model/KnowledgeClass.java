@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table("classes")
-public class Class {
+public class KnowledgeClass {
     
     @Id
     private Long id;
