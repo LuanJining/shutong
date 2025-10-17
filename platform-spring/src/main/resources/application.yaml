@@ -1,12 +1,12 @@
 spring:
   application:
-    name: knowledge-base-platform
+    name: kb-platform
   
   # R2DBC Configuration (Reactive Database)
   r2dbc:
-    url: r2dbc:postgresql://localhost:5432/knowledge_base
+    url: r2dbc:postgresql://localhost:5432/kb_platform
     username: postgres
-    password: postgres
+    password: password
     pool:
       initial-size: 10
       max-size: 50
@@ -15,7 +15,7 @@ spring:
   # Security Configuration
   security:
     jwt:
-      secret: your-super-secret-jwt-key-change-this-in-production-min-256-bits
+      secret: rn+kMwL25dI0vnzs+DdY16Eca6o6F7BHBNU13AJi/6SU4rTiJ/EyNzwR8bLVjwuxk3XbdYwMx7cv7CA8W4iXlw==
       expiration: 86400000 # 24 hours in milliseconds
       refresh-expiration: 604800000 # 7 days in milliseconds
 
@@ -23,32 +23,32 @@ spring:
 app:
   # MinIO Configuration
   minio:
-    endpoint: http://localhost:9000
-    access-key: minioadmin
-    secret-key: minioadmin
-    bucket-name: knowledge-base
+    endpoint: https://api.kunxiangtech.com:9000
+    access-key: tIib6uMMDCUgujlicB3B
+    secret-key: 38lmILFSwAZUR9Rl155VYVlCgKNbZe7jIfY9EmoF
+    bucket-name: kb-platform
     secure: false
   
   # OpenAI Configuration
   openai:
-    api-key: your-openai-api-key
-    base-url: https://api.openai.com/v1
-    model: gpt-4
-    embedding-model: text-embedding-3-small
+    api-key: 111
+    base-url: http://182.140.132.5:11434/v1
+    model: qwen2.5:0.5b
+    embedding-model: bge-large:latest
     timeout: 60s
   
   # Qdrant Configuration
   qdrant:
     host: localhost
     port: 6333
-    api-key: # Optional
-    collection-name: knowledge_base
-    vector-size: 1536
+    api-key: ""
+    collection-name: kb_documents
+    vector-size: 1024
     use-https: false
   
   # PaddleOCR Configuration
   paddle-ocr:
-    url: http://localhost:8866
+    url: http://localhost:8500
     enabled: true
   
   # Workflow Configuration
