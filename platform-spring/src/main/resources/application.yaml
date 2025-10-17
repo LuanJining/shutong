@@ -1,5 +1,88 @@
 spring:
   application:
-    name: platform-spring
+    name: knowledge-base-platform
+  
+  # R2DBC Configuration (Reactive Database)
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/knowledge_base
+    username: postgres
+    password: postgres
+    pool:
+      initial-size: 10
+      max-size: 50
+      max-idle-time: 30m
+  
+  # Security Configuration
+  security:
+    jwt:
+      secret: your-super-secret-jwt-key-change-this-in-production-min-256-bits
+      expiration: 86400000 # 24 hours in milliseconds
+      refresh-expiration: 604800000 # 7 days in milliseconds
+
+# Application Configuration
+app:
+  # MinIO Configuration
+  minio:
+    endpoint: http://localhost:9000
+    access-key: minioadmin
+    secret-key: minioadmin
+    bucket-name: knowledge-base
+    secure: false
+  
+  # OpenAI Configuration
+  openai:
+    api-key: your-openai-api-key
+    base-url: https://api.openai.com/v1
+    model: gpt-4
+    embedding-model: text-embedding-3-small
+    timeout: 60s
+  
+  # Qdrant Configuration
+  qdrant:
+    host: localhost
+    port: 6333
+    api-key: # Optional
+    collection-name: knowledge_base
+    vector-size: 1536
+    use-https: false
+  
+  # PaddleOCR Configuration
+  paddle-ocr:
+    url: http://localhost:8866
+    enabled: true
+  
+  # Workflow Configuration
+  workflow:
+    default-timeout-hours: 24
+    max-retry-count: 3
+
+# Server Configuration
 server:
   port: 8080
+  http2:
+    enabled: true
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.knowledgebase: DEBUG
+    org.springframework.r2dbc: DEBUG
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/application.log
+    max-size: 10MB
+    max-history: 30
+
+# Management Endpoints (Actuator)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
