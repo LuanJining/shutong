@@ -56,7 +56,7 @@ public class AuthController {
     public Mono<ApiResponse<User>> getCurrentUser(Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         return authService.getCurrentUser(userId)
-                .map(user -> ApiResponse.success(user));
+                .map(ApiResponse::success);
     }
     
     @Operation(summary = "修改密码", description = "修改当前用户的登录密码",

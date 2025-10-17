@@ -1,5 +1,6 @@
 package com.knowledgebase.platformspring.exception;
 
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -26,9 +27,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleValidationException(WebExchangeBindException ex) {
         String message = ex.getBindingResult().getAllErrors().stream()
                 .findFirst()
-                .map(error -> error.getDefaultMessage())
+                .map(DefaultMessageSourceResolvable::getDefaultMessage)
                 .orElse("Validation failed");
-        
+
         return ResponseEntity
                 .badRequest()
                 .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(), message));
