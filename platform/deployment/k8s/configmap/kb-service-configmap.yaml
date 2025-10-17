@@ -14,7 +14,7 @@ data:
   KBASE_DATABASE_PORT: "5432"
   KBASE_DATABASE_DBNAME: "kb_platform"
   KBASE_DATABASE_SSLMODE: "disable"
-  KBASE_LOG_LEVEL: "warn"
+  KBASE_LOG_LEVEL: "debug"
   KBASE_DB_LOG_LEVEL: "error"
   KBASE_GIN_MODE: "release"
   KBASE_LOG_DB_LOG_LEVEL: "error"

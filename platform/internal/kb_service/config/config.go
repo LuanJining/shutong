@@ -46,6 +46,7 @@ type MinioConfig struct {
 type OpenAIConfig struct {
 	ApiKey          string `mapstructure:"api_key"`
 	Url             string `mapstructure:"url"`
+	Model           string `mapstructure:"model"`
 	EmbeddingURL    string `mapstructure:"embedding_url"`     // 独立的embedding服务URL
 	EmbeddingAPIKey string `mapstructure:"embedding_api_key"` // 独立的embedding API key
 	EmbeddingModel  string `mapstructure:"embedding_model"`   // embedding模型名称
@@ -147,6 +148,7 @@ func bindEnvVars(v *viper.Viper) {
 	// OpenAI配置
 	v.BindEnv("openai.api_key", "KBASE_OPENAI_API_KEY", "OPENAI_API_KEY")
 	v.BindEnv("openai.url", "KBASE_OPENAI_URL", "OPENAI_URL")
+	v.BindEnv("openai.model", "KBASE_OPENAI_MODEL", "OPENAI_MODEL")
 	v.BindEnv("openai.embedding_url", "KBASE_OPENAI_EMBEDDING_URL", "OPENAI_EMBEDDING_URL")
 	v.BindEnv("openai.embedding_api_key", "KBASE_OPENAI_EMBEDDING_API_KEY", "OPENAI_EMBEDDING_API_KEY")
 	v.BindEnv("openai.embedding_model", "KBASE_OPENAI_EMBEDDING_MODEL", "OPENAI_EMBEDDING_MODEL")
@@ -196,6 +198,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("log.db_log_level", "warn")
 	v.SetDefault("openai.api_key", "")
 	v.SetDefault("openai.url", "https://api.deepseek.com/v1")
+	v.SetDefault("openai.model", "qwen2.5:0.5b")
 	v.SetDefault("openai.embedding_url", "https://api.jina.ai/v1")
 	v.SetDefault("openai.embedding_api_key", "")
 	v.SetDefault("openai.embedding_model", "jina-embeddings-v3")

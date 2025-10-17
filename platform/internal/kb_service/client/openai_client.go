@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/logger"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/config"
 
 	"github.com/openai/openai-go/v2"
@@ -60,7 +61,7 @@ func (c *OpenAIClient) ChatWithFiles(ctx context.Context, question string, fileC
 	}
 	log.Println("成功构建messages")
 	response, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-		Model:               "deepseek-chat",
+		Model:               c.config.Model,
 		Messages:            messages,
 		MaxCompletionTokens: openai.Int(2000),
 		Temperature:         openai.Float(0.7),
@@ -128,8 +129,9 @@ func (c *OpenAIClient) ChatWithFilesStream(ctx context.Context, question string,
 		return nil, err
 	}
 
+	log.Printf("model: %s", c.config.Model)
 	stream := client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
-		Model:               "deepseek-chat",
+		Model:               c.config.Model,
 		Messages:            messages,
 		MaxCompletionTokens: openai.Int(2000),
 		Temperature:         openai.Float(0.7),
@@ -221,12 +223,15 @@ func (c *OpenAIClient) CreateEmbedding(ctx context.Context, text string) ([]floa
 		embeddingModel = openai.EmbeddingModelTextEmbedding3Small
 	}
 
+	logger.Debugf("📝 CreateEmbedding - URL: %s, Model: %s, TextLength: %d", embeddingURL, embeddingModel, len(text))
+
 	// 创建独立的embedding客户端
 	embClient := openai.NewClient(
 		option.WithAPIKey(embeddingAPIKey),
 		option.WithBaseURL(embeddingURL),
 	)
 
+	logger.Debugf("🔄 Calling embedding API...")
 	// 使用SDK的正确方式：EmbeddingNewParamsInputUnion的OfString字段
 	response, err := embClient.Embeddings.New(ctx, openai.EmbeddingNewParams{
 		Input: openai.EmbeddingNewParamsInputUnion{
@@ -235,8 +240,10 @@ func (c *OpenAIClient) CreateEmbedding(ctx context.Context, text string) ([]floa
 		Model: embeddingModel,
 	})
 	if err != nil {
+		log.Printf("❌ Embedding API call failed - URL: %s, Model: %s, Error: %v", embeddingURL, embeddingModel, err)
 		return nil, fmt.Errorf("failed to create embedding: %w", err)
 	}
+	logger.Debugf("✅ Embedding API call succeeded")
 
 	if len(response.Data) == 0 {
 		return nil, errors.New("no embedding data returned")
@@ -288,12 +295,16 @@ func (c *OpenAIClient) CreateEmbeddingBatch(ctx context.Context, texts []string)
 		embeddingModel = openai.EmbeddingModelTextEmbedding3Small
 	}
 
+	logger.Debugf("📝 CreateEmbeddingBatch - URL: %s, Model: %s, BatchSize: %d", embeddingURL, embeddingModel, len(validTexts))
+	logger.Debugf("🔍 First text preview (max 100 chars): %s", truncateString(validTexts[0], 100))
+
 	// 创建独立的embedding客户端
 	embClient := openai.NewClient(
 		option.WithAPIKey(embeddingAPIKey),
 		option.WithBaseURL(embeddingURL),
 	)
 
+	logger.Debugf("🔄 Calling batch embedding API...")
 	// 使用SDK的批量方式：EmbeddingNewParamsInputUnion的OfArrayOfStrings字段
 	response, err := embClient.Embeddings.New(ctx, openai.EmbeddingNewParams{
 		Input: openai.EmbeddingNewParamsInputUnion{
@@ -302,8 +313,10 @@ func (c *OpenAIClient) CreateEmbeddingBatch(ctx context.Context, texts []string)
 		Model: embeddingModel,
 	})
 	if err != nil {
+		log.Printf("❌ Batch embedding API failed - URL: %s, Model: %s, BatchSize: %d, Error: %v", embeddingURL, embeddingModel, len(validTexts), err)
 		return nil, fmt.Errorf("failed to create embeddings: %w", err)
 	}
+	logger.Debugf("✅ Batch embedding API succeeded, got %d embeddings", len(response.Data))
 
 	if len(response.Data) != len(validTexts) {
 		return nil, fmt.Errorf("expected %d embeddings but got %d", len(validTexts), len(response.Data))
@@ -343,4 +356,12 @@ func buildChatMessages(question string, fileContents []string) ([]openai.ChatCom
 		openai.UserMessage(question),
 	}
 	return messages, nil
+}
+
+// truncateString 截断字符串到指定长度
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }

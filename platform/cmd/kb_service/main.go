@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/database"
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/logger"
 	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/server"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/client"
@@ -22,6 +23,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
+
+	// 设置日志级别
+	logger.SetLevel(cfg.Log.Level)
+	log.Printf("Log level set to: %s", cfg.Log.Level)
 
 	// 初始化数据库
 	dbCfg := database.Config{

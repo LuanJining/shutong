@@ -19,6 +19,7 @@ import (
 	openai "github.com/openai/openai-go/v2"
 	"github.com/openai/openai-go/v2/packages/ssestream"
 
+	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/logger"
 	model "gitee.com/sichuan-shutong-zhihui-data/k-base/internal/common/models"
 	"gitee.com/sichuan-shutong-zhihui-data/k-base/internal/kb_service/client"
 	"gorm.io/gorm"
@@ -915,6 +916,8 @@ func (s *DocumentService) searchChunks(ctx context.Context, spaceID uint, query 
 
 // ProcessDocument 执行文档OCR与向量化处理
 func (s *DocumentService) ProcessDocument(ctx context.Context, documentID uint) error {
+	logger.Debugf("🎬 ProcessDocument started for document ID: %d", documentID)
+
 	if s.minioClient == nil {
 		return errors.New("minio client is not configured")
 	}
@@ -926,6 +929,9 @@ func (s *DocumentService) ProcessDocument(ctx context.Context, documentID uint) 
 		}
 		return fmt.Errorf("failed to load document %d: %w", documentID, err)
 	}
+
+	logger.Debugf("📄 Document %d loaded: fileName=%s, fileType=%s, fileSize=%d",
+		documentID, document.FileName, document.FileType, document.FileSize)
 
 	// 更新状态为处理中
 	s.updateDocumentStatus(documentID, model.DocumentStatusProcessing, 10, "开始处理文档...")
@@ -1003,6 +1009,8 @@ func (s *DocumentService) ProcessDocument(ctx context.Context, documentID uint) 
 }
 
 func (s *DocumentService) storeChunks(ctx context.Context, document *model.Document, chunks []string) error {
+	logger.Debugf("📦 storeChunks for document %d (fileName: %s, total chunks: %d)", document.ID, document.FileName, len(chunks))
+
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("document_id = ?", document.ID).Delete(&model.DocumentChunk{}).Error; err != nil {
 			return fmt.Errorf("failed to clear existing chunks: %w", err)
@@ -1031,10 +1039,13 @@ func (s *DocumentService) storeChunks(ctx context.Context, document *model.Docum
 			return errors.New("no valid chunks to store")
 		}
 
+		logger.Debugf("📊 Document %d: preparing to generate embeddings for %d valid chunks", document.ID, len(validChunks))
 		embeddings, err := s.generateEmbeddingBatch(ctx, validChunks)
 		if err != nil {
+			log.Printf("❌ Document %d: failed to generate embeddings: %v", document.ID, err)
 			return fmt.Errorf("failed to generate embeddings: %w", err)
 		}
+		logger.Debugf("✅ Document %d: successfully generated %d embeddings", document.ID, len(embeddings))
 
 		points := make([]client.QdrantPoint, 0, len(validChunks))
 		createdChunks := 0
@@ -1236,7 +1247,10 @@ func (s *DocumentService) generateEmbedding(ctx context.Context, text string) ([
 // generateEmbeddingBatch 批量生成向量
 // 如果失败且向量维度不匹配，返回错误（文档处理会失败，可重试）
 func (s *DocumentService) generateEmbeddingBatch(ctx context.Context, texts []string) ([][]float64, error) {
+	logger.Debugf("🚀 generateEmbeddingBatch called with %d texts", len(texts))
+
 	if s.openaiClient != nil {
+		logger.Debugf("✓ OpenAI client available, calling CreateEmbeddingBatch...")
 		embeddings, err := s.openaiClient.CreateEmbeddingBatch(ctx, texts)
 		if err != nil {
 			log.Printf("❌ Batch embedding API failed: %v", err)
@@ -1258,7 +1272,7 @@ func (s *DocumentService) generateEmbeddingBatch(ctx context.Context, texts []st
 		}
 
 		if len(embeddings) > 0 && len(embeddings[0]) > 0 {
-			log.Printf("✅ Generated %d embeddings with %d dimensions each", len(embeddings), len(embeddings[0]))
+			logger.Debugf("✅ Generated %d embeddings with %d dimensions each", len(embeddings), len(embeddings[0]))
 		}
 		return embeddings, nil
 	}
