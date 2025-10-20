@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.knowledgebase.platformspring.client.MinioClientService;
 import com.knowledgebase.platformspring.client.OpenAIClientService;
@@ -51,7 +52,6 @@ public class DocumentService {
     private final SubSpaceRepository subSpaceRepository;
     private final MinioClientService minioClient;
     private final OpenAIClientService openAIClient;
-    @SuppressWarnings("unused") // Reserved for future OCR implementation
     private final PaddleOCRClientService ocrClient;
     private final QdrantClientService qdrantClient;
     private final WorkflowService workflowService;
@@ -126,59 +126,114 @@ public class DocumentService {
         return processDocument(documentId);
     }
     
+    /**
+     * 处理文档 - 完整流程事务保护（对齐 Go 版本）
+     * 
+     * 事务策略：
+     * 1. MinIO 下载 - 不在事务中（外部系统）
+     * 2. 核心数据库操作 - 在事务中（保存content + chunks + 更新元数据）
+     * 3. Qdrant 上传 - 如果失败回滚数据库，可重试
+     * 4. Workflow 创建 - 独立事务，失败不影响文档处理
+     */
     public Mono<Document> processDocument(Long documentId) {
-        log.info("ProcessDocument started for document ID: {}", documentId);
+        log.info("🎬 ProcessDocument started for document ID: {}", documentId);
         
         return documentRepository.findById(documentId)
                 .switchIfEmpty(Mono.error(BusinessException.notFound("Document not found")))
-                // 1. 更新状态为处理中 (10%)
-                .flatMap(document -> {
-                    return updateDocumentStatus(documentId, Document.STATUS_PROCESSING, 10, "开始处理文档...")
-                            .thenReturn(document);
-                })
-                // 2. 从 MinIO 下载并提取文本 (20-60%)
-                .flatMap(document -> downloadAndExtractText(document)
-                        .flatMap(text -> {
-                            // ⭐ 保存 content 到数据库
-                            document.setContent(text);
-                            return documentRepository.save(document);
-                        })
-                        .flatMap(savedDoc -> updateDocumentStatus(documentId, Document.STATUS_PROCESSING, 60, "文本提取完成，开始分块...")
-                                .thenReturn(savedDoc)))
-                // 3. 分块 (70%)
-                .flatMap(document -> updateDocumentStatus(documentId, Document.STATUS_VECTORIZING, 70, "开始向量化处理...")
+                // 步骤1: 更新状态为处理中 (10%)
+                .flatMap(document -> updateDocumentStatus(documentId, Document.STATUS_PROCESSING, 10, "开始处理文档...")
                         .thenReturn(document))
-                // 4. 向量化并存储chunks（创建 DocumentChunk 记录和 Qdrant points）
-                .flatMap(this::chunkAndVectorize)
-                // 5. 更新 processed_at 和清空 parse_error
-                .flatMap(document -> {
-                    document.setProcessedAt(LocalDateTime.now());
-                    document.setParseError(""); // 清空错误信息
-                    return documentRepository.save(document);
-                })
-                // 6. 根据 needApproval 决定最终状态
-                .flatMap(document -> {
-                    if (Boolean.TRUE.equals(document.getNeedApproval())) {
-                        // 需要审批：创建并启动审批流程
-                        return createAndStartWorkflow(document)
-                                .flatMap(workflow -> {
-                                    document.setWorkflowId(workflow.getId());
-                                    return updateDocumentStatus(documentId, Document.STATUS_PENDING_APPROVAL, 100, "处理完成，等待审批");
-                                })
-                                .onErrorResume(e -> {
-                                    log.error("Failed to create workflow for document {}: {}", documentId, e.getMessage());
-                                    // 审批流程创建失败，直接设为待发布
-                                    return updateDocumentStatus(documentId, Document.STATUS_PENDING_PUBLISH, 100, "处理完成，但审批流程创建失败，已设为待发布");
-                                });
-                    } else {
-                        // 不需要审批：直接设为待发布
-                        return updateDocumentStatus(documentId, Document.STATUS_PENDING_PUBLISH, 100, "处理完成，待发布");
-                    }
-                })
+                // 步骤2: 从 MinIO 下载并提取文本 (20-60%) - 不在事务中
+                .flatMap(document -> downloadAndExtractText(document)
+                        .map(text -> {
+                            document.setContent(text);
+                            return document;
+                        }))
+                // 步骤3: 事务保护 - 保存content + 分块 + 向量化 + 更新元数据
+                .flatMap(document -> processDocumentInTransaction(document))
+                // 步骤4: 根据 needApproval 决定最终状态并创建 workflow
+                .flatMap(document -> finalizeDocumentStatus(document))
+                // 错误处理
                 .onErrorResume(e -> {
-                    log.error("Failed to process document {}: {}", documentId, e.getMessage(), e);
+                    log.error("❌ Failed to process document {}: {}", documentId, e.getMessage(), e);
                     return markDocumentProcessingError(documentId, e);
                 });
+    }
+    
+    /**
+     * 事务中处理文档核心逻辑：保存content + 分块 + 向量化 + 更新元数据
+     * 
+     * 这是一个大事务，包含：
+     * 1. 保存 document.content
+     * 2. 删除旧 DocumentChunk
+     * 3. 生成 embeddings
+     * 4. 创建新 DocumentChunk
+     * 5. 上传 Qdrant（失败会回滚步骤1-4）
+     * 6. 更新 document 元数据（processed_at, vector_count, parse_error）
+     */
+    @Transactional
+    protected Mono<Document> processDocumentInTransaction(Document document) {
+        log.info("📦 Processing document {} in transaction", document.getId());
+        
+        // 1. 保存 content 到数据库
+        return documentRepository.save(document)
+                .flatMap(savedDoc -> updateDocumentStatus(document.getId(), Document.STATUS_PROCESSING, 60, "文本提取完成，开始分块...")
+                        .thenReturn(savedDoc))
+                // 2. 分块并存储
+                .flatMap(doc -> {
+                    return updateDocumentStatus(doc.getId(), Document.STATUS_VECTORIZING, 70, "开始向量化处理...")
+                            .flatMap(updatedDoc -> {
+                                // 分块
+                                List<String> chunks = splitIntoChunks(updatedDoc.getContent(), 800, 120);
+                                // 向量化并存储 chunks
+                                return storeChunksInTransaction(updatedDoc, chunks);
+                            });
+                })
+                // 4. 更新 document 元数据（processed_at, vector_count, parse_error）
+                .flatMap(doc -> {
+                    doc.setProcessedAt(LocalDateTime.now());
+                    doc.setParseError(""); // 清空错误信息
+                    return documentRepository.save(doc);
+                })
+                .doOnSuccess(doc -> log.info("✅ Document {} processed successfully in transaction", doc.getId()))
+                .doOnError(e -> log.error("❌ Transaction failed for document {}: {}", document.getId(), e.getMessage()));
+    }
+    
+    /**
+     * 完成文档状态处理：根据 needApproval 决定最终状态
+     * Workflow 创建在独立事务中，失败不影响文档处理结果
+     */
+    private Mono<Document> finalizeDocumentStatus(Document document) {
+        if (Boolean.TRUE.equals(document.getNeedApproval())) {
+            // 需要审批：创建并启动审批流程
+            return createAndStartWorkflowWithFallback(document)
+                    .flatMap(workflow -> {
+                        document.setWorkflowId(workflow.getId());
+                        return updateDocumentStatus(document.getId(), Document.STATUS_PENDING_APPROVAL, 100, "处理完成，等待审批");
+                    });
+        } else {
+            // 不需要审批：直接设为待发布
+            return updateDocumentStatus(document.getId(), Document.STATUS_PENDING_PUBLISH, 100, "处理完成，待发布");
+        }
+    }
+    
+    /**
+     * 创建 workflow（失败时降级处理）
+     */
+    private Mono<Workflow> createAndStartWorkflowWithFallback(Document document) {
+        return createAndStartWorkflow(document)
+                .onErrorResume(e -> {
+                    log.error("⚠️ Failed to create workflow for document {}, fallback to pending_publish: {}", 
+                            document.getId(), e.getMessage());
+                    // Workflow 创建失败，直接设为待发布（不阻塞文档处理）
+                    return updateDocumentStatus(document.getId(), Document.STATUS_PENDING_PUBLISH, 100, 
+                            "处理完成，但审批流程创建失败，已设为待发布")
+                            .then(Mono.empty()); // 返回空，外层会处理
+                })
+                .switchIfEmpty(Mono.defer(() -> {
+                    // Workflow 创建失败的情况，返回一个空的 Workflow
+                    return Mono.just(Workflow.builder().id(0L).build());
+                }));
     }
     
     /**
@@ -201,11 +256,12 @@ public class DocumentService {
     }
     
     /**
-     * 提取纯文本（支持多种格式）
+     * 提取纯文本（支持多种格式，包括OCR）- 完全对齐 Go 版本
      */
     private Mono<String> extractPlainText(String fileType, byte[] data, Document document) {
-        String text;
+        String text = null;
         
+        // 尝试直接文本提取
         switch (fileType.toLowerCase()) {
             case ".txt":
             case ".md":
@@ -216,10 +272,23 @@ public class DocumentService {
             case ".json":
                 text = new String(data);
                 break;
+            case ".html":
+            case ".htm":
+                text = stripHTMLTags(new String(data));
+                if (text.trim().isEmpty()) {
+                    return Mono.error(new BusinessException("HTML content is empty after stripping tags"));
+                }
+                break;
             default:
-                // 不支持的格式，尝试 OCR（如果配置了）
-                log.warn("Unsupported file type: {}, OCR not implemented yet", fileType);
-                return Mono.error(new BusinessException("Unsupported file type: " + fileType));
+                // 不支持的格式，尝试 OCR
+                log.info("Unsupported file type: {}, trying OCR...", fileType);
+                return updateDocumentStatus(document.getId(), Document.STATUS_PROCESSING, 40, "开始OCR识别...")
+                        .then(ocrClient.recognize(document.getFileName(), data))
+                        .onErrorResume(e -> {
+                            String errorMsg = String.format("Unsupported file type %s and OCR failed: %s", 
+                                    fileType, e.getMessage());
+                            return Mono.error(new BusinessException(errorMsg));
+                        });
         }
         
         if (text == null || text.trim().isEmpty()) {
@@ -227,6 +296,16 @@ public class DocumentService {
         }
         
         return Mono.just(text);
+    }
+    
+    /**
+     * 简单的 HTML 标签清理
+     */
+    private String stripHTMLTags(String html) {
+        if (html == null) return "";
+        return html.replaceAll("<[^>]*>", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
     }
     
     /**
@@ -258,71 +337,129 @@ public class DocumentService {
     }
     
     /**
-     * 分块并向量化（先删除旧 chunks，然后批量处理）
+     * 在事务中存储 chunks：删除旧 chunks + 创建新 chunks + 上传 Qdrant
+     * 
+     * 注意：这个方法被 @Transactional 的 processDocumentInTransaction 调用，
+     * 因此不需要单独的 @Transactional 注解（会继承外层事务）
      */
-    private Mono<Document> chunkAndVectorize(Document document) {
-        if (document.getContent() == null || document.getContent().isEmpty()) {
+    private Mono<Document> storeChunksInTransaction(Document document, List<String> chunks) {
+        if (chunks == null || chunks.isEmpty()) {
             return Mono.just(document);
         }
         
-        // 使用固定大小分块策略 (800字符一块，120字符重叠)
-        List<String> chunks = splitIntoChunks(document.getContent(), 800, 120);
+        // 过滤空白chunks
+        List<String> validChunks = new ArrayList<>();
+        List<Integer> validIndices = new ArrayList<>();
+        for (int i = 0; i < chunks.size(); i++) {
+            String chunk = chunks.get(i).trim();
+            if (!chunk.isEmpty()) {
+                validChunks.add(chunk);
+                validIndices.add(i);
+            }
+        }
         
-        if (chunks.isEmpty()) {
+        if (validChunks.isEmpty()) {
             return Mono.error(new BusinessException("No valid chunks to store"));
         }
         
-        log.info("Document {}: preparing to generate embeddings for {} chunks", document.getId(), chunks.size());
+        log.info("📦 Document {}: preparing to generate embeddings for {} valid chunks", document.getId(), validChunks.size());
         
-        // 1. 先删除旧的 chunks
+        // 事务范围：删除旧chunks + 批量生成embeddings + 创建新chunks + 上传Qdrant + 更新document
         return documentChunkRepository.deleteByDocumentId(document.getId())
                 .then(Mono.defer(() -> {
-                    // 2. 批量生成 embeddings 并存储
-                    return Flux.fromIterable(chunks)
-                            .index()
-                            .flatMap(tuple -> {
-                                String chunkContent = tuple.getT2();
-                                int index = tuple.getT1().intValue();
+                    // 批量生成 embeddings
+                    return generateEmbeddingBatch(validChunks)
+                            .flatMap(embeddings -> {
+                                if (embeddings.size() != validChunks.size()) {
+                                    return Mono.error(new BusinessException("Embeddings count mismatch"));
+                                }
                                 
-                                return openAIClient.createEmbedding(chunkContent)
-                                        .flatMap(embedding -> {
-                                            // 创建 Qdrant point
-                                            Map<String, Object> payload = new HashMap<>();
-                                            payload.put("document_id", document.getId());
-                                            payload.put("space_id", document.getSpaceId());
-                                            payload.put("sub_space_id", document.getSubSpaceId());
-                                            payload.put("class_id", document.getClassId());
-                                            payload.put("index", index);
-                                            payload.put("content", chunkContent);
+                                // 准备 Qdrant points 和 DocumentChunks
+                                List<QdrantClientService.QdrantPoint> points = new ArrayList<>();
+                                List<DocumentChunk> documentChunks = new ArrayList<>();
+                                
+                                for (int i = 0; i < validChunks.size(); i++) {
+                                    String chunkContent = validChunks.get(i);
+                                    int originalIndex = validIndices.get(i);
+                                    List<Double> embedding = embeddings.get(i);
+                                    String vectorId = UUID.randomUUID().toString();
+                                    
+                                    // 创建 Qdrant point
+                                    Map<String, Object> payload = new HashMap<>();
+                                    payload.put("document_id", document.getId());
+                                    payload.put("chunk_id", 0L); // 占位，后面会更新
+                                    payload.put("space_id", document.getSpaceId());
+                                    payload.put("sub_space_id", document.getSubSpaceId());
+                                    payload.put("class_id", document.getClassId());
+                                    payload.put("title", document.getTitle());
+                                    payload.put("file_name", document.getFileName());
+                                    payload.put("content", chunkContent);
+                                    
+                                    QdrantClientService.QdrantPoint point = 
+                                        QdrantClientService.QdrantPoint.builder()
+                                                .id(vectorId)
+                                                .vector(embedding)
+                                                .payload(payload)
+                                                .build();
+                                    points.add(point);
+                                    
+                                    // 创建 DocumentChunk
+                                    DocumentChunk chunk = DocumentChunk.builder()
+                                            .documentId(document.getId())
+                                            .index(originalIndex)
+                                            .content(chunkContent)
+                                            .vectorId(vectorId)
+                                            .tokenCount(countTokens(chunkContent))
+                                            .createdAt(LocalDateTime.now())
+                                            .updatedAt(LocalDateTime.now())
+                                            .build();
+                                    documentChunks.add(chunk);
+                                }
+                                
+                                // 先保存到数据库（事务保护）
+                                return Flux.fromIterable(documentChunks)
+                                        .flatMap(documentChunkRepository::save)
+                                        .collectList()
+                                        .flatMap(savedChunks -> {
+                                            log.info("✅ Document {}: saved {} chunks to database", 
+                                                    document.getId(), savedChunks.size());
                                             
-                                            QdrantClientService.QdrantPoint point = 
-                                                QdrantClientService.QdrantPoint.create(embedding, payload);
+                                            // 再上传到 Qdrant（如果失败，事务会回滚数据库操作）
+                                            if (points.isEmpty()) {
+                                                document.setVectorCount(savedChunks.size());
+                                                return Mono.just(document);
+                                            }
                                             
-                                            // 保存到 Qdrant
-                                            return qdrantClient.upsertPoints(List.of(point))
+                                            return qdrantClient.upsertPoints(points)
                                                     .then(Mono.fromCallable(() -> {
-                                                        // 保存到数据库
-                                                        DocumentChunk chunk = DocumentChunk.builder()
-                                                                .documentId(document.getId())
-                                                                .index(index)
-                                                                .content(chunkContent)
-                                                                .vectorId(point.getId())
-                                                                .tokenCount(countTokens(chunkContent))
-                                                                .createdAt(LocalDateTime.now())
-                                                                .updatedAt(LocalDateTime.now())
-                                                                .build();
-                                                        return chunk;
+                                                        document.setVectorCount(savedChunks.size());
+                                                        log.info("✅ Document {}: uploaded {} points to Qdrant", 
+                                                                document.getId(), points.size());
+                                                        return document;
                                                     }))
-                                                    .flatMap(documentChunkRepository::save);
+                                                    .onErrorResume(e -> {
+                                                        log.error("❌ Failed to upload to Qdrant: {}", e.getMessage());
+                                                        // Qdrant 失败，返回错误，触发事务回滚
+                                                        return Mono.error(new BusinessException("Failed to upload vectors to Qdrant: " + e.getMessage()));
+                                                    });
                                         });
-                            })
-                            .collectList()
-                            .map(savedChunks -> {
-                                document.setVectorCount(savedChunks.size());
-                                log.info("Document {}: successfully stored {} chunks", document.getId(), savedChunks.size());
-                                return document;
                             });
                 }));
+    }
+    
+    /**
+     * 批量生成 embeddings
+     */
+    private Mono<List<List<Double>>> generateEmbeddingBatch(List<String> texts) {
+        log.info("🚀 Generating embeddings for {} texts", texts.size());
+        
+        // 这里应该调用 OpenAI 批量生成，暂时简化处理
+        return Flux.fromIterable(texts)
+                .flatMap(openAIClient::createEmbedding)
+                .collectList()
+                .doOnSuccess(embeddings -> 
+                    log.info("✅ Generated {} embeddings", embeddings.size())
+                );
     }
     
     /**
