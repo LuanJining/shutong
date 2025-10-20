@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform-spring-config
+  namespace: kb-platform
+  labels:
+    app: platform-spring
+    version: v1.0.0
+data:
+  # Server Configuration
+  SERVER_PORT: "8080"
+  
+  # Database Configuration
+  SPRING_R2DBC_URL: "r2dbc:postgresql://postgres-master-service:5432/kb_platform"
+  SPRING_R2DBC_USERNAME: "postgres"
+  
+  # MinIO Configuration
+  MINIO_ENDPOINT: "http://minio-service:9000"
+  MINIO_BUCKET_NAME: "kb-documents"
+  
+  # OpenAI Configuration (使用本地 Ollama)
+  OPENAI_BASE_URL: "http://182.140.132.5:11434/v1"
+  OPENAI_API_KEY: "dummy"
+  OPENAI_MODEL: "qwen2.5:0.5b"
+  OPENAI_EMBEDDING_MODEL: "bge-large:latest"
+  OPENAI_TIMEOUT: "60s"
+  
+  # Qdrant Configuration
+  QDRANT_HOST: "qdrant-service"
+  QDRANT_PORT: "6333"
+  QDRANT_API_KEY: ""
+  QDRANT_COLLECTION_NAME: "kb_documents"
+  QDRANT_VECTOR_SIZE: "1024"
+  QDRANT_USE_HTTPS: "false"
+  
+  # PaddleOCR Configuration
+  PADDLE_OCR_URL: "http://paddleocr-service:8500"
+  PADDLE_OCR_ENABLED: "true"
+  
+  # Logging Configuration
+  LOGGING_LEVEL_ROOT: "WARN"
+  LOGGING_LEVEL_COM_KNOWLEDGEBASE: "DEBUG"
+  
+  # JVM Options
+  JAVA_OPTS: "-Xms256m -Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+

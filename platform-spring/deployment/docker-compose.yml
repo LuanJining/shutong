@@ -1,0 +1,158 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:16-alpine
+    container_name: kb-postgres
+    environment:
+      POSTGRES_DB: kb_platform
+      POSTGRES_USER: kb_user
+      POSTGRES_PASSWORD: kb_password
+      TZ: Asia/Shanghai
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../database/init-database.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kb_user -d kb_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kb-network
+
+  # MinIO 对象存储
+  minio:
+    image: minio/minio:latest
+    container_name: kb-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      TZ: Asia/Shanghai
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - kb-network
+
+  # Qdrant 向量数据库
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: kb-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    environment:
+      TZ: Asia/Shanghai
+    networks:
+      - kb-network
+
+  # PaddleOCR 服务 (可选)
+  paddleocr:
+    image: harbor.kunxiangtech.com:8443/kb-platform/paddleocr:v1.0.0
+    container_name: kb-paddleocr
+    ports:
+      - "8500:8500"
+    environment:
+      TZ: Asia/Shanghai
+    networks:
+      - kb-network
+
+  # Spring Boot 应用
+  platform-spring:
+    build:
+      context: ../..
+      dockerfile: deployment/dockerfile/Dockerfile.platform-spring
+    container_name: platform-spring
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    environment:
+      # Server
+      SERVER_PORT: 8080
+      
+      # Database
+      SPRING_R2DBC_URL: r2dbc:postgresql://postgres:5432/kb_platform
+      SPRING_R2DBC_USERNAME: kb_user
+      SPRING_R2DBC_PASSWORD: kb_password
+      
+      # JWT
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production-min-512-bits
+      JWT_EXPIRATION: 86400
+      JWT_REFRESH_EXPIRATION: 604800
+      
+      # MinIO
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET_NAME: kb-documents
+      
+      # OpenAI (使用本地 Ollama，需要单独部署)
+      OPENAI_API_KEY: dummy
+      OPENAI_BASE_URL: http://host.docker.internal:11434/v1
+      OPENAI_MODEL: qwen2.5:0.5b
+      OPENAI_EMBEDDING_MODEL: bge-large:latest
+      OPENAI_TIMEOUT: 60s
+      
+      # Qdrant
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      QDRANT_API_KEY: ""
+      QDRANT_COLLECTION_NAME: kb_documents
+      QDRANT_VECTOR_SIZE: 1024
+      QDRANT_USE_HTTPS: false
+      
+      # PaddleOCR
+      PADDLE_OCR_URL: http://paddleocr:8500
+      PADDLE_OCR_ENABLED: true
+      
+      # Logging
+      LOGGING_LEVEL_ROOT: WARN
+      LOGGING_LEVEL_COM_KNOWLEDGEBASE: DEBUG
+      
+      # JVM
+      JAVA_OPTS: "-Xms256m -Xmx512m -XX:+UseG1GC"
+      
+      TZ: Asia/Shanghai
+    ports:
+      - "8080:8080"
+    volumes:
+      - app-logs:/app/logs
+    networks:
+      - kb-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  postgres-data:
+    driver: local
+  minio-data:
+    driver: local
+  qdrant-data:
+    driver: local
+  app-logs:
+    driver: local
+
+networks:
+  kb-network:
+    driver: bridge
+
