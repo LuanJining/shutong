@@ -76,7 +76,7 @@ public class WorkflowController {
                                                 Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         return workflowService.approveTask(request.getTaskId(), userId, request.getComment(), 
-                                          Task.STATUS_APPROVED.equals(request.getStatus()))
+                                          request.getStatus())
                 .map(task -> ApiResponse.success("审批任务成功", task));
     }
     

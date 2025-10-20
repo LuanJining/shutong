@@ -25,6 +25,7 @@ import com.knowledgebase.platformspring.dto.TagCloudResponse;
 import com.knowledgebase.platformspring.exception.BusinessException;
 import com.knowledgebase.platformspring.model.Document;
 import com.knowledgebase.platformspring.model.DocumentChunk;
+import com.knowledgebase.platformspring.model.Workflow;
 import com.knowledgebase.platformspring.repository.DocumentChunkRepository;
 import com.knowledgebase.platformspring.repository.DocumentRepository;
 import com.knowledgebase.platformspring.repository.SpaceRepository;
@@ -34,6 +35,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * 文档服务 - 整合所有文档相关功能
@@ -52,6 +54,7 @@ public class DocumentService {
     @SuppressWarnings("unused") // Reserved for future OCR implementation
     private final PaddleOCRClientService ocrClient;
     private final QdrantClientService qdrantClient;
+    private final WorkflowService workflowService;
     
     public Mono<Document> uploadDocument(FilePart filePart, Long spaceId, Long subSpaceId, 
                                         Long classId, Long userId, String nickName,
@@ -105,88 +108,283 @@ public class DocumentService {
                                 ).thenReturn(savedDoc);
                             })
                 )
-                .flatMap(doc -> processDocument(doc.getId()));
-    }
-    
-    public Mono<Document> processDocument(Long documentId) {
-        return documentRepository.findById(documentId)
-                .switchIfEmpty(Mono.error(BusinessException.notFound("Document not found")))
-                .flatMap(document -> {
-                    document.setStatus(Document.STATUS_PROCESSING);
-                    return documentRepository.save(document);
-                })
-                .flatMap(this::extractText)
-                .flatMap(this::chunkAndVectorize)
-                .flatMap(document -> {
-                    document.setStatus(Document.STATUS_PENDING_PUBLISH);
-                    document.setProcessedAt(LocalDateTime.now());
-                    return documentRepository.save(document);
-                })
-                .onErrorResume(e -> {
-                    log.error("Failed to process document: {}", documentId, e);
-                    return documentRepository.findById(documentId)
-                            .flatMap(doc -> {
-                                doc.setStatus(Document.STATUS_PROCESS_FAILED);
-                                doc.setParseError(e.getMessage());
-                                doc.setRetryCount(doc.getRetryCount() + 1);
-                                return documentRepository.save(doc);
-                            });
+                .doOnSuccess(doc -> {
+                    // 异步处理文档（OCR/向量化）
+                    processDocumentAsync(doc.getId())
+                            .subscribeOn(Schedulers.boundedElastic())
+                            .subscribe(
+                                    result -> log.info("Document {} processed successfully", doc.getId()),
+                                    error -> log.error("Failed to process document {}: {}", doc.getId(), error.getMessage())
+                            );
                 });
     }
     
-    private Mono<Document> extractText(Document document) {
-        // For now, just return the document
-        // TODO: Implement OCR and text extraction
-        document.setContent("Extracted text content");
-        return Mono.just(document);
+    /**
+     * 异步处理文档，不阻塞上传请求
+     */
+    private Mono<Document> processDocumentAsync(Long documentId) {
+        return processDocument(documentId);
     }
     
+    public Mono<Document> processDocument(Long documentId) {
+        log.info("ProcessDocument started for document ID: {}", documentId);
+        
+        return documentRepository.findById(documentId)
+                .switchIfEmpty(Mono.error(BusinessException.notFound("Document not found")))
+                // 1. 更新状态为处理中 (10%)
+                .flatMap(document -> {
+                    return updateDocumentStatus(documentId, Document.STATUS_PROCESSING, 10, "开始处理文档...")
+                            .thenReturn(document);
+                })
+                // 2. 从 MinIO 下载并提取文本 (20-60%)
+                .flatMap(document -> downloadAndExtractText(document)
+                        .flatMap(text -> {
+                            // ⭐ 保存 content 到数据库
+                            document.setContent(text);
+                            return documentRepository.save(document);
+                        })
+                        .flatMap(savedDoc -> updateDocumentStatus(documentId, Document.STATUS_PROCESSING, 60, "文本提取完成，开始分块...")
+                                .thenReturn(savedDoc)))
+                // 3. 分块 (70%)
+                .flatMap(document -> updateDocumentStatus(documentId, Document.STATUS_VECTORIZING, 70, "开始向量化处理...")
+                        .thenReturn(document))
+                // 4. 向量化并存储chunks（创建 DocumentChunk 记录和 Qdrant points）
+                .flatMap(this::chunkAndVectorize)
+                // 5. 更新 processed_at 和清空 parse_error
+                .flatMap(document -> {
+                    document.setProcessedAt(LocalDateTime.now());
+                    document.setParseError(""); // 清空错误信息
+                    return documentRepository.save(document);
+                })
+                // 6. 根据 needApproval 决定最终状态
+                .flatMap(document -> {
+                    if (Boolean.TRUE.equals(document.getNeedApproval())) {
+                        // 需要审批：创建并启动审批流程
+                        return createAndStartWorkflow(document)
+                                .flatMap(workflow -> {
+                                    document.setWorkflowId(workflow.getId());
+                                    return updateDocumentStatus(documentId, Document.STATUS_PENDING_APPROVAL, 100, "处理完成，等待审批");
+                                })
+                                .onErrorResume(e -> {
+                                    log.error("Failed to create workflow for document {}: {}", documentId, e.getMessage());
+                                    // 审批流程创建失败，直接设为待发布
+                                    return updateDocumentStatus(documentId, Document.STATUS_PENDING_PUBLISH, 100, "处理完成，但审批流程创建失败，已设为待发布");
+                                });
+                    } else {
+                        // 不需要审批：直接设为待发布
+                        return updateDocumentStatus(documentId, Document.STATUS_PENDING_PUBLISH, 100, "处理完成，待发布");
+                    }
+                })
+                .onErrorResume(e -> {
+                    log.error("Failed to process document {}: {}", documentId, e.getMessage(), e);
+                    return markDocumentProcessingError(documentId, e);
+                });
+    }
+    
+    /**
+     * 从 MinIO 下载文件并提取文本
+     */
+    private Mono<String> downloadAndExtractText(Document document) {
+        return updateDocumentStatus(document.getId(), Document.STATUS_PROCESSING, 20, "下载文件完成，开始读取...")
+                .flatMap(doc -> minioClient.downloadFile(document.getFilePath()))
+                .flatMap(inputStream -> {
+                    try {
+                        byte[] fileBytes = inputStream.readAllBytes();
+                        inputStream.close();
+                        
+                        return updateDocumentStatus(document.getId(), Document.STATUS_PROCESSING, 30, "开始文本提取...")
+                                .flatMap(d -> extractPlainText(document.getFileType(), fileBytes, document));
+                    } catch (Exception e) {
+                        return Mono.error(new BusinessException("Failed to read file: " + e.getMessage()));
+                    }
+                });
+    }
+    
+    /**
+     * 提取纯文本（支持多种格式）
+     */
+    private Mono<String> extractPlainText(String fileType, byte[] data, Document document) {
+        String text;
+        
+        switch (fileType.toLowerCase()) {
+            case ".txt":
+            case ".md":
+            case ".csv":
+            case ".log":
+                text = new String(data);
+                break;
+            case ".json":
+                text = new String(data);
+                break;
+            default:
+                // 不支持的格式，尝试 OCR（如果配置了）
+                log.warn("Unsupported file type: {}, OCR not implemented yet", fileType);
+                return Mono.error(new BusinessException("Unsupported file type: " + fileType));
+        }
+        
+        if (text == null || text.trim().isEmpty()) {
+            return Mono.error(new BusinessException("Empty text extracted from document"));
+        }
+        
+        return Mono.just(text);
+    }
+    
+    /**
+     * 更新文档状态和进度
+     */
+    private Mono<Document> updateDocumentStatus(Long documentId, String status, Integer progress, String message) {
+        return documentRepository.findById(documentId)
+                .flatMap(doc -> {
+                    doc.setStatus(status);
+                    doc.setProcessProgress(progress);
+                    log.info("Document {} status updated: {} ({}%) - {}", documentId, status, progress, message);
+                    return documentRepository.save(doc);
+                });
+    }
+    
+    /**
+     * 标记文档处理错误
+     */
+    private Mono<Document> markDocumentProcessingError(Long documentId, Throwable error) {
+        return documentRepository.findById(documentId)
+                .flatMap(doc -> {
+                    doc.setStatus(Document.STATUS_PROCESS_FAILED);
+                    doc.setParseError(error.getMessage());
+                    doc.setProcessProgress(0);
+                    doc.setVectorCount(0);
+                    log.error("Document {} marked as process_failed: {}", documentId, error.getMessage());
+                    return documentRepository.save(doc);
+                });
+    }
+    
+    /**
+     * 分块并向量化（先删除旧 chunks，然后批量处理）
+     */
     private Mono<Document> chunkAndVectorize(Document document) {
         if (document.getContent() == null || document.getContent().isEmpty()) {
             return Mono.just(document);
         }
         
-        // Simple chunking: split by paragraphs
-        String[] chunks = document.getContent().split("\n\n");
+        // 使用固定大小分块策略 (800字符一块，120字符重叠)
+        List<String> chunks = splitIntoChunks(document.getContent(), 800, 120);
         
-        return Flux.fromArray(chunks)
-                .index()
-                .flatMap(tuple -> {
-                    String chunkContent = tuple.getT2();
-                    int index = tuple.getT1().intValue();
-                    
+        if (chunks.isEmpty()) {
+            return Mono.error(new BusinessException("No valid chunks to store"));
+        }
+        
+        log.info("Document {}: preparing to generate embeddings for {} chunks", document.getId(), chunks.size());
+        
+        // 1. 先删除旧的 chunks
+        return documentChunkRepository.deleteByDocumentId(document.getId())
+                .then(Mono.defer(() -> {
+                    // 2. 批量生成 embeddings 并存储
+                    return Flux.fromIterable(chunks)
+                            .index()
+                            .flatMap(tuple -> {
+                                String chunkContent = tuple.getT2();
+                                int index = tuple.getT1().intValue();
+                                
                                 return openAIClient.createEmbedding(chunkContent)
-                            .flatMap(embedding -> {
-                                // Save to Qdrant
-                                Map<String, Object> payload = new HashMap<>();
-                                payload.put("document_id", document.getId());
-                                payload.put("index", index);
-                                payload.put("content", chunkContent);
-                                
-                                QdrantClientService.QdrantPoint point = 
-                                    QdrantClientService.QdrantPoint.create(embedding, payload);
-                                
-                                return qdrantClient.upsertPoints(List.of(point))
-                                        .then(Mono.fromCallable(() -> {
-                                            DocumentChunk chunk = DocumentChunk.builder()
-                                                    .documentId(document.getId())
-                                                    .index(index)
-                                                    .content(chunkContent)
-                                                    .vectorId(point.getId())
-                                                    .tokenCount(chunkContent.length() / 4) // 简单估算
-                                                    .createdAt(LocalDateTime.now())
-                                                    .updatedAt(LocalDateTime.now())
-                                                    .build();
-                                            return chunk;
-                                        }));
+                                        .flatMap(embedding -> {
+                                            // 创建 Qdrant point
+                                            Map<String, Object> payload = new HashMap<>();
+                                            payload.put("document_id", document.getId());
+                                            payload.put("space_id", document.getSpaceId());
+                                            payload.put("sub_space_id", document.getSubSpaceId());
+                                            payload.put("class_id", document.getClassId());
+                                            payload.put("index", index);
+                                            payload.put("content", chunkContent);
+                                            
+                                            QdrantClientService.QdrantPoint point = 
+                                                QdrantClientService.QdrantPoint.create(embedding, payload);
+                                            
+                                            // 保存到 Qdrant
+                                            return qdrantClient.upsertPoints(List.of(point))
+                                                    .then(Mono.fromCallable(() -> {
+                                                        // 保存到数据库
+                                                        DocumentChunk chunk = DocumentChunk.builder()
+                                                                .documentId(document.getId())
+                                                                .index(index)
+                                                                .content(chunkContent)
+                                                                .vectorId(point.getId())
+                                                                .tokenCount(countTokens(chunkContent))
+                                                                .createdAt(LocalDateTime.now())
+                                                                .updatedAt(LocalDateTime.now())
+                                                                .build();
+                                                        return chunk;
+                                                    }))
+                                                    .flatMap(documentChunkRepository::save);
+                                        });
                             })
-                            .flatMap(documentChunkRepository::save);
-                })
-                .collectList()
-                .map(chunks1 -> {
-                    document.setVectorCount(chunks1.size());
-                    return document;
-                });
+                            .collectList()
+                            .map(savedChunks -> {
+                                document.setVectorCount(savedChunks.size());
+                                log.info("Document {}: successfully stored {} chunks", document.getId(), savedChunks.size());
+                                return document;
+                            });
+                }));
+    }
+    
+    /**
+     * 分块策略：固定大小 + 重叠
+     */
+    private List<String> splitIntoChunks(String text, int chunkSize, int overlap) {
+        List<String> chunks = new ArrayList<>();
+        int start = 0;
+        
+        while (start < text.length()) {
+            int end = Math.min(start + chunkSize, text.length());
+            String chunk = text.substring(start, end).trim();
+            
+            if (!chunk.isEmpty()) {
+                chunks.add(chunk);
+            }
+            
+            start += chunkSize - overlap;
+        }
+        
+        return chunks;
+    }
+    
+    /**
+     * 简单的 token 计数（估算）
+     */
+    private int countTokens(String text) {
+        // 简单估算：平均 4 个字符 = 1 个 token
+        return text.length() / 4;
+    }
+    
+    /**
+     * 创建并启动审批流程（对齐 Go 版本）
+     */
+    private Mono<Workflow> createAndStartWorkflow(Document document) {
+        // 1. 创建 Workflow（包含 Step）
+        return workflowService.createWorkflowWithStep(
+                document.getSpaceId(),
+                document.getId(),
+                "document",
+                document.getCreatedBy()
+        )
+        .flatMap(workflow -> {
+            // 2. 更新文档的 workflow_id
+            document.setWorkflowId(workflow.getId());
+            return documentRepository.save(document)
+                    .thenReturn(workflow);
+        })
+        .flatMap(workflow -> {
+            // 3. 启动审批流程（创建 Task）
+            return workflowService.startWorkflow(
+                    workflow.getId(),
+                    document.getSpaceId(),
+                    document.getCreatedBy()
+            );
+        })
+        .doOnSuccess(workflow -> 
+            log.info("Workflow {} created and started for document {}", workflow.getId(), document.getId())
+        )
+        .doOnError(e -> 
+            log.error("Failed to create/start workflow for document {}: {}", document.getId(), e.getMessage())
+        );
     }
     
     public Flux<Document> getDocumentsBySpaceId(Long spaceId) {
