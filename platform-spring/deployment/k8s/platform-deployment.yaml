@@ -25,85 +25,13 @@ spec:
             - containerPort: 8080
               name: http
               protocol: TCP
-          env:
-            # 从 ConfigMap 读取环境变量
-            - name: SERVER_PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: platform-spring-config
-                  key: SERVER_PORT
-            - name: SPRING_R2DBC_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: platform-spring-config
-                  key: SPRING_R2DBC_URL
-            - name: SPRING_R2DBC_USERNAME
-              valueFrom:
-                configMapKeyRef:
-                  name: platform-spring-config
-                  key: SPRING_R2DBC_USERNAME
-            - name: MINIO_ENDPOINT
-              valueFrom:
-                configMapKeyRef:
-                  name: platform-spring-config
-                  key: MINIO_ENDPOINT
-            - name: MINIO_BUCKET_NAME
-              valueFrom:
-                configMapKeyRef:
-                  name: platform-spring-config
-                  key: MINIO_BUCKET_NAME
-            - name: OPENAI_BASE_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: platform-spring-config
-                  key: OPENAI_BASE_URL
-            - name: OPENAI_MODEL
-              valueFrom:
-                configMapKeyRef:
-                  name: platform-spring-config
-                  key: OPENAI_MODEL
-            - name: QDRANT_HOST
-              valueFrom:
-                configMapKeyRef:
-                  name: platform-spring-config
-                  key: QDRANT_HOST
-            - name: QDRANT_PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: platform-spring-config
-                  key: QDRANT_PORT
-            - name: PADDLE_OCR_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: platform-spring-config
-                  key: PADDLE_OCR_URL
-            - name: JAVA_OPTS
-              valueFrom:
-                configMapKeyRef:
-                  name: platform-spring-config
-                  key: JAVA_OPTS
-            
-            # 从 Secret 读取敏感信息
-            - name: SPRING_R2DBC_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: platform-spring-secret
-                  key: SPRING_R2DBC_PASSWORD
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: platform-spring-secret
-                  key: JWT_SECRET
-            - name: MINIO_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: platform-spring-secret
-                  key: MINIO_ACCESS_KEY
-            - name: MINIO_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: platform-spring-secret
-                  key: MINIO_SECRET_KEY
+          envFrom:
+            # 从 ConfigMap 批量导入环境变量
+            - configMapRef:
+                name: platform-spring-config
+            # 从 Secret 批量导入敏感信息
+            - secretRef:
+                name: platform-spring-secret
           
           resources:
             requests:

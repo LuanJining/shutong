@@ -10,36 +10,36 @@ data:
   # Server Configuration
   SERVER_PORT: "8080"
   
-  # Database Configuration
+  # Database Configuration (spring.r2dbc.*)
   SPRING_R2DBC_URL: "r2dbc:postgresql://postgres-master-service:5432/kb_platform"
   SPRING_R2DBC_USERNAME: "postgres"
   
-  # MinIO Configuration
-  MINIO_ENDPOINT: "http://minio-service:9000"
-  MINIO_BUCKET_NAME: "kb-documents"
+  # MinIO Configuration (app.minio.*)
+  APP_MINIO_ENDPOINT: "http://minio-service:9000"
+  APP_MINIO_BUCKET_NAME: "kb-documents"
   
-  # OpenAI Configuration (使用本地 Ollama)
-  OPENAI_BASE_URL: "http://182.140.132.5:11434/v1"
-  OPENAI_API_KEY: "dummy"
-  OPENAI_MODEL: "qwen2.5:0.5b"
-  OPENAI_EMBEDDING_MODEL: "bge-large:latest"
-  OPENAI_TIMEOUT: "60s"
+  # OpenAI Configuration (app.openai.*)
+  APP_OPENAI_BASE_URL: "http://182.140.132.5:11434/v1"
+  APP_OPENAI_API_KEY: "dummy"
+  APP_OPENAI_MODEL: "qwen2.5:0.5b"
+  APP_OPENAI_EMBEDDING_MODEL: "bge-large:latest"
+  APP_OPENAI_TIMEOUT: "60s"
   
-  # Qdrant Configuration
-  QDRANT_HOST: "qdrant-service"
-  QDRANT_PORT: "6333"
-  QDRANT_API_KEY: ""
-  QDRANT_COLLECTION_NAME: "kb_documents"
-  QDRANT_VECTOR_SIZE: "1024"
-  QDRANT_USE_HTTPS: "false"
+  # Qdrant Configuration (app.qdrant.*)
+  APP_QDRANT_HOST: "qdrant-service"
+  APP_QDRANT_PORT: "6333"
+  APP_QDRANT_API_KEY: ""
+  APP_QDRANT_COLLECTION_NAME: "kb_documents"
+  APP_QDRANT_VECTOR_SIZE: "1024"
+  APP_QDRANT_USE_HTTPS: "false"
   
-  # PaddleOCR Configuration
-  PADDLE_OCR_URL: "http://paddleocr-service:8500"
-  PADDLE_OCR_ENABLED: "true"
+  # PaddleOCR Configuration (app.paddle-ocr.*)
+  APP_PADDLE_OCR_URL: "http://paddleocr-service:8500"
+  APP_PADDLE_OCR_ENABLED: "true"
   
   # Logging Configuration
   LOGGING_LEVEL_ROOT: "WARN"
-  LOGGING_LEVEL_COM_KNOWLEDGEBASE: "DEBUG"
+  LOGGING_LEVEL_COM_KNOWLEDGEBASE_PLATFORMSPRING: "DEBUG"
   
   # JVM Options
   JAVA_OPTS: "-Xms256m -Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
