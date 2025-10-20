@@ -1,13 +1,13 @@
-import "./index.scss"
-import { marked } from "marked"
-import { Input, message, Modal, Select } from "antd"
-import { useEffect, useRef, useState } from "react"
-import { LoadingOutlined } from "@ant-design/icons"
-import { OPTIONS_TYPE } from "@/types/common"
-import ServiceImg from "@/assets/images/service.png"
 import api_frontend from "@/api/api_frontend"
-import storage from "@/utils/storage"
+import ServiceImg from "@/assets/images/service.png"
 import _caches from "@/config/caches"
+import { OPTIONS_TYPE } from "@/types/common"
+import storage from "@/utils/storage"
+import { LoadingOutlined } from "@ant-design/icons"
+import { Input, message, Modal, Select } from "antd"
+import { marked } from "marked"
+import { useEffect, useRef, useState } from "react"
+import "./index.scss"
 
 export default function Index() {
     const [konwledges, setKonwledges] = useState<OPTIONS_TYPE[]>([])
@@ -18,7 +18,7 @@ export default function Index() {
     const abortController = useRef<any>(null)
     const chatBoxRef = useRef<any>(null)
     const chatContainerRef = useRef<any>(null)
-    const fetchUrl: string = `${import.meta.env['VITE_API_URL']}/kb/${space_id}/chat/stream`;
+    const fetchUrl: string = `${import.meta.env['VITE_API_URL']}/documents/chat/stream`;
 
     useEffect(() => { getSpaces() }, [])
     useEffect(() => { setSpaceId(konwledges?.[0]?.value) }, [konwledges])
@@ -81,9 +81,7 @@ export default function Index() {
                 },
                 body: JSON.stringify({
                     space_id,
-                    question: keyword,
-                    document_ids: [],
-                    limit: 3,
+                    question: keyword
                 }),
             });
             if (!response.ok) throw new Error('请求失败');
