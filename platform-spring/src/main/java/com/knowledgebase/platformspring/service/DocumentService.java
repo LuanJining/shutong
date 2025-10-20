@@ -54,20 +54,36 @@ public class DocumentService {
     private final QdrantClientService qdrantClient;
     
     public Mono<Document> uploadDocument(FilePart filePart, Long spaceId, Long subSpaceId, 
-                                        Long classId, Long userId, String nickName) {
+                                        Long classId, Long userId, String nickName,
+                                        String fileName, String tags, String summary,
+                                        String department, Boolean needApproval, 
+                                        String version, String useType) {
         
-        String fileName = filePart.filename();
         String objectName = "documents/" + UUID.randomUUID().toString() + "_" + fileName;
+        String fileExt = fileName.contains(".") ? 
+                fileName.substring(fileName.lastIndexOf(".")) : "";
+        String title = fileName.contains(".") ?
+                fileName.substring(0, fileName.lastIndexOf(".")) : fileName;
+        
+        Long fileSize = filePart.headers().getContentLength();
         
         Document document = Document.builder()
-                .title(fileName)
+                .title(title)
                 .fileName(fileName)
                 .filePath(objectName)
+                .fileType(fileExt)
+                .fileSize(fileSize)
                 .spaceId(spaceId)
                 .subSpaceId(subSpaceId)
                 .classId(classId)
                 .createdBy(userId)
                 .creatorNickName(nickName)
+                .department(department)
+                .tags(tags)
+                .summary(summary)
+                .needApproval(needApproval != null ? needApproval : false)
+                .version(version)
+                .useType(useType)
                 .status(Document.STATUS_UPLOADING)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())

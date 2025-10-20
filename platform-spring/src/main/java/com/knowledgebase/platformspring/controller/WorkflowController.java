@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.knowledgebase.platformspring.dto.ApiResponse;
@@ -62,8 +63,8 @@ public class WorkflowController {
     @GetMapping("/tasks")
     public Mono<ApiResponse<PaginationResponse<List<Task>>>> getTasks(
             Authentication authentication,
-            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "1") Integer page,
-            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "10") Integer pageSize) {
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
         Long userId = (Long) authentication.getPrincipal();
         return workflowService.getTasksPaginated(userId, page, pageSize)
                 .map(ApiResponse::success);

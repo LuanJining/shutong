@@ -5,8 +5,10 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 
 import com.knowledgebase.platformspring.exception.BusinessException;
+import com.knowledgebase.platformspring.model.KnowledgeClass;
 import com.knowledgebase.platformspring.model.Space;
 import com.knowledgebase.platformspring.model.SubSpace;
+import com.knowledgebase.platformspring.repository.ClassRepository;
 import com.knowledgebase.platformspring.repository.SpaceRepository;
 import com.knowledgebase.platformspring.repository.SubSpaceRepository;
 
@@ -20,6 +22,7 @@ public class SpaceService {
     
     private final SpaceRepository spaceRepository;
     private final SubSpaceRepository subSpaceRepository;
+    private final ClassRepository classRepository;
     
     public Flux<Space> getAllSpaces() {
         return spaceRepository.findAll();
@@ -68,6 +71,15 @@ public class SpaceService {
         subSpace.setStatus(1);
         
         return subSpaceRepository.save(subSpace);
+    }
+    
+    public Mono<KnowledgeClass> createKnowledgeClass(KnowledgeClass knowledgeClass, Long userId) {
+        knowledgeClass.setCreatedBy(userId);
+        knowledgeClass.setCreatedAt(LocalDateTime.now());
+        knowledgeClass.setUpdatedAt(LocalDateTime.now());
+        knowledgeClass.setStatus(1);
+        
+        return classRepository.save(knowledgeClass);
     }
 }
 

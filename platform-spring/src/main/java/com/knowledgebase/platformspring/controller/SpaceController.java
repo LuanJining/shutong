@@ -11,8 +11,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.knowledgebase.platformspring.dto.ApiResponse;
+import com.knowledgebase.platformspring.model.KnowledgeClass;
 import com.knowledgebase.platformspring.model.Space;
+import com.knowledgebase.platformspring.model.SpaceMember;
 import com.knowledgebase.platformspring.model.SubSpace;
+import com.knowledgebase.platformspring.service.SpaceMemberService;
 import com.knowledgebase.platformspring.service.SpaceService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,6 +34,7 @@ import reactor.core.publisher.Mono;
 public class SpaceController {
     
     private final SpaceService spaceService;
+    private final SpaceMemberService spaceMemberService;
     
     @Operation(summary = "获取所有空间", description = "获取当前用户可访问的所有知识空间")
     @GetMapping
@@ -83,5 +87,50 @@ public class SpaceController {
         return spaceService.createSubSpace(subSpace, userId)
                 .map(created -> ApiResponse.success("SubSpace created successfully", created));
     }
+
+    @Operation(summary = "创建知识分类", description = "在指定子空间下创建新的知识分类")
+    @PostMapping("/classes")
+    public Mono<ApiResponse<KnowledgeClass>> createClass(@Valid @RequestBody KnowledgeClass knowledgeClass,
+                                                        Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        return spaceService.createKnowledgeClass(knowledgeClass, userId)
+                .map(created -> ApiResponse.success("知识分类创建成功", created));
+    }
+    
+    @Operation(summary = "获取空间成员", description = "获取指定空间的所有成员")
+    @GetMapping("/{id}/members")
+    public Flux<SpaceMember> getSpaceMembers(@PathVariable Long id) {
+        return spaceMemberService.getSpaceMembers(id);
+    }
+    
+    @Operation(summary = "添加空间成员", description = "将用户添加到空间并分配角色")
+    @PostMapping("/{id}/members")
+    public Mono<ApiResponse<SpaceMember>> addSpaceMember(
+            @PathVariable Long id,
+            @RequestBody AddMemberRequest request) {
+        return spaceMemberService.addSpaceMember(id, request.userId, request.roles)
+                .map(member -> ApiResponse.success("成员添加成功", member));
+    }
+    
+    @Operation(summary = "移除空间成员", description = "从空间中移除指定用户")
+    @DeleteMapping("/{id}/members/{userId}")
+    public Mono<ApiResponse<Void>> removeSpaceMember(@PathVariable Long id, 
+                                                      @PathVariable Long userId) {
+        return spaceMemberService.removeSpaceMember(id, userId)
+                .then(Mono.just(ApiResponse.<Void>success("成员移除成功", null)));
+    }
+    
+    @Operation(summary = "更新成员角色", description = "更新空间成员的角色")
+    @PutMapping("/{id}/members/{userId}")
+    public Mono<ApiResponse<SpaceMember>> updateMemberRoles(
+            @PathVariable Long id,
+            @PathVariable Long userId,
+            @RequestBody UpdateMemberRolesRequest request) {
+        return spaceMemberService.updateSpaceMemberRoles(id, userId, request.roles)
+                .map(member -> ApiResponse.success("成员角色更新成功", member));
+    }
+    
+    public record AddMemberRequest(Long userId, java.util.List<String> roles) {}
+    public record UpdateMemberRolesRequest(java.util.List<String> roles) {}
 }
 

@@ -48,20 +48,47 @@ public class DocumentController {
     private final UserRepository userRepository;
     
     @Operation(summary = "上传文档", description = "上传文档文件并自动进行OCR和向量化处理")
-    @PostMapping("/upload")
+    @PostMapping(value = "/upload", consumes = "multipart/form-data")
     public Mono<ApiResponse<Document>> uploadDocument(
             @RequestPart("file") FilePart filePart,
-            @RequestParam Long spaceId,
-            @RequestParam Long subSpaceId,
-            @RequestParam Long classId,
+            @RequestPart("space_id") String spaceIdStr,
+            @RequestPart("sub_space_id") String subSpaceIdStr,
+            @RequestPart("class_id") String classIdStr,
+            @RequestPart(value = "file_name", required = false) String fileName,
+            @RequestPart(value = "tags", required = false) String tags,
+            @RequestPart(value = "summary", required = false) String summary,
+            @RequestPart(value = "department", required = false) String department,
+            @RequestPart(value = "need_approval", required = false) String needApprovalStr,
+            @RequestPart(value = "version", required = false) String version,
+            @RequestPart(value = "use_type", required = false) String useType,
             Authentication authentication) {
         
         Long userId = (Long) authentication.getPrincipal();
         
+        // 转换必需的 ID 字段
+        Long spaceId = Long.parseLong(spaceIdStr);
+        Long subSpaceId = Long.parseLong(subSpaceIdStr);
+        Long classId = Long.parseLong(classIdStr);
+        
+        // 如果没有提供file_name，使用原始文件名
+        String actualFileName = (fileName != null && !fileName.isEmpty()) ? 
+                fileName : filePart.filename();
+        
+        // 处理 Boolean 类型转换
+        Boolean needApproval = (needApprovalStr != null && !needApprovalStr.isEmpty()) ? 
+                Boolean.parseBoolean(needApprovalStr) : false;
+        
+        // 设置默认值
+        String finalVersion = (version != null && !version.isEmpty()) ? version : "v1.0.0";
+        String finalUseType = (useType != null && !useType.isEmpty()) ? useType : "viewable";
+        
         return userRepository.findById(userId)
                 .flatMap(user -> documentService.uploadDocument(
-                        filePart, spaceId, subSpaceId, classId, userId, user.getNickname()))
-                .map(doc -> ApiResponse.success("Document uploaded successfully", doc));
+                        filePart, spaceId, subSpaceId, classId, userId, user.getNickname(),
+                        actualFileName, tags, summary, 
+                        department != null ? department : user.getDepartment(),
+                        needApproval, finalVersion, finalUseType))
+                .map(doc -> ApiResponse.<Document>success("文档上传成功", doc));
     }
     
     @Operation(summary = "获取文档详情", description = "根据ID获取文档的详细信息")
@@ -75,8 +102,8 @@ public class DocumentController {
     @GetMapping("/{id}/space")
     public Mono<ApiResponse<PaginationResponse<List<Document>>>> getDocumentsBySpace(
             @PathVariable Long id,
-            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "1") Integer page,
-            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "10") Integer pageSize) {
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
         return documentService.getDocumentById(id)
                 .flatMap(doc -> documentService.getDocumentsBySpaceIdPaginated(doc.getSpaceId(), page, pageSize))
                 .map(ApiResponse::success);
@@ -99,9 +126,9 @@ public class DocumentController {
     @Operation(summary = "获取标签云", description = "获取文档标签云数据")
     @GetMapping("/tag-cloud")
     public Mono<ApiResponse<TagCloudResponse>> getTagCloud(
-            @org.springframework.web.bind.annotation.RequestParam(required = false) Long spaceId,
-            @org.springframework.web.bind.annotation.RequestParam(required = false) Long subSpaceId,
-            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "50") Integer limit) {
+            @RequestParam(required = false) Long spaceId,
+            @RequestParam(required = false) Long subSpaceId,
+            @RequestParam(defaultValue = "50") Integer limit) {
         return documentService.getTagCloud(spaceId, subSpaceId, limit)
                 .map(ApiResponse::success);
     }
