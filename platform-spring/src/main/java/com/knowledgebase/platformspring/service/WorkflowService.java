@@ -15,6 +15,7 @@ import com.knowledgebase.platformspring.repository.SpaceMemberRepository;
 import com.knowledgebase.platformspring.repository.StepRepository;
 import com.knowledgebase.platformspring.repository.TaskRepository;
 import com.knowledgebase.platformspring.repository.WorkflowRepository;
+import com.knowledgebase.platformspring.util.RequestIdUtil;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -163,11 +164,18 @@ public class WorkflowService {
      * 审批任务
      */
     public Mono<Task> approveTask(Long taskId, Long approverId, String comment, String status) {
-        log.debug("Approving task: id={}, approverId={}, status={}", taskId, approverId, status);
+        return RequestIdUtil.getRequestId()
+                .flatMap(requestId -> {
+                    log.debug("[{}] Approving task: id={}, approverId={}, status={}", requestId, taskId, approverId, status);
+                    return approveTaskInternal(taskId, approverId, comment, status, requestId);
+                });
+    }
+    
+    private Mono<Task> approveTaskInternal(Long taskId, Long approverId, String comment, String status, String requestId) {
         return taskRepository.findById(taskId)
                 .switchIfEmpty(Mono.error(BusinessException.notFound("Task not found")))
                 .flatMap(task -> {
-                    log.debug("Task found: currentStatus={}, workflowId={}", task.getStatus(), task.getWorkflowId());
+                    log.debug("[{}] Task found: currentStatus={}, workflowId={}", requestId, task.getStatus(), task.getWorkflowId());
                     // 1. 检查权限
                     if (!task.getApproverId().equals(approverId)) {
                         return Mono.error(BusinessException.forbidden("用户无权限审批任务"));

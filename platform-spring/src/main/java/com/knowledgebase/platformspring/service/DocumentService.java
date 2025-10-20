@@ -31,6 +31,7 @@ import com.knowledgebase.platformspring.repository.DocumentChunkRepository;
 import com.knowledgebase.platformspring.repository.DocumentRepository;
 import com.knowledgebase.platformspring.repository.SpaceRepository;
 import com.knowledgebase.platformspring.repository.SubSpaceRepository;
+import com.knowledgebase.platformspring.util.RequestIdUtil;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,7 +63,20 @@ public class DocumentService {
                                         String department, Boolean needApproval, 
                                         String version, String useType) {
         
-        log.debug("Starting document upload: fileName={}, spaceId={}, needApproval={}", fileName, spaceId, needApproval);
+        return RequestIdUtil.getRequestId()
+                .flatMap(requestId -> {
+                    log.debug("[{}] Starting document upload: fileName={}, spaceId={}, needApproval={}", 
+                            requestId, fileName, spaceId, needApproval);
+                    return uploadDocumentInternal(filePart, spaceId, subSpaceId, classId, userId, nickName,
+                            fileName, tags, summary, department, needApproval, version, useType, requestId);
+                });
+    }
+    
+    private Mono<Document> uploadDocumentInternal(FilePart filePart, Long spaceId, Long subSpaceId, 
+                                        Long classId, Long userId, String nickName,
+                                        String fileName, String tags, String summary,
+                                        String department, Boolean needApproval, 
+                                        String version, String useType, String requestId) {
         String objectName = "documents/" + UUID.randomUUID().toString() + "_" + fileName;
         String fileExt = fileName.contains(".") ? 
                 fileName.substring(fileName.lastIndexOf(".")) : "";
@@ -110,22 +124,22 @@ public class DocumentService {
                             })
                 )
                 .doOnSuccess(doc -> {
-                    log.debug("Document {} uploaded to MinIO, starting async processing", doc.getId());
-                    // 异步处理文档（OCR/向量化）
-                    processDocumentAsync(doc.getId())
+                    log.debug("[{}] Document {} uploaded to MinIO, starting async processing", requestId, doc.getId());
+                    // 异步处理文档（OCR/向量化）- 传递 requestId
+                    processDocumentAsync(doc.getId(), requestId)
                             .subscribeOn(Schedulers.boundedElastic())
                             .subscribe(
-                                    result -> log.info("Document {} processed successfully", doc.getId()),
-                                    error -> log.error("Failed to process document {}: {}", doc.getId(), error.getMessage())
+                                    result -> log.info("[{}] Document {} async processing completed", requestId, doc.getId()),
+                                    error -> log.error("[{}] Document {} async processing failed: {}", requestId, doc.getId(), error.getMessage())
                             );
                 });
     }
     
     /**
-     * 异步处理文档，不阻塞上传请求
+     * 异步处理文档，不阻塞上传请求（携带 requestId）
      */
-    private Mono<Document> processDocumentAsync(Long documentId) {
-        return processDocument(documentId);
+    private Mono<Document> processDocumentAsync(Long documentId, String requestId) {
+        return processDocument(documentId, requestId);
     }
     
     /**
@@ -138,7 +152,12 @@ public class DocumentService {
      * 4. Workflow 创建 - 独立事务，失败不影响文档处理
      */
     public Mono<Document> processDocument(Long documentId) {
-        log.debug("ProcessDocument started for document ID: {}", documentId);
+        // 不带 requestId 的版本（用于 retry 等场景）
+        return processDocument(documentId, "system");
+    }
+    
+    private Mono<Document> processDocument(Long documentId, String requestId) {
+        log.debug("[{}] ProcessDocument started for document ID: {}", requestId, documentId);
         
         return documentRepository.findById(documentId)
                 .switchIfEmpty(Mono.error(BusinessException.notFound("Document not found")))
@@ -157,7 +176,7 @@ public class DocumentService {
                 .flatMap(document -> finalizeDocumentStatus(document))
                 // 错误处理
                 .onErrorResume(e -> {
-                    log.error("Failed to process document {}: {}", documentId, e.getMessage(), e);
+                    log.error("[{}] Failed to process document {}: {}", requestId, documentId, e.getMessage(), e);
                     return markDocumentProcessingError(documentId, e);
                 });
     }
@@ -175,7 +194,15 @@ public class DocumentService {
      */
     @Transactional
     protected Mono<Document> processDocumentInTransaction(Document document) {
-        log.debug("Processing document {} in transaction", document.getId());
+        return RequestIdUtil.getRequestId()
+                .defaultIfEmpty("system")
+                .flatMap(requestId -> {
+                    log.debug("[{}] Processing document {} in transaction", requestId, document.getId());
+                    return processDocumentInTransactionInternal(document, requestId);
+                });
+    }
+    
+    private Mono<Document> processDocumentInTransactionInternal(Document document, String requestId) {
         
         // 1. 保存 content 到数据库
         return documentRepository.save(document)
@@ -197,8 +224,8 @@ public class DocumentService {
                     doc.setParseError(""); // 清空错误信息
                     return documentRepository.save(doc);
                 })
-                .doOnSuccess(doc -> log.debug("Document {} processed successfully in transaction", doc.getId()))
-                .doOnError(e -> log.error("Transaction failed for document {}: {}", document.getId(), e.getMessage()));
+                .doOnSuccess(doc -> log.debug("[{}] Document {} processed successfully in transaction", requestId, doc.getId()))
+                .doOnError(e -> log.error("[{}] Transaction failed for document {}: {}", requestId, document.getId(), e.getMessage()));
     }
     
     /**
@@ -242,14 +269,22 @@ public class DocumentService {
      * 从 MinIO 下载文件并提取文本
      */
     private Mono<String> downloadAndExtractText(Document document) {
-        log.debug("Downloading file from MinIO: {}", document.getFilePath());
+        return RequestIdUtil.getRequestId()
+                .defaultIfEmpty("system")
+                .flatMap(requestId -> {
+                    log.debug("[{}] Downloading file from MinIO: {}", requestId, document.getFilePath());
+                    return downloadAndExtractTextInternal(document, requestId);
+                });
+    }
+    
+    private Mono<String> downloadAndExtractTextInternal(Document document, String requestId) {
         return updateDocumentStatus(document.getId(), Document.STATUS_PROCESSING, 20, "下载文件完成，开始读取...")
                 .flatMap(doc -> minioClient.downloadFile(document.getFilePath()))
                 .flatMap(inputStream -> {
                     try {
                         byte[] fileBytes = inputStream.readAllBytes();
                         inputStream.close();
-                        log.debug("File read successfully, size: {} bytes", fileBytes.length);
+                        log.debug("[{}] File read successfully, size: {} bytes", requestId, fileBytes.length);
                         
                         return updateDocumentStatus(document.getId(), Document.STATUS_PROCESSING, 30, "开始文本提取...")
                                 .flatMap(d -> extractPlainText(document.getFileType(), fileBytes, document));
@@ -263,7 +298,15 @@ public class DocumentService {
      * 提取纯文本（支持多种格式，包括OCR）- 完全对齐 Go 版本
      */
     private Mono<String> extractPlainText(String fileType, byte[] data, Document document) {
-        log.debug("Extracting text from file type: {}", fileType);
+        return RequestIdUtil.getRequestId()
+                .defaultIfEmpty("system")
+                .flatMap(requestId -> {
+                    log.debug("[{}] Extracting text from file type: {}", requestId, fileType);
+                    return extractPlainTextInternal(fileType, data, document, requestId);
+                });
+    }
+    
+    private Mono<String> extractPlainTextInternal(String fileType, byte[] data, Document document, String requestId) {
         String text = null;
         
         // 尝试直接文本提取
@@ -286,7 +329,7 @@ public class DocumentService {
                 break;
             default:
                 // 不支持的格式，尝试 OCR
-                log.debug("Unsupported file type: {}, trying OCR...", fileType);
+                log.debug("[{}] Unsupported file type: {}, trying OCR...", requestId, fileType);
                 return updateDocumentStatus(document.getId(), Document.STATUS_PROCESSING, 40, "开始OCR识别...")
                         .then(ocrClient.recognize(document.getFileName(), data))
                         .onErrorResume(e -> {
@@ -300,7 +343,7 @@ public class DocumentService {
             return Mono.error(new BusinessException("Empty text extracted from document"));
         }
         
-        log.debug("Text extracted successfully, length: {} characters", text.length());
+        log.debug("[{}] Text extracted successfully, length: {} characters", requestId, text.length());
         return Mono.just(text);
     }
     
@@ -503,7 +546,7 @@ public class DocumentService {
     }
     
     /**
-     * 创建并启动审批流程（对齐 Go 版本）
+     * 创建并启动审批流程
      */
     private Mono<Workflow> createAndStartWorkflow(Document document) {
         log.debug("Creating and starting workflow for document {}", document.getId());
@@ -587,9 +630,7 @@ public class DocumentService {
         return documentRepository.findById(id)
                 .switchIfEmpty(Mono.error(BusinessException.notFound("Document not found")));
     }
-    
-    // ============ 从 DocumentEnhancedService 整合过来的方法 ============
-    
+
     /**
      * 获取首页展示数据 - 返回5个知识库，每个3个二级库，每个二级库6个文档
      */

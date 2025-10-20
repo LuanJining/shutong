@@ -84,6 +84,7 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    # 注意：Reactor Context 中的 requestId 需要在代码中手动添加到日志
   file:
     name: logs/application.log
     max-size: 10MB
