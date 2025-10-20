@@ -1,8 +1,10 @@
 package com.knowledgebase.platformspring.model;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -22,6 +24,9 @@ import lombok.NoArgsConstructor;
 @Table("space_members")
 public class SpaceMember {
     
+    @Id
+    private Long id;
+    
     @Column("space_id")
     private Long spaceId;
     
@@ -30,6 +35,12 @@ public class SpaceMember {
     
     @Column("roles")
     private String rolesJson; // JSON string storing list of roles
+    
+    @Column("created_at")
+    private LocalDateTime createdAt;
+    
+    @Column("updated_at")
+    private LocalDateTime updatedAt;
     
     // Helper methods to convert between List<String> and JSON string
     public List<String> getRoles() {
