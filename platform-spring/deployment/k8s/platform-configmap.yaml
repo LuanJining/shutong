@@ -15,7 +15,7 @@ data:
   SPRING_R2DBC_USERNAME: "postgres"
   
   # MinIO Configuration (app.minio.*)
-  APP_MINIO_ENDPOINT: "http://minio-service:9000"
+  APP_MINIO_ENDPOINT: "https://api.kunxiangtech.com:9000"
   APP_MINIO_BUCKET_NAME: "kb-documents"
   
   # OpenAI Configuration (app.openai.*)
