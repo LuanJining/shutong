@@ -10,6 +10,7 @@ import com.knowledgebase.platformspring.model.Document;
 import com.knowledgebase.platformspring.model.Step;
 import com.knowledgebase.platformspring.model.Task;
 import com.knowledgebase.platformspring.model.Workflow;
+import com.knowledgebase.platformspring.repository.DocumentRepository;
 import com.knowledgebase.platformspring.repository.SpaceMemberRepository;
 import com.knowledgebase.platformspring.repository.StepRepository;
 import com.knowledgebase.platformspring.repository.TaskRepository;
@@ -29,12 +30,13 @@ public class WorkflowService {
     private final TaskRepository taskRepository;
     private final StepRepository stepRepository;
     private final SpaceMemberRepository spaceMemberRepository;
-    private final com.knowledgebase.platformspring.repository.DocumentRepository documentRepository;
+    private final DocumentRepository documentRepository;
     
     /**
      * 创建包含 Step 的完整工作流（对齐 Go 版本）
      */
     public Mono<Workflow> createWorkflowWithStep(Long spaceId, Long resourceId, String resourceType, Long createdBy) {
+        log.debug("Creating workflow for resource: type={}, id={}, spaceId={}", resourceType, resourceId, spaceId);
         // 1. 创建 Workflow
         Workflow workflow = Workflow.builder()
                 .name("文档发布审批流程")
@@ -65,16 +67,20 @@ public class WorkflowService {
                                 return savedWorkflow;
                             });
                 })
-                .flatMap(workflowRepository::save);
+                .flatMap(workflowRepository::save)
+                .doOnSuccess(wf -> log.debug("Workflow {} created with step", wf.getId()))
+                .doOnError(e -> log.error("Failed to create workflow: {}", e.getMessage()));
     }
     
     /**
      * 启动工作流：创建审批任务
      */
     public Mono<Workflow> startWorkflow(Long workflowId, Long spaceId, Long createdBy) {
+        log.debug("Starting workflow: id={}, spaceId={}", workflowId, spaceId);
         return workflowRepository.findById(workflowId)
                 .switchIfEmpty(Mono.error(BusinessException.notFound("Workflow not found")))
                 .flatMap(workflow -> {
+                    log.debug("Workflow found: status={}", workflow.getStatus());
                     if (!Workflow.STATUS_PROCESSING.equals(workflow.getStatus())) {
                         return Mono.error(new BusinessException("工作流状态不正确"));
                     }
@@ -157,9 +163,11 @@ public class WorkflowService {
      * 审批任务
      */
     public Mono<Task> approveTask(Long taskId, Long approverId, String comment, String status) {
+        log.debug("Approving task: id={}, approverId={}, status={}", taskId, approverId, status);
         return taskRepository.findById(taskId)
                 .switchIfEmpty(Mono.error(BusinessException.notFound("Task not found")))
                 .flatMap(task -> {
+                    log.debug("Task found: currentStatus={}, workflowId={}", task.getStatus(), task.getWorkflowId());
                     // 1. 检查权限
                     if (!task.getApproverId().equals(approverId)) {
                         return Mono.error(BusinessException.forbidden("用户无权限审批任务"));
@@ -197,6 +205,7 @@ public class WorkflowService {
      * 处理审批通过逻辑
      */
     private Mono<Task> handleApproval(Task task, Workflow workflow, Step step) {
+        log.debug("Handling approval for task {}, step {}", task.getId(), step.getId());
         // 1. 更新 Step 状态为 approved
         step.setStatus(Step.STATUS_APPROVED);
         
@@ -248,6 +257,7 @@ public class WorkflowService {
      * 处理审批拒绝逻辑
      */
     private Mono<Task> handleRejection(Task task, Workflow workflow, Step step) {
+        log.debug("Handling rejection for task {}, step {}", task.getId(), step.getId());
         // 1. 更新 Step 状态为 rejected
         step.setStatus(Step.STATUS_REJECTED);
         

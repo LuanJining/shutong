@@ -62,6 +62,7 @@ public class DocumentService {
                                         String department, Boolean needApproval, 
                                         String version, String useType) {
         
+        log.debug("Starting document upload: fileName={}, spaceId={}, needApproval={}", fileName, spaceId, needApproval);
         String objectName = "documents/" + UUID.randomUUID().toString() + "_" + fileName;
         String fileExt = fileName.contains(".") ? 
                 fileName.substring(fileName.lastIndexOf(".")) : "";
@@ -109,6 +110,7 @@ public class DocumentService {
                             })
                 )
                 .doOnSuccess(doc -> {
+                    log.debug("Document {} uploaded to MinIO, starting async processing", doc.getId());
                     // 异步处理文档（OCR/向量化）
                     processDocumentAsync(doc.getId())
                             .subscribeOn(Schedulers.boundedElastic())
@@ -136,7 +138,7 @@ public class DocumentService {
      * 4. Workflow 创建 - 独立事务，失败不影响文档处理
      */
     public Mono<Document> processDocument(Long documentId) {
-        log.info("🎬 ProcessDocument started for document ID: {}", documentId);
+        log.debug("ProcessDocument started for document ID: {}", documentId);
         
         return documentRepository.findById(documentId)
                 .switchIfEmpty(Mono.error(BusinessException.notFound("Document not found")))
@@ -155,7 +157,7 @@ public class DocumentService {
                 .flatMap(document -> finalizeDocumentStatus(document))
                 // 错误处理
                 .onErrorResume(e -> {
-                    log.error("❌ Failed to process document {}: {}", documentId, e.getMessage(), e);
+                    log.error("Failed to process document {}: {}", documentId, e.getMessage(), e);
                     return markDocumentProcessingError(documentId, e);
                 });
     }
@@ -173,7 +175,7 @@ public class DocumentService {
      */
     @Transactional
     protected Mono<Document> processDocumentInTransaction(Document document) {
-        log.info("📦 Processing document {} in transaction", document.getId());
+        log.debug("Processing document {} in transaction", document.getId());
         
         // 1. 保存 content 到数据库
         return documentRepository.save(document)
@@ -195,8 +197,8 @@ public class DocumentService {
                     doc.setParseError(""); // 清空错误信息
                     return documentRepository.save(doc);
                 })
-                .doOnSuccess(doc -> log.info("✅ Document {} processed successfully in transaction", doc.getId()))
-                .doOnError(e -> log.error("❌ Transaction failed for document {}: {}", document.getId(), e.getMessage()));
+                .doOnSuccess(doc -> log.debug("Document {} processed successfully in transaction", doc.getId()))
+                .doOnError(e -> log.error("Transaction failed for document {}: {}", document.getId(), e.getMessage()));
     }
     
     /**
@@ -223,7 +225,7 @@ public class DocumentService {
     private Mono<Workflow> createAndStartWorkflowWithFallback(Document document) {
         return createAndStartWorkflow(document)
                 .onErrorResume(e -> {
-                    log.error("⚠️ Failed to create workflow for document {}, fallback to pending_publish: {}", 
+                    log.warn("Failed to create workflow for document {}, fallback to pending_publish: {}", 
                             document.getId(), e.getMessage());
                     // Workflow 创建失败，直接设为待发布（不阻塞文档处理）
                     return updateDocumentStatus(document.getId(), Document.STATUS_PENDING_PUBLISH, 100, 
@@ -240,12 +242,14 @@ public class DocumentService {
      * 从 MinIO 下载文件并提取文本
      */
     private Mono<String> downloadAndExtractText(Document document) {
+        log.debug("Downloading file from MinIO: {}", document.getFilePath());
         return updateDocumentStatus(document.getId(), Document.STATUS_PROCESSING, 20, "下载文件完成，开始读取...")
                 .flatMap(doc -> minioClient.downloadFile(document.getFilePath()))
                 .flatMap(inputStream -> {
                     try {
                         byte[] fileBytes = inputStream.readAllBytes();
                         inputStream.close();
+                        log.debug("File read successfully, size: {} bytes", fileBytes.length);
                         
                         return updateDocumentStatus(document.getId(), Document.STATUS_PROCESSING, 30, "开始文本提取...")
                                 .flatMap(d -> extractPlainText(document.getFileType(), fileBytes, document));
@@ -259,6 +263,7 @@ public class DocumentService {
      * 提取纯文本（支持多种格式，包括OCR）- 完全对齐 Go 版本
      */
     private Mono<String> extractPlainText(String fileType, byte[] data, Document document) {
+        log.debug("Extracting text from file type: {}", fileType);
         String text = null;
         
         // 尝试直接文本提取
@@ -281,7 +286,7 @@ public class DocumentService {
                 break;
             default:
                 // 不支持的格式，尝试 OCR
-                log.info("Unsupported file type: {}, trying OCR...", fileType);
+                log.debug("Unsupported file type: {}, trying OCR...", fileType);
                 return updateDocumentStatus(document.getId(), Document.STATUS_PROCESSING, 40, "开始OCR识别...")
                         .then(ocrClient.recognize(document.getFileName(), data))
                         .onErrorResume(e -> {
@@ -295,6 +300,7 @@ public class DocumentService {
             return Mono.error(new BusinessException("Empty text extracted from document"));
         }
         
+        log.debug("Text extracted successfully, length: {} characters", text.length());
         return Mono.just(text);
     }
     
@@ -316,9 +322,11 @@ public class DocumentService {
                 .flatMap(doc -> {
                     doc.setStatus(status);
                     doc.setProcessProgress(progress);
-                    log.info("Document {} status updated: {} ({}%) - {}", documentId, status, progress, message);
+                    log.debug("Document {} status updated: {} ({}%) - {}", documentId, status, progress, message);
                     return documentRepository.save(doc);
-                });
+                })
+                .doOnSuccess(doc -> log.debug("Document {} status saved to database", documentId))
+                .doOnError(e -> log.error("Failed to update document {} status: {}", documentId, e.getMessage()));
     }
     
     /**
@@ -362,7 +370,7 @@ public class DocumentService {
             return Mono.error(new BusinessException("No valid chunks to store"));
         }
         
-        log.info("📦 Document {}: preparing to generate embeddings for {} valid chunks", document.getId(), validChunks.size());
+        log.debug("Document {}: preparing to generate embeddings for {} valid chunks", document.getId(), validChunks.size());
         
         // 事务范围：删除旧chunks + 批量生成embeddings + 创建新chunks + 上传Qdrant + 更新document
         return documentChunkRepository.deleteByDocumentId(document.getId())
@@ -421,7 +429,7 @@ public class DocumentService {
                                         .flatMap(documentChunkRepository::save)
                                         .collectList()
                                         .flatMap(savedChunks -> {
-                                            log.info("✅ Document {}: saved {} chunks to database", 
+                                            log.debug("Document {}: saved {} chunks to database", 
                                                     document.getId(), savedChunks.size());
                                             
                                             // 再上传到 Qdrant（如果失败，事务会回滚数据库操作）
@@ -433,12 +441,12 @@ public class DocumentService {
                                             return qdrantClient.upsertPoints(points)
                                                     .then(Mono.fromCallable(() -> {
                                                         document.setVectorCount(savedChunks.size());
-                                                        log.info("✅ Document {}: uploaded {} points to Qdrant", 
+                                                        log.debug("Document {}: uploaded {} points to Qdrant", 
                                                                 document.getId(), points.size());
                                                         return document;
                                                     }))
                                                     .onErrorResume(e -> {
-                                                        log.error("❌ Failed to upload to Qdrant: {}", e.getMessage());
+                                                        log.error("Failed to upload to Qdrant: {}", e.getMessage());
                                                         // Qdrant 失败，返回错误，触发事务回滚
                                                         return Mono.error(new BusinessException("Failed to upload vectors to Qdrant: " + e.getMessage()));
                                                     });
@@ -451,14 +459,17 @@ public class DocumentService {
      * 批量生成 embeddings
      */
     private Mono<List<List<Double>>> generateEmbeddingBatch(List<String> texts) {
-        log.info("🚀 Generating embeddings for {} texts", texts.size());
+        log.debug("Generating embeddings for {} texts", texts.size());
         
         // 这里应该调用 OpenAI 批量生成，暂时简化处理
         return Flux.fromIterable(texts)
-                .flatMap(openAIClient::createEmbedding)
+                .flatMap(text -> {
+                    log.debug("Generating embedding for text (length: {})", text.length());
+                    return openAIClient.createEmbedding(text);
+                })
                 .collectList()
                 .doOnSuccess(embeddings -> 
-                    log.info("✅ Generated {} embeddings", embeddings.size())
+                    log.debug("Generated {} embeddings successfully", embeddings.size())
                 );
     }
     
@@ -495,6 +506,7 @@ public class DocumentService {
      * 创建并启动审批流程（对齐 Go 版本）
      */
     private Mono<Workflow> createAndStartWorkflow(Document document) {
+        log.debug("Creating and starting workflow for document {}", document.getId());
         // 1. 创建 Workflow（包含 Step）
         return workflowService.createWorkflowWithStep(
                 document.getSpaceId(),
@@ -504,12 +516,14 @@ public class DocumentService {
         )
         .flatMap(workflow -> {
             // 2. 更新文档的 workflow_id
+            log.debug("Updating document {} with workflow_id {}", document.getId(), workflow.getId());
             document.setWorkflowId(workflow.getId());
             return documentRepository.save(document)
                     .thenReturn(workflow);
         })
         .flatMap(workflow -> {
             // 3. 启动审批流程（创建 Task）
+            log.debug("Starting workflow {} for document {}", workflow.getId(), document.getId());
             return workflowService.startWorkflow(
                     workflow.getId(),
                     document.getSpaceId(),
@@ -546,9 +560,11 @@ public class DocumentService {
     
     
     public Mono<Document> retryProcessDocument(Long documentId, boolean forceRetry) {
+        log.debug("Retrying document processing: id={}, forceRetry={}", documentId, forceRetry);
         return documentRepository.findById(documentId)
                 .switchIfEmpty(Mono.error(BusinessException.notFound("文档不存在")))
                 .flatMap(document -> {
+                    log.debug("Document found: status={}, retryCount={}", document.getStatus(), document.getRetryCount());
                     if (!forceRetry && 
                         !Document.STATUS_PROCESS_FAILED.equals(document.getStatus()) &&
                         !Document.STATUS_FAILED.equals(document.getStatus())) {
@@ -578,6 +594,7 @@ public class DocumentService {
      * 获取首页展示数据 - 返回5个知识库，每个3个二级库，每个二级库6个文档
      */
     public Mono<HomepageResponse> getHomepageDocuments() {
+        log.debug("Getting homepage documents");
         return spaceRepository.findAll()
                 .filter(space -> space.getStatus() == 1)
                 .take(5)
@@ -711,6 +728,7 @@ public class DocumentService {
      * 与指定文档对话
      */
     public Mono<ChatDocumentResponse> chatWithDocument(Long documentId, ChatDocumentRequest request) {
+        log.debug("Chat with document: id={}, question={}", documentId, request.getQuestion());
         return documentRepository.findById(documentId)
                 .switchIfEmpty(Mono.error(BusinessException.notFound("文档不存在")))
                 .flatMap(document -> {
