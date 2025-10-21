@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.knowledgebase.platformspring.dto.ApiResponse;
+import com.knowledgebase.platformspring.dto.SpaceWithHierarchy;
 import com.knowledgebase.platformspring.model.KnowledgeClass;
 import com.knowledgebase.platformspring.model.Space;
 import com.knowledgebase.platformspring.model.SpaceMember;
@@ -38,10 +39,10 @@ public class SpaceController {
     private final SpaceService spaceService;
     private final SpaceMemberService spaceMemberService;
     
-    @Operation(summary = "获取所有空间", description = "获取当前用户可访问的所有知识空间")
+    @Operation(summary = "获取所有空间", description = "获取当前用户可访问的所有知识空间（包含子空间和分类）")
     @GetMapping
-    public Mono<ApiResponse<List<Space>>> getAllSpaces() {
-        return spaceService.getAllSpaces()
+    public Mono<ApiResponse<List<SpaceWithHierarchy>>> getAllSpaces() {
+        return spaceService.getAllSpacesWithHierarchy()
                 .collectList()
                 .map(spaces -> ApiResponse.success("Spaces retrieved successfully", spaces));
     }
