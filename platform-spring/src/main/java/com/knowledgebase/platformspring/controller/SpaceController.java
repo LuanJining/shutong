@@ -1,5 +1,7 @@
 package com.knowledgebase.platformspring.controller;
 
+import java.util.List;
+
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,8 +40,10 @@ public class SpaceController {
     
     @Operation(summary = "获取所有空间", description = "获取当前用户可访问的所有知识空间")
     @GetMapping
-    public Flux<Space> getAllSpaces() {
-        return spaceService.getAllSpaces();
+    public Mono<ApiResponse<List<Space>>> getAllSpaces() {
+        return spaceService.getAllSpaces()
+                .collectList()
+                .map(spaces -> ApiResponse.success("Spaces retrieved successfully", spaces));
     }
     
     @Operation(summary = "获取空间详情", description = "根据ID获取指定空间的详细信息")

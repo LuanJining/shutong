@@ -23,6 +23,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final UserService userService;
     
     public Mono<LoginResponse> login(LoginRequest request) {
         // 支持用户名、手机号、邮箱登录
@@ -41,7 +42,7 @@ public class AuthService {
                     
                     user.setLastLogin(LocalDateTime.now());
                     return userRepository.save(user)
-                            .map(savedUser -> {
+                            .flatMap(savedUser -> {
                                 String accessToken = jwtUtil.generateToken(savedUser.getId(), savedUser.getUsername());
                                 String refreshToken = jwtUtil.generateRefreshToken(savedUser.getId());
                                 
@@ -53,13 +54,15 @@ public class AuthService {
                                 // Clear password before returning
                                 savedUser.setPassword(null);
                                 
-                                return LoginResponse.builder()
-                                        .accessToken(accessToken)
-                                        .refreshToken(refreshToken)
-                                        .user(savedUser)
-                                        .accessTokenExpiresAt(accessExpires)
-                                        .refreshTokenExpiresAt(refreshExpires)
-                                        .build();
+                                // Get user with roles
+                                return userService.getUserWithRoles(savedUser)
+                                        .map(userWithRoles -> LoginResponse.builder()
+                                                .accessToken(accessToken)
+                                                .refreshToken(refreshToken)
+                                                .user(userWithRoles)
+                                                .accessTokenExpiresAt(accessExpires)
+                                                .refreshTokenExpiresAt(refreshExpires)
+                                                .build());
                             });
                 });
     }
@@ -104,17 +107,18 @@ public class AuthService {
         
         return userRepository.findById(userId)
                 .switchIfEmpty(Mono.error(BusinessException.notFound("User not found")))
-                .map(user -> {
+                .flatMap(user -> {
                     String newAccessToken = jwtUtil.generateToken(user.getId(), user.getUsername());
                     String newRefreshToken = jwtUtil.generateRefreshToken(user.getId());
                     
                     user.setPassword(null);
                     
-                    return LoginResponse.builder()
-                            .accessToken(newAccessToken)
-                            .refreshToken(newRefreshToken)
-                            .user(user)
-                            .build();
+                    return userService.getUserWithRoles(user)
+                            .map(userWithRoles -> LoginResponse.builder()
+                                    .accessToken(newAccessToken)
+                                    .refreshToken(newRefreshToken)
+                                    .user(userWithRoles)
+                                    .build());
                 });
     }
     

@@ -2,8 +2,6 @@ package com.knowledgebase.platformspring.dto;
 
 import java.time.LocalDateTime;
 
-import com.knowledgebase.platformspring.model.User;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,7 +15,7 @@ public class LoginResponse {
     
     private String accessToken;
     private String refreshToken;
-    private User user;
+    private UserWithRoles user;
     private LocalDateTime accessTokenExpiresAt;
     private LocalDateTime refreshTokenExpiresAt;
 }

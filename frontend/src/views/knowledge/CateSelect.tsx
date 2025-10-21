@@ -1,8 +1,8 @@
-import "./styles/cate-select.scss"
 import api_frontend from "@/api/api_frontend";
-import { message, Modal } from "antd";
 import { RightOutlined } from "@ant-design/icons";
+import { message, Modal } from "antd";
 import { useEffect, useMemo, useState } from "react";
+import "./styles/cate-select.scss";
 
 interface IProps {
     open: boolean;
@@ -19,8 +19,8 @@ export default function CateSelect({ open, setOpen, callback }: IProps) {
     }, [open])
 
     const getSpaces = async () => {
-        const { data: { spaces } }: any = await api_frontend.getSpaces()
-        setSpaces(spaces)
+        const { data }: any = await api_frontend.getSpaces()
+        setSpaces(data)
     }
 
     const sub_spaces: any[] = useMemo(() => spaces.find(({ id }: any) => id === par?.space?.id)?.sub_spaces ?? [], [spaces, par?.space])

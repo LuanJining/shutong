@@ -98,6 +98,16 @@ public class DocumentController {
                 .map(ApiResponse::success);
     }
     
+    @Operation(summary = "获取空间文档列表", description = "根据空间ID获取该空间的所有文档")
+    @GetMapping("/space/{spaceId}")
+    public Mono<ApiResponse<PaginationResponse<List<Document>>>> getDocumentsBySpaceId(
+            @PathVariable Long spaceId,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        return documentService.getDocumentsBySpaceIdPaginated(spaceId, page, pageSize)
+                .map(ApiResponse::success);
+    }
+    
     @Operation(summary = "获取空间文档", description = "获取指定文档所属空间的所有文档")
     @GetMapping("/{id}/space")
     public Mono<ApiResponse<PaginationResponse<List<Document>>>> getDocumentsBySpace(

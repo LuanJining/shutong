@@ -1,13 +1,12 @@
-import "./styles/add-knowledge.scss"
-import dayjs from 'dayjs'
-import { Form, Tag, } from "antd"
-import { useEffect, useState } from "react"
-import FileUploader from "./Preview"
-import _opts from '@/config/opts';
 import api_frontend from "@/api/api_frontend"
-import { useLocation } from 'react-router-dom';
-import { DownloadOutlined } from "@ant-design/icons"
 import utils from "@/utils"
+import { DownloadOutlined } from "@ant-design/icons"
+import { Form, Tag, } from "antd"
+import dayjs from 'dayjs'
+import { useEffect, useState } from "react"
+import { useLocation } from 'react-router-dom'
+import FileUploader from "./Preview"
+import "./styles/add-knowledge.scss"
 
 export default function KonwledgeDetail() {
     const fromPage: any = useLocation().state
@@ -23,9 +22,9 @@ export default function KonwledgeDetail() {
     }
 
     const getSpaces = async () => {
-        const { data: { spaces } } = await api_frontend.getSpaces()
-        spaces.map(({ name, id }: any) => ({ label: name, value: id }))
-        const lv1 = getClass(spaces, info?.space_id, 'sub_spaces')
+        const { data } = await api_frontend.getSpaces()
+        data.map(({ name, id }: any) => ({ label: name, value: id }))
+        const lv1 = getClass(data, info?.space_id, 'sub_spaces')
         const lv2 = getClass(lv1?.subArray, info?.sub_space_id, 'classes')
         const lv3 = getClass(lv2?.subArray, info?.class_id,)
         setClassesName(`${lv1?.name}/${lv2?.name}/${lv3?.name}`)

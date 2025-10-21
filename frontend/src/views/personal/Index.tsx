@@ -1,13 +1,13 @@
-import "./index.scss"
-import { useMemo, useState } from "react"
-import { ArrowLeftOutlined, TeamOutlined, UserOutlined } from "@ant-design/icons"
-import { useNavigate } from "react-router-dom"
-import { Menu, MenuProps } from "antd"
 import IconBook from '@/assets/icons/icon-book.png'
+import { ArrowLeftOutlined, TeamOutlined, UserOutlined } from "@ant-design/icons"
+import { Menu, MenuProps } from "antd"
+import { useMemo, useState } from "react"
+import { useSelector } from "react-redux"
+import { useNavigate } from "react-router-dom"
+import "./index.scss"
 import Personal from "./Personal"
 import RolesManament from "./RolesManament"
 import UsersManagement from "./UsersManagement"
-import { useSelector } from "react-redux"
 
 type MenuItem = Required<MenuProps>['items'][number];
 
@@ -23,7 +23,7 @@ export default function Index() {
     const userInfo = useSelector((state: any) => state.systemSlice.userInfo)
 
     const items: MenuItem[] = useMemo(() => {
-        const hasRole: boolean = userInfo?.roles.findIndex(({ name }: any) => name === 'super_admin') !== -1
+        const hasRole: boolean = (userInfo?.roles || []).findIndex(({ name }: any) => name === 'super_admin') !== -1
         return hasRole
             ? [
                 {

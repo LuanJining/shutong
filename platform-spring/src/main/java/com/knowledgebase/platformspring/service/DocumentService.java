@@ -814,11 +814,8 @@ public class DocumentService {
                             .map(result -> (String) result.getPayload().get("content"))
                             .collect(Collectors.toList());
                     
-                    // 调用chat并将结果分割为流
-                    return openAIClient.chat(question, contexts)
-                            .flatMapMany(answer -> 
-                                Flux.fromArray(answer.split("(?<=\\S)(?=\\s)|(?<=\\s)(?=\\S)"))
-                            );
+                    // 调用流式chat
+                    return openAIClient.chatStream(question, contexts);
                 });
     }
     

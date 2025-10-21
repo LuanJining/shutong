@@ -1,14 +1,12 @@
-import "./index.scss"
-import { useCallback, useEffect, useState } from 'react'
-import _optsEnum from "@/config/optsEnum"
-import _opts from '@/config/opts';
-import api_frontend from "@/api/api_frontend"
-import DocumentManagement from "./DocumentManagement"
-import PageNav from "@/components/PageNav"
+import api_frontend from "@/api/api_frontend";
+import PageNav from "@/components/PageNav";
 import { Props_Self_Nav } from "@/types/pages";
-import SubPaceManagement from "./SubPaceManagement";
 import { Button, Col, Row } from "antd";
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from "react-router-dom";
+import DocumentManagement from "./DocumentManagement";
+import "./index.scss";
+import SubPaceManagement from "./SubPaceManagement";
 
 export default function Index() {
     const navigate = useNavigate()
@@ -20,9 +18,9 @@ export default function Index() {
     useEffect(() => { getSpaces() }, [])
 
     const getSpaces = useCallback(async () => {
-        const { data: { spaces } }: any = await api_frontend.getSpaces()
-        setItems(spaces.map((v: any) => ({ ...v, label: v.name, key: v.id })))
-        setPathKey(spaces?.at(0)?.id ?? -1)
+        const { data }: any = await api_frontend.getSpaces()
+        setItems(data.map((v: any) => ({ ...v, label: v.name, key: v.id })))
+        setPathKey(data?.at(0)?.id ?? -1)
     }, [pathKey])
 
     return (

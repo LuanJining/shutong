@@ -14,6 +14,7 @@ import com.knowledgebase.platformspring.config.OpenAIConfig;
 
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Slf4j
@@ -60,10 +61,12 @@ public class OpenAIClientService {
         requestBody.put("messages", messages);
         requestBody.put("temperature", 0.7);
         requestBody.put("max_tokens", 2000);
+        requestBody.put("stream", false);
         
         return webClient.post()
                 .uri("/chat/completions")
                 .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(ChatCompletionResponse.class)
@@ -75,6 +78,103 @@ public class OpenAIClientService {
                 })
                 .timeout(Duration.ofSeconds(60))
                 .doOnError(e -> log.error("OpenAI chat request failed", e));
+    }
+    
+    public Flux<String> chatStream(String question, List<String> context) {
+        StringBuilder systemPrompt = new StringBuilder();
+        systemPrompt.append("你是一个智能助手，可以基于提供的知识库内容回答问题。请根据以下文件内容来回答用户的问题：\n\n");
+        
+        for (int i = 0; i < context.size(); i++) {
+            systemPrompt.append("文件 ").append(i + 1).append(" 内容：\n");
+            systemPrompt.append(context.get(i)).append("\n\n");
+        }
+        
+        systemPrompt.append("请基于以上知识库内容回答用户的问题。如果问题与文件内容无关，请说明无法从提供的文件中找到相关信息。");
+        
+        List<Map<String, String>> messages = new ArrayList<>();
+        Map<String, String> systemMessage = new HashMap<>();
+        systemMessage.put("role", "system");
+        systemMessage.put("content", systemPrompt.toString());
+        messages.add(systemMessage);
+        
+        Map<String, String> userMessage = new HashMap<>();
+        userMessage.put("role", "user");
+        userMessage.put("content", question);
+        messages.add(userMessage);
+        
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("model", openAIConfig.getModel());
+        requestBody.put("messages", messages);
+        requestBody.put("temperature", 0.7);
+        requestBody.put("max_tokens", 2000);
+        requestBody.put("stream", true);
+        
+        return webClient.post()
+                .uri("/chat/completions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.TEXT_EVENT_STREAM)
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToFlux(String.class)
+                .flatMap(line -> {
+                    String content = parseSSE(line);
+                    log.debug("Parsed content from line: '{}' -> '{}'", line, content);
+                    return content != null ? 
+                            Mono.just(content) : Mono.empty();
+                })
+                .timeout(Duration.ofSeconds(60))
+                .doOnError(e -> log.error("OpenAI chat stream request failed", e));
+    }
+    
+    private String parseSSE(String line) {
+        if (line == null || line.isEmpty()) return null;
+        
+        // 跳过空行和注释行
+        if (line.trim().isEmpty() || line.startsWith(":")) return null;
+        
+        String json = line;
+        
+        // 处理 data: 前缀（如果有的话）
+        if (line.startsWith("data: ")) {
+            json = line.substring(6).trim();
+        }
+        
+        if ("[DONE]".equals(json)) return null;
+        
+        try {
+            log.debug("Processing JSON: {}", json);
+            
+            // 使用正则表达式提取 content 字段值
+            // 匹配 "content":"..." 模式，包括空内容
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\"content\":\"([^\"]*)\"");
+            java.util.regex.Matcher matcher = pattern.matcher(json);
+            
+            if (matcher.find()) {
+                String content = matcher.group(1);
+                log.debug("Raw extracted content: '{}'", content);
+                
+                // 处理转义字符
+                content = content.replace("\\n", "\n")
+                               .replace("\\\"", "\"")
+                               .replace("\\\\", "\\");
+                
+                log.debug("Processed content: '{}'", content);
+                
+                // 检查是否是结束标记
+                if (json.contains("\"finish_reason\":\"stop\"")) {
+                    log.debug("Stream finished with stop reason");
+                    return null; // 结束流
+                }
+                
+                // 返回内容，即使是空的（因为可能是流式输出的中间状态）
+                return content;
+            } else {
+                log.debug("No content field found in JSON: {}", json);
+            }
+        } catch (Exception e) {
+            log.debug("Failed to parse SSE line: {}, error: {}", line, e.getMessage());
+        }
+        return null;
     }
     
     public Mono<List<Double>> createEmbedding(String text) {

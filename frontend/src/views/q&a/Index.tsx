@@ -24,8 +24,8 @@ export default function Index() {
     useEffect(() => { setSpaceId(konwledges?.[0]?.value) }, [konwledges])
 
     const getSpaces = async () => {
-        const { data: { spaces } } = await api_frontend.getSpaces()
-        setKonwledges(spaces.map(({ name, id }: any) => ({ label: name, value: id })))
+        const { data } = await api_frontend.getSpaces()
+        setKonwledges(data.map(({ name, id }: any) => ({ label: name, value: id })))
     }
 
     useEffect(() => {
@@ -97,7 +97,11 @@ export default function Index() {
 
             while (true) {
                 const { done, value } = await reader.read();
-                if (done) break;
+                if (done) {
+                    console.log('Stream completed')
+                    setloading(false)
+                    break;
+                }
 
                 const chunk = decoder.decode(value);
 
@@ -114,25 +118,28 @@ export default function Index() {
                     } else if (line.startsWith('data:') && currentEvent) {
                         const dataStr = line.replace('data:', '').trim();
                         if (!dataStr) continue;
-                        try {
-                            const data = JSON.parse(dataStr);
-                            if (currentEvent === 'token') {
-                                const content = data.content;
-                                if (content) {
-                                    accumulatedText += content;
-                                    messageDiv.innerHTML = marked.parse(accumulatedText).toString();
-                                    scrollToBottom()
-                                }
-                            } else if (currentEvent === 'done') {
-                                console.log('done')
-                            } else if (currentEvent === 'sources') {
-                                const sources = data; // 假如是数组或对象
-                                console.log('来源信息:', sources);
+                        
+                        if (currentEvent === 'message') {
+                            if (dataStr && dataStr !== '[DONE]') {
+                                accumulatedText += dataStr;
+                                messageDiv.innerHTML = marked.parse(accumulatedText).toString();
+                                scrollToBottom()
                             }
-                            currentEvent = ''
-                        } catch (e) {
-                            console.warn('解析 event/data 失败:', e, '数据:', line);
+                        } else if (currentEvent === 'done') {
+                            console.log('Stream completed')
+                            setloading(false)
+                        } else {
+                            try {
+                                const data = JSON.parse(dataStr);
+                                if (currentEvent === 'sources') {
+                                    const sources = data;
+                                    console.log('来源信息:', sources);
+                                }
+                            } catch (e) {
+                                console.warn('解析 event/data 失败:', e, '数据:', line);
+                            }
                         }
+                        currentEvent = ''
                     }
                 }
             }

@@ -6,9 +6,12 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import com.knowledgebase.platformspring.dto.PaginationResponse;
+import com.knowledgebase.platformspring.dto.UserWithRoles;
 import com.knowledgebase.platformspring.exception.BusinessException;
 import com.knowledgebase.platformspring.model.User;
+import com.knowledgebase.platformspring.repository.RoleRepository;
 import com.knowledgebase.platformspring.repository.UserRepository;
+import com.knowledgebase.platformspring.repository.UserRoleRepository;
 
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
@@ -18,6 +21,8 @@ import reactor.core.publisher.Mono;
 public class UserService {
     
     private final UserRepository userRepository;
+    private final UserRoleRepository userRoleRepository;
+    private final RoleRepository roleRepository;
     
     public Mono<PaginationResponse<List<User>>> getUsers(Integer page, Integer pageSize) {
         return userRepository.findAll()
@@ -70,6 +75,28 @@ public class UserService {
         return userRepository.findById(id)
                 .switchIfEmpty(Mono.error(BusinessException.notFound("用户不存在")))
                 .flatMap(userRepository::delete);
+    }
+    
+    public Mono<UserWithRoles> getUserWithRoles(User user) {
+        return userRoleRepository.findByUserId(user.getId())
+                .flatMap(userRole -> roleRepository.findById(userRole.getRoleId()))
+                .collectList()
+                .map(roles -> UserWithRoles.builder()
+                        .id(user.getId())
+                        .username(user.getUsername())
+                        .phone(user.getPhone())
+                        .email(user.getEmail())
+                        .nickname(user.getNickname())
+                        .avatar(user.getAvatar())
+                        .department(user.getDepartment())
+                        .company(user.getCompany())
+                        .status(user.getStatus())
+                        .lastLogin(user.getLastLogin())
+                        .createdAt(user.getCreatedAt())
+                        .updatedAt(user.getUpdatedAt())
+                        .deletedAt(user.getDeletedAt())
+                        .roles(roles)
+                        .build());
     }
 }
 
