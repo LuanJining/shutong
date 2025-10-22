@@ -29,6 +29,7 @@
       "**/dist/**": true,
       "**/build/**": true,
       "**/.cache/**": true
-    }
+    },
+    "java.compile.nullAnalysis.mode": "automatic"
     
   }

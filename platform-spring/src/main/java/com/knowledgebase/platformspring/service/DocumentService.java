@@ -1,13 +1,10 @@
 package com.knowledgebase.platformspring.service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
+import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -110,7 +107,7 @@ public class DocumentService {
         return documentRepository.save(document)
                 .flatMap(savedDoc -> 
                     filePart.content()
-                            .reduce((buffer1, buffer2) -> buffer1.write(buffer2))
+                            .reduce(DataBuffer::write)
                             .flatMap(dataBuffer -> {
                                 byte[] bytes = new byte[dataBuffer.readableByteCount()];
                                 dataBuffer.read(bytes);
@@ -119,7 +116,7 @@ public class DocumentService {
                                     objectName, 
                                     new java.io.ByteArrayInputStream(bytes),
                                     bytes.length,
-                                    filePart.headers().getContentType().toString()
+                                    Objects.requireNonNull(filePart.headers().getContentType()).toString()
                                 ).thenReturn(savedDoc);
                             })
                 )
