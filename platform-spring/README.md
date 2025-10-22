@@ -31,6 +31,7 @@ platform-spring/
 │   ├── controller/          # REST API 控制器
 │   │   ├── AuthController.java
 │   │   ├── DocumentController.java
+│   │   ├── ReviewController.java        # ⭐新增 智能审查
 │   │   ├── SpaceController.java
 │   │   └── WorkflowController.java
 │   ├── dto/                 # 数据传输对象
@@ -38,13 +39,22 @@ platform-spring/
 │   ├── model/              # 实体模型（14个实体）
 │   ├── repository/         # 数据访问层（14个Repository）
 │   ├── security/           # 安全配置
-│   └── service/            # 业务逻辑层
-│       ├── AuthService.java
-│       ├── DocumentService.java
-│       ├── SpaceService.java
-│       └── WorkflowService.java
+│   ├── service/            # 业务逻辑层
+│   │   ├── AuthService.java
+│   │   ├── DocumentService.java
+│   │   ├── ReviewService.java          # ⭐新增 智能审查
+│   │   ├── SpaceService.java
+│   │   └── WorkflowService.java
+│   └── util/               # 工具类
+│       ├── DocumentParser.java         # ⭐新增 文档解析
+│       ├── FormatChecker.java          # ⭐新增 格式检查
+│       └── RequestIdUtil.java
 ├── src/main/resources/
 │   └── application.yaml    # 应用配置
+├── script/                 # 测试脚本
+│   └── test-review.sh      # ⭐新增 智能审查测试
 ├── pom.xml                 # Maven 依赖配置
-└── README.md
+├── README.md
+├── REVIEW_API.md           # ⭐新增 智能审查API文档
+└── REVIEW_BACKEND_COMPLETED.md  # ⭐新增 开发完成总结
 ```

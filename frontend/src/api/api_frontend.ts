@@ -103,10 +103,31 @@ const docOpera = ({ documentId, status }: { documentId: number, status: 'publish
 /** @return 获取标签云 */
 const getTags = (): Promise<any> => get(`/documents/tag-cloud`);
 
+// ========== 智能审查相关接口 ==========
+
+/** @return 上传文档用于审查 */
+const reviewUpload = (file: FormData): Promise<any> => post('/review/upload', file, {
+    'Content-Type': 'multipart/form-data'
+});
+
+/** @return 获取审查摘要 */
+const reviewSummary = (params: {
+    sessionId: string,
+    fileName: string,
+    fileType: string,
+    spaceId?: number
+}): Promise<any> => get(`/review/${params.sessionId}/summary`, {
+    fileName: params.fileName,
+    fileType: params.fileType,
+    spaceId: params.spaceId
+});
+
 export default {
     login, createUser, assignRoles, getUsers, getRoles, getPermissions, createSpace, getSpaces,
     getSpaceById, checkPermission, updateSpace, deleteSpace, getRolePermissions, getUserById, getRoleById,
     getPermissionById, uploadFile, getFile, getTasks, taskOpear, userTasks, documentDetail, documentList,
-    changePwd, search, addSubSpaces, addClasses, homePage, docOpera, getTags,getUserRoles
+    changePwd, search, addSubSpaces, addClasses, homePage, docOpera, getTags, getUserRoles,
+    // 审查相关
+    reviewUpload, reviewSummary
 }
 

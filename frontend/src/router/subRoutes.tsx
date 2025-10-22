@@ -1,12 +1,12 @@
 import { ROUTESELF_TYPE } from "@/types/common";
 import { Spin } from "antd";
-import { Suspense, lazy } from "react"
+import { Suspense, lazy } from "react";
 
-import IconPen from '@/assets/icons/icon-pen.png'
-import IconMask from '@/assets/icons/icon-mask.png'
-import IconAns from '@/assets/icons/icon-ans.png'
-import IconBook from '@/assets/icons/icon-book.png'
-import IconSearch from '@/assets/icons/icon-search.png'
+import IconAns from '@/assets/icons/icon-ans.png';
+import IconBook from '@/assets/icons/icon-book.png';
+import IconMask from '@/assets/icons/icon-mask.png';
+import IconPen from '@/assets/icons/icon-pen.png';
+import IconSearch from '@/assets/icons/icon-search.png';
 
 const PageConstruct = lazy(() => import("@/components/PageConstruct"));
 
@@ -17,6 +17,7 @@ const Notification = lazy(() => import("@/views/notification/Index"));
 const Personal = lazy(() => import("@/views/personal/Index"));
 const Knowledge = lazy(() => import("@/views/knowledge/Index"));
 const DocumentDetail = lazy(() => import("@/views/knowledge/DocumentDetail"));
+const Proofread = lazy(() => import("@/views/proofread/Index"));
 
 /* 懒加载需要添加loading组件 */
 const withLoadingComponent = (comp: JSX.Element) => (
@@ -69,9 +70,9 @@ const routes: ROUTESELF_TYPE[] = [
     },
     {
         path: "proofread",
-        element: withLoadingComponent(<PageConstruct />),
+        element: withLoadingComponent(<Proofread />),
         meta: {
-            title: "校对",
+            title: "智能校对",
             icon: <img src={IconSearch} />,
             show: true
         },
