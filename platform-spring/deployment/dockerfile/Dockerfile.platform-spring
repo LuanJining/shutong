@@ -23,7 +23,7 @@ RUN ./mvnw clean package -DskipTests -B
 FROM eclipse-temurin:17-jre-alpine
 
 # 安装必要的工具和设置时区
-RUN apk add --no-cache tzdata curl && \
+RUN apk add --no-cache tzdata curl pandoc && \
     adduser -D -H -s /sbin/nologin app
 
 # 设置时区为上海
