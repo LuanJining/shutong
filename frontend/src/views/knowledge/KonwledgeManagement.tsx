@@ -1,11 +1,11 @@
-import dayjs from 'dayjs'
-import { useEffect, useState } from 'react'
-import AddModal from './AddModal'
 import api_frontend from '@/api/api_frontend';
-import utils from '@/utils';
-import { Button, Col, Input, message, Popconfirm, Row, Space, Table, TableProps } from 'antd';
 import _optsEnum from '@/config/optsEnum';
 import { Par_Common_Params } from '@/types/api';
+import utils from '@/utils';
+import { Button, Col, Input, message, Popconfirm, Row, Space, Table, TableProps } from 'antd';
+import dayjs from 'dayjs';
+import { useEffect, useState } from 'react';
+import AddModal from './AddModal';
 
 interface DataType {
     id: string;
@@ -27,9 +27,9 @@ export default function KonwledgeManagement() {
         try {
             const params: any = { ...par, ...values }
             delete params?.total
-            const { data: { spaces, pagination: { total } } }: any = await api_frontend.getSpaces(params)
-            setList(spaces.map((v: any) => ({ key: v.id, ...v })))
-            setPar({ ...params, total })
+            const { data } = await api_frontend.getSpaces(params)
+            setList(data.map((v: any) => ({ key: v.id, ...v })))
+            setPar({ ...params, total: data.length })
         } catch (e) {
             throw (e)
         }

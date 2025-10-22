@@ -12,7 +12,7 @@ const getUsers = (par: Par_Common_Params): Promise<any> => get('/users', par);
 
 /** @returns 分配角色*/
 const assignRoles = (par: { roles: string[], userId: string ,space_id:number}): Promise<any> => post(`/spaces/${par.space_id}/members`, {
-    user_id: par.userId, roles: par.roles
+    userId: par.userId, roles: par.roles
 });
 
 /** @returns 获取用户角色*/

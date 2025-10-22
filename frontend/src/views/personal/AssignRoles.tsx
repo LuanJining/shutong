@@ -1,11 +1,11 @@
-import "./assign-modal.scss"
-import _ from "lodash";
-import utils from "@/utils";
-import _opts from "@/config/opts"
 import api_frontend from "@/api/api_frontend";
-import { useEffect, useState } from "react";
+import _opts from "@/config/opts";
+import utils from "@/utils";
 import { Checkbox, message, Modal } from "antd";
+import _ from "lodash";
+import { useEffect, useState } from "react";
 import { OPTIONS_TYPE } from './../../types/common';
+import "./assign-modal.scss";
 
 interface IProps {
     open: boolean, setOpen: Function, callback: Function, userId: string
@@ -30,14 +30,14 @@ export default function AssignRoles({ open, setOpen, callback, userId }: IProps)
     }
 
     const getSpaces = async () => {
-        const { data: { spaces: interSpaces } }: any = await api_frontend.getSpaces({ page: 1, page_size: 50 })
-        setSpaces(interSpaces)
-        setActiveSpace(interSpaces?.[0]?.id ?? -1)
+        const { data } = await api_frontend.getSpaces({ page: 1, page_size: 50 })
+        setSpaces(data)
+        setActiveSpace(data?.[0]?.id ?? -1)
     }
 
     const onFinish = async () => {
         if (chooseInfo?.[activeSpace]?.length === 0) {
-            message.success('请先选中需要分配的角色')
+            message.error('请先选中需要分配的角色')
             return
         }
         utils.setLoading(true)

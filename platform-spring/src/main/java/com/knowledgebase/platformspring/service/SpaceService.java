@@ -81,6 +81,54 @@ public class SpaceService {
                 .switchIfEmpty(Mono.error(BusinessException.notFound("Space not found")));
     }
     
+    public Mono<SpaceWithHierarchy> getSpaceByIdWithHierarchy(Long id) {
+        return spaceRepository.findById(id)
+                .switchIfEmpty(Mono.error(BusinessException.notFound("Space not found")))
+                .flatMap(space -> 
+                    subSpaceRepository.findBySpaceId(space.getId())
+                        .flatMap(subSpace ->
+                            classRepository.findBySubSpaceId(subSpace.getId())
+                                .map(knowledgeClass -> SpaceWithHierarchy.ClassInfo.builder()
+                                        .id(knowledgeClass.getId())
+                                        .name(knowledgeClass.getName())
+                                        .description(knowledgeClass.getDescription())
+                                        .subSpaceId(knowledgeClass.getSubSpaceId())
+                                        .status(knowledgeClass.getStatus())
+                                        .createdBy(knowledgeClass.getCreatedBy())
+                                        .createdAt(knowledgeClass.getCreatedAt())
+                                        .updatedAt(knowledgeClass.getUpdatedAt())
+                                        .deletedAt(knowledgeClass.getDeletedAt())
+                                        .build())
+                                .collectList()
+                                .map(classes -> SpaceWithHierarchy.SubSpaceWithClasses.builder()
+                                        .id(subSpace.getId())
+                                        .name(subSpace.getName())
+                                        .description(subSpace.getDescription())
+                                        .spaceId(subSpace.getSpaceId())
+                                        .status(subSpace.getStatus())
+                                        .createdBy(subSpace.getCreatedBy())
+                                        .createdAt(subSpace.getCreatedAt())
+                                        .updatedAt(subSpace.getUpdatedAt())
+                                        .deletedAt(subSpace.getDeletedAt())
+                                        .classes(classes)
+                                        .build())
+                        )
+                        .collectList()
+                        .map(subSpaces -> SpaceWithHierarchy.builder()
+                                .id(space.getId())
+                                .name(space.getName())
+                                .description(space.getDescription())
+                                .type(space.getType())
+                                .status(space.getStatus())
+                                .createdBy(space.getCreatedBy())
+                                .createdAt(space.getCreatedAt())
+                                .updatedAt(space.getUpdatedAt())
+                                .deletedAt(space.getDeletedAt())
+                                .subSpaces(subSpaces)
+                                .build())
+                );
+    }
+    
     public Mono<Space> createSpace(Space space, Long userId) {
         space.setCreatedBy(userId);
         space.setCreatedAt(LocalDateTime.now());

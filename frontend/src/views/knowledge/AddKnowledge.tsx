@@ -1,17 +1,17 @@
-import "./styles/add-knowledge.scss"
-import utils from "@/utils"
-import opts from "@/config/opts"
-import FileUploader from "./Preview"
-import CateSelect from "./CateSelect"
-import Dragger from "antd/es/upload/Dragger"
 import api_frontend from "@/api/api_frontend"
 import IconPdf from '@/assets/icons/icon-pdf.png'
 import IconWendang from '@/assets/icons/icon-wendang.png'
-import { useSelector } from "react-redux"
-import { useForm } from "antd/es/form/Form"
-import { useEffect, useState } from "react"
-import { Checkbox, Form, Input, message, Radio, Select, Upload } from "antd"
+import opts from "@/config/opts"
+import utils from "@/utils"
 import { CloudUploadOutlined, DeleteOutlined, EyeFilled } from "@ant-design/icons"
+import { Checkbox, Form, Input, message, Radio, Select, Upload } from "antd"
+import { useForm } from "antd/es/form/Form"
+import Dragger from "antd/es/upload/Dragger"
+import { useEffect, useState } from "react"
+import { useSelector } from "react-redux"
+import CateSelect from "./CateSelect"
+import FileUploader from "./Preview"
+import "./styles/add-knowledge.scss"
 
 // type RangePickerProps = GetProps<typeof DatePicker.RangePicker>;
 
@@ -38,6 +38,7 @@ export default function AddKnowledge() {
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'application/pdf',
+            'text/plain',
         ]
         if (!whiteArr.includes(file.type)) {
             message.error("doc/docx/pdf/txt", 1)
@@ -56,6 +57,8 @@ export default function AddKnowledge() {
                     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                 ].includes(file.type)
                     ? 'docx'
+                    : file.type === 'text/plain'
+                    ? 'txt'
                     : 'pdf'
             })
             form.setFieldValue('file_name', file.name)
@@ -89,7 +92,7 @@ export default function AddKnowledge() {
                 </p>
                 <p className="ant-upload-text">上传文件，请<span className="primary-blue pointer">点击上传</span></p>
                 <p className="ant-upload-hint">
-                    仅支持 docx/doc/PDF 文件，文件大小不超过50M
+                    仅支持 docx/doc/PDF/txt 文件，文件大小不超过50M
                 </p>
             </Dragger>
         </Form.Item>

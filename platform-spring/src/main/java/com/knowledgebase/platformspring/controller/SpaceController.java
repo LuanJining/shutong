@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.knowledgebase.platformspring.dto.ApiResponse;
 import com.knowledgebase.platformspring.dto.SpaceWithHierarchy;
 import com.knowledgebase.platformspring.model.KnowledgeClass;
@@ -26,9 +27,11 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @Tag(name = "空间管理", description = "知识空间管理相关接口")
 @RestController
 @RequestMapping("/api/v1/spaces")
@@ -47,10 +50,10 @@ public class SpaceController {
                 .map(spaces -> ApiResponse.success("Spaces retrieved successfully", spaces));
     }
     
-    @Operation(summary = "获取空间详情", description = "根据ID获取指定空间的详细信息")
+    @Operation(summary = "获取空间详情", description = "根据ID获取指定空间的详细信息（包含子空间和分类）")
     @GetMapping("/{id}")
-    public Mono<ApiResponse<Space>> getSpaceById(@PathVariable Long id) {
-        return spaceService.getSpaceById(id)
+    public Mono<ApiResponse<SpaceWithHierarchy>> getSpaceById(@PathVariable Long id) {
+        return spaceService.getSpaceByIdWithHierarchy(id)
                 .map(ApiResponse::success);
     }
     
@@ -113,8 +116,13 @@ public class SpaceController {
     public Mono<ApiResponse<SpaceMember>> addSpaceMember(
             @PathVariable Long id,
             @RequestBody AddMemberRequest request) {
+        log.debug("Received addSpaceMember request: spaceId={}, userId={}, roles={}", id, request.userId, request.roles);
         return spaceMemberService.addSpaceMember(id, request.userId, request.roles)
-                .map(member -> ApiResponse.success("成员添加成功", member));
+                .map(member -> {
+                    log.debug("Space member added successfully: {}", member.getId());
+                    return ApiResponse.success("成员添加成功", member);
+                })
+                .doOnError(error -> log.error("Failed to add space member: {}", error.getMessage()));
     }
     
     @Operation(summary = "移除空间成员", description = "从空间中移除指定用户")
@@ -135,7 +143,21 @@ public class SpaceController {
                 .map(member -> ApiResponse.success("成员角色更新成功", member));
     }
     
-    public record AddMemberRequest(Long userId, java.util.List<String> roles) {}
-    public record UpdateMemberRolesRequest(java.util.List<String> roles) {}
+    @Operation(summary = "获取用户角色", description = "获取指定用户在所有空间中的角色")
+    @GetMapping("/members/{userId}")
+    public Mono<ApiResponse<List<SpaceMember>>> getUserRoles(@PathVariable Long userId) {
+        return spaceMemberService.getUserRoles(userId)
+                .collectList()
+                .map(roles -> ApiResponse.success("用户角色获取成功", roles));
+    }
+    
+    public record AddMemberRequest(
+        @JsonProperty("userId") Long userId, 
+        @JsonProperty("roles") List<String> roles
+    ) {}
+    
+    public record UpdateMemberRolesRequest(
+        @JsonProperty("roles") List<String> roles
+    ) {}
 }
 

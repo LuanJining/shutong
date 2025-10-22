@@ -1,11 +1,11 @@
-import dayjs from 'dayjs'
 import api_frontend from "@/api/api_frontend";
-import IconAgree from "@/assets/icons/icon-agree.png"
-import IconRefuse from "@/assets/icons/icon-refuse.png"
+import IconAgree from "@/assets/icons/icon-agree.png";
+import IconRefuse from "@/assets/icons/icon-refuse.png";
 import { Par_Common_Params } from "@/types/api";
-import { Col, Input, message, Popconfirm, Row, Space, Table, TableProps } from "antd";
-import { useEffect, useState } from "react";
 import utils from '@/utils';
+import { Col, Input, message, Popconfirm, Row, Space, Table, TableProps } from "antd";
+import dayjs from 'dayjs';
+import { useEffect, useState } from "react";
 // import { useNavigate } from 'react-router-dom';
 
 export default function WaitDeal() {
@@ -18,9 +18,9 @@ export default function WaitDeal() {
     const getList = async (values: any = {}) => {
         const params: any = { ...par, ...values }
         delete params?.total
-        const { data: { items, total } }: any = await api_frontend.getTasks(params)
-        setList(items.map((v: any) => ({ key: v.id, ...v })))
-        setPar({ ...params, total })
+        const { data } = await api_frontend.getTasks(params)
+        setList(data.items.map((v: any) => ({ key: v.id, ...v })))
+        setPar({ ...params, total: data.total })
     }
 
     const opera = async (type: 'approved' | 'rejected', data: any) => {
