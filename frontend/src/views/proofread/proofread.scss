@@ -290,70 +290,52 @@
         height: 100%;
         display: flex;
         flex-direction: column;
-        // 统计卡片
-        .stats-card {
-            background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
-            border-radius: 16px;
-            padding: 24px;
-            margin: 16px 16px 16px 16px;
-            color: white;
-            box-shadow: 0 8px 24px rgba(0, 122, 255, 0.25);
+        
+        // 精简统计卡片
+        .stats-compact {
+            padding: 16px 16px 12px 16px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
             flex-shrink: 0;
             
-            .stats-header {
+            .stats-row {
                 display: flex;
-                justify-content: space-between;
                 align-items: center;
-                margin-bottom: 24px;
+                gap: 12px;
                 
-                h3 {
-                    font-size: 24px;
+                .stats-title {
+                    font-size: 17px;
                     font-weight: 600;
-                    margin: 0;
-                    color: white;
+                    color: #1d1d1f;
                 }
-            }
-            
-            .stats-grid {
-                display: grid;
-                grid-template-columns: repeat(4, 1fr);
-                gap: 24px;
                 
-                .stat-item {
-                    text-align: center;
-                    padding: 20px;
-                    background: rgba(255, 255, 255, 0.15);
-                    backdrop-filter: blur(10px);
-                    -webkit-backdrop-filter: blur(10px);
-                    border-radius: 16px;
-                    transition: all 0.3s ease;
+                .stats-badges {
+                    display: flex;
+                    gap: 8px;
+                    margin-left: auto;
                     
-                    &:hover {
-                        background: rgba(255, 255, 255, 0.2);
-                        transform: translateY(-2px);
-                    }
-                    
-                    .stat-value {
-                        font-size: 36px;
-                        font-weight: 700;
-                        margin-bottom: 8px;
-                    }
-                    
-                    .stat-label {
-                        font-size: 14px;
-                        opacity: 0.9;
-                    }
-                    
-                    &.error .stat-value {
-                        color: #ff3b30;
-                    }
-                    
-                    &.warning .stat-value {
-                        color: #ff9500;
-                    }
-                    
-                    &.info .stat-value {
-                        color: #34c759;
+                    .stat-badge {
+                        display: inline-block;
+                        padding: 4px 12px;
+                        border-radius: 12px;
+                        font-size: 13px;
+                        font-weight: 500;
+                        background: rgba(0, 0, 0, 0.05);
+                        color: #1d1d1f;
+                        
+                        &.error {
+                            background: rgba(255, 59, 48, 0.1);
+                            color: #ff3b30;
+                        }
+                        
+                        &.warning {
+                            background: rgba(255, 149, 0, 0.1);
+                            color: #ff9500;
+                        }
+                        
+                        &.info {
+                            background: rgba(0, 122, 255, 0.1);
+                            color: #007aff;
+                        }
                     }
                 }
             }

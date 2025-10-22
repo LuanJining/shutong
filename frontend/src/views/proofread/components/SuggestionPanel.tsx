@@ -1,5 +1,5 @@
 import { BulbOutlined, CheckCircleOutlined, ExclamationCircleOutlined, InfoCircleOutlined } from '@ant-design/icons'
-import { Badge, Empty, Segmented, Spin } from 'antd'
+import { Empty, Segmented, Spin } from 'antd'
 import { useMemo, useState } from 'react'
 import SuggestionCard from './SuggestionCard'
 
@@ -52,29 +52,16 @@ export default function SuggestionPanel({ suggestions, isReviewing, onPositionCl
     
     return (
         <div className="suggestion-panel">
-            {/* 统计卡片 */}
-            <div className="stats-card">
-                <div className="stats-header">
-                    <h3>审查结果</h3>
+            {/* 统计卡片 - 精简版 */}
+            <div className="stats-compact">
+                <div className="stats-row">
+                    <span className="stats-title">审查结果</span>
                     {isReviewing && <Spin size="small" />}
-                </div>
-                
-                <div className="stats-grid">
-                    <div className="stat-item">
-                        <div className="stat-value">{stats.total}</div>
-                        <div className="stat-label">总建议数</div>
-                    </div>
-                    <div className="stat-item error">
-                        <div className="stat-value">{stats.error}</div>
-                        <div className="stat-label">错误</div>
-                    </div>
-                    <div className="stat-item warning">
-                        <div className="stat-value">{stats.warning}</div>
-                        <div className="stat-label">警告</div>
-                    </div>
-                    <div className="stat-item info">
-                        <div className="stat-value">{stats.info}</div>
-                        <div className="stat-label">提示</div>
+                    <div className="stats-badges">
+                        <span className="stat-badge">总数 {stats.total}</span>
+                        {stats.error > 0 && <span className="stat-badge error">错误 {stats.error}</span>}
+                        {stats.warning > 0 && <span className="stat-badge warning">警告 {stats.warning}</span>}
+                        {stats.info > 0 && <span className="stat-badge info">提示 {stats.info}</span>}
                     </div>
                 </div>
             </div>
@@ -91,35 +78,17 @@ export default function SuggestionPanel({ suggestions, isReviewing, onPositionCl
                                 value: 'all'
                             },
                             {
-                                label: (
-                                    <span>
-                                        <Badge count={stats.error} offset={[10, 0]}>
-                                            错误
-                                        </Badge>
-                                    </span>
-                                ),
+                                label: `错误 ${stats.error}`,
                                 value: 'ERROR',
                                 disabled: stats.error === 0
                             },
                             {
-                                label: (
-                                    <span>
-                                        <Badge count={stats.warning} offset={[10, 0]}>
-                                            警告
-                                        </Badge>
-                                    </span>
-                                ),
+                                label: `警告 ${stats.warning}`,
                                 value: 'WARNING',
                                 disabled: stats.warning === 0
                             },
                             {
-                                label: (
-                                    <span>
-                                        <Badge count={stats.info} offset={[10, 0]}>
-                                            提示
-                                        </Badge>
-                                    </span>
-                                ),
+                                label: `提示 ${stats.info}`,
                                 value: 'INFO',
                                 disabled: stats.info === 0
                             }
