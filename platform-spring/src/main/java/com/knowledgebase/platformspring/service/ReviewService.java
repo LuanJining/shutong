@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import org.springframework.http.codec.multipart.FilePart;
@@ -258,7 +259,7 @@ public class ReviewService {
                         .filter(Objects::nonNull)
                 )
                 .onErrorResume(e -> {
-                    if (e instanceof java.util.concurrent.TimeoutException) {
+                    if (e instanceof TimeoutException) {
                         log.warn("Reference verification timeout for section {}, skipping", 
                                 section.getPosition());
                     } else {
@@ -322,11 +323,11 @@ public class ReviewService {
                                     .build());
                 })
                 .onErrorResume(e -> {
-                    if (e instanceof java.util.concurrent.TimeoutException) {
+                    if (e instanceof TimeoutException) {
                         log.warn("Content suggestion timeout for section {}, skipping", 
                                 section.getPosition());
                     } else {
-                        log.warn("Content suggestion failed for section {}: {}", 
+                        log.warn("Content suggestion failed for section { {}", 
                                 section.getPosition(), e.getMessage());
                     }
                     return Flux.empty(); // 失败时返回空，不中断整个流程
