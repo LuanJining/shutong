@@ -13,8 +13,8 @@ spring:
   # R2DBC Configuration (Reactive Database)
   r2dbc:
     url: r2dbc:postgresql://localhost:5432/kb_platform
-    username: postgres
-    password: password
+    username: myuser
+    password: mysecretpassword
     pool:
       initial-size: 10
       max-size: 50
@@ -39,10 +39,10 @@ app:
   
   # OpenAI Configuration
   openai:
-    api-key: 111
-    base-url: http://182.140.132.5:11434/v1
-    model: qwen2.5:0.5b
-    embedding-model: bge-large:latest
+    api-key: sk-eM1CKOeVcmjqjIA7jZiRyMDXq1PwQo5i9Vi08njyxEicKcPt
+    base-url: https://api.chatanywhere.tech/v1
+    model: gpt-4o-mini
+    embedding-model: text-embedding-3-small
     timeout: 60s
   
   # Qdrant Configuration

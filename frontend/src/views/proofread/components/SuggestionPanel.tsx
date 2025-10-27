@@ -1,9 +1,10 @@
 import { BulbOutlined, CheckCircleOutlined, ExclamationCircleOutlined, InfoCircleOutlined } from '@ant-design/icons'
-import { Empty, Segmented, Spin } from 'antd'
+import { Button, Empty, Segmented, Spin } from 'antd'
 import { useMemo, useState } from 'react'
 import SuggestionCard from './SuggestionCard'
 
 interface ReviewSuggestion {
+    id?: string
     type: string
     severity: string
     position: number
@@ -18,17 +19,27 @@ interface SuggestionPanelProps {
     suggestions: ReviewSuggestion[]
     isReviewing: boolean
     onPositionClick?: (position: number) => void
+    onAcceptSuggestions?: (suggestionIds: string[]) => void
+    onAcceptAllSuggestions?: () => void
+    acceptedSuggestions?: string[]
 }
 
-export default function SuggestionPanel({ suggestions, isReviewing, onPositionClick }: SuggestionPanelProps) {
+export default function SuggestionPanel({
+                                            suggestions,
+                                            isReviewing,
+                                            onPositionClick,
+                                            onAcceptSuggestions,
+                                            onAcceptAllSuggestions,
+                                            acceptedSuggestions = []
+                                        }: SuggestionPanelProps) {
     const [filterType, setFilterType] = useState<string>('all')
-    
+
     // 统计
     const stats = useMemo(() => {
         const errorCount = suggestions.filter(s => s.severity === 'ERROR').length
         const warningCount = suggestions.filter(s => s.severity === 'WARNING').length
         const infoCount = suggestions.filter(s => s.severity === 'INFO').length
-        
+
         return {
             total: suggestions.length,
             error: errorCount,
@@ -36,20 +47,20 @@ export default function SuggestionPanel({ suggestions, isReviewing, onPositionCl
             info: infoCount
         }
     }, [suggestions])
-    
+
     // 过滤建议
     const filteredSuggestions = useMemo(() => {
         if (filterType === 'all') return suggestions
         return suggestions.filter(s => s.severity === filterType)
     }, [suggestions, filterType])
-    
+
     // 图标映射
     const severityIcons = {
         'ERROR': <ExclamationCircleOutlined className="severity-icon error" />,
         'WARNING': <InfoCircleOutlined className="severity-icon warning" />,
         'INFO': <BulbOutlined className="severity-icon info" />
     }
-    
+
     return (
         <div className="suggestion-panel">
             {/* 统计卡片 - 精简版 */}
@@ -63,9 +74,19 @@ export default function SuggestionPanel({ suggestions, isReviewing, onPositionCl
                         {stats.warning > 0 && <span className="stat-badge warning">警告 {stats.warning}</span>}
                         {stats.info > 0 && <span className="stat-badge info">提示 {stats.info}</span>}
                     </div>
+                    {suggestions.length > 0 && onAcceptAllSuggestions && (
+                        <Button
+                            type="primary"
+                            size="small"
+                            onClick={onAcceptAllSuggestions}
+                            icon={<CheckCircleOutlined />}
+                        >
+                            接受全部
+                        </Button>
+                    )}
                 </div>
             </div>
-            
+
             {/* 筛选器 */}
             {suggestions.length > 0 && (
                 <div className="filter-bar">
@@ -96,7 +117,7 @@ export default function SuggestionPanel({ suggestions, isReviewing, onPositionCl
                     />
                 </div>
             )}
-            
+
             {/* 建议列表 */}
             <div className="suggestions-list">
                 {isReviewing && suggestions.length === 0 ? (
@@ -121,6 +142,8 @@ export default function SuggestionPanel({ suggestions, isReviewing, onPositionCl
                             suggestion={suggestion}
                             icon={severityIcons[suggestion.severity as keyof typeof severityIcons]}
                             onPositionClick={onPositionClick}
+                            onAcceptSuggestion={onAcceptSuggestions}
+                            isAccepted={suggestion.id ? acceptedSuggestions.includes(suggestion.id) : false}
                         />
                     ))
                 )}

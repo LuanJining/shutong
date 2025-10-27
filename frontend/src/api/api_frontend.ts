@@ -122,12 +122,33 @@ const reviewSummary = (params: {
     spaceId: params.spaceId
 });
 
+/** @return 接受建议 */
+const acceptSuggestions = (params: {
+    sessionId: string,
+    fileName: string,
+    fileType: string,
+    acceptedSuggestionIds?: string[],
+    applyAll?: boolean
+}): Promise<any> => post('/review/accept-suggestions', params);
+
+/** @return 下载修改后的文档 */
+const downloadDocument = (params: {
+    sessionId: string,
+    fileName: string,
+    fileType: string
+}): Promise<any> => get(`/review/${params.sessionId}/download`, {
+    fileName: params.fileName,
+    fileType: params.fileType
+}, {}, {
+    responseType: 'blob'
+});
+
 export default {
     login, createUser, assignRoles, getUsers, getRoles, getPermissions, createSpace, getSpaces,
     getSpaceById, checkPermission, updateSpace, deleteSpace, getRolePermissions, getUserById, getRoleById,
     getPermissionById, uploadFile, getFile, getTasks, taskOpear, userTasks, documentDetail, documentList,
     changePwd, search, addSubSpaces, addClasses, homePage, docOpera, getTags, getUserRoles,
     // 审查相关
-    reviewUpload, reviewSummary
+    reviewUpload, reviewSummary, acceptSuggestions, downloadDocument
 }
 
