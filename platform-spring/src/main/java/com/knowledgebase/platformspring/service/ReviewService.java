@@ -406,17 +406,17 @@ public class ReviewService {
      */
     public Mono<String> acceptSuggestions(AcceptSuggestionRequest request) {
         log.info("Accepting suggestions for session: {}, suggestions: {}",
-                request.getSessionId(), request.getAcceptedSuggestionIds());
+                request.sessionId(), request.acceptedSuggestionIds());
 
         // 获取会话的建议
-        List<ReviewSuggestion> suggestions = sessionSuggestions.get(request.getSessionId());
+        List<ReviewSuggestion> suggestions = sessionSuggestions.get(request.sessionId());
         if (suggestions == null || suggestions.isEmpty()) {
-            return Mono.error(new BusinessException("No suggestions found for session: " + request.getSessionId()));
+            return Mono.error(new BusinessException("No suggestions found for session: " + request.sessionId()));
         }
 
         // 获取要接受的建议
         List<ReviewSuggestion> acceptedSuggestions;
-        if (Boolean.TRUE.equals(request.getApplyAll())) {
+        if (Boolean.TRUE.equals(request.applyAll())) {
             // 接受所有建议（除了文档内容标记）
             acceptedSuggestions = suggestions.stream()
                     .filter(s -> !"DOCUMENT_CONTENT".equals(s.getType()))
@@ -424,7 +424,7 @@ public class ReviewService {
         } else {
             // 接受指定的建议
             acceptedSuggestions = suggestions.stream()
-                    .filter(s -> request.getAcceptedSuggestionIds().contains(s.getId()))
+                    .filter(s -> request.acceptedSuggestionIds().contains(s.getId()))
                     .collect(Collectors.toList());
         }
 
@@ -433,7 +433,7 @@ public class ReviewService {
         }
 
         // 获取原始文档内容
-        String tempFilePath = getTempFilePath(request.getSessionId(), request.getFileName());
+        String tempFilePath = getTempFilePath(request.sessionId(), request.fileName());
 
         return minioClient.downloadFile(tempFilePath)
                 .flatMap(inputStream -> {
@@ -442,7 +442,7 @@ public class ReviewService {
                         inputStream.close();
 
                         // 根据文件类型处理
-                        return switch (request.getFileType().toLowerCase()) {
+                        return switch (request.fileType().toLowerCase()) {
                             case ".txt", ".md" -> {
                                 // 文本文件直接修改内容
                                 String originalText = new String(originalBytes);
@@ -451,9 +451,9 @@ public class ReviewService {
                             }
                             case ".pdf", ".doc", ".docx" -> {
                                 // 对于复杂格式，先转换为Markdown，修改后再转换回原格式
-                                yield applyComplexFormatSuggestions(tempFilePath, originalBytes, request.getFileType(), acceptedSuggestions);
+                                yield applyComplexFormatSuggestions(tempFilePath, originalBytes, request.fileType(), acceptedSuggestions);
                             }
-                            default -> Mono.error(new BusinessException("Unsupported file type for modification: " + request.getFileType()));
+                            default -> Mono.error(new BusinessException("Unsupported file type for modification: " + request.fileType()));
                         };
                     } catch (Exception e) {
                         return Mono.error(new BusinessException("Failed to process file: " + e.getMessage()));
@@ -461,7 +461,7 @@ public class ReviewService {
                 })
                 .doOnSuccess(result -> {
                     log.info("Successfully applied {} suggestions to session {}",
-                            acceptedSuggestions.size(), request.getSessionId());
+                            acceptedSuggestions.size(), request.sessionId());
                 })
                 .doOnError(e -> log.error("Failed to apply suggestions: {}", e.getMessage(), e));
     }

@@ -1,48 +1,25 @@
 package com.knowledgebase.platformspring.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Builder;
+
 import java.util.List;
 
-import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-/**
- * 接受建议请求
- */
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class AcceptSuggestionRequest {
+public record AcceptSuggestionRequest(
+        @JsonProperty("sessionId")
+        String sessionId,
 
-    /**
-     * 会话ID
-     */
-    @NotBlank(message = "会话ID不能为空")
-    private String sessionId;
+        @JsonProperty("fileName")
+        String fileName,
 
-    /**
-     * 文件名
-     */
-    @NotBlank(message = "文件名不能为空")
-    private String fileName;
+        @JsonProperty("fileType")
+        String fileType,
 
-    /**
-     * 文件类型
-     */
-    @NotBlank(message = "文件类型不能为空")
-    private String fileType;
+        @JsonProperty("acceptedSuggestionIds")
+        List<String> acceptedSuggestionIds,
 
-    /**
-     * 要接受的建议ID列表
-     */
-    private List<String> acceptedSuggestionIds;
-
-    /**
-     * 是否应用所有建议
-     */
-    @Builder.Default
-    private Boolean applyAll = false;
-}
+        @JsonProperty("applyAll")
+        Boolean applyAll
+){}

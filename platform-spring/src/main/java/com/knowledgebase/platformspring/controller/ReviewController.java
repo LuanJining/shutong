@@ -167,24 +167,24 @@ public class ReviewController {
      */
     @Operation(summary = "接受建议", description = "接受审查建议并更新MinIO中的文档")
     @PostMapping("/accept-suggestions")
-    public Mono<ApiResponse<String>> acceptSuggestions(@Valid @RequestBody AcceptSuggestionRequest request) {
+    public Mono<ApiResponse<String>> acceptSuggestions(@RequestBody AcceptSuggestionRequest request) {
 
         log.info("Accept suggestions request received: sessionId={}, fileName={}, fileType={}, suggestions={}, applyAll={}",
-                request.getSessionId(), request.getFileName(), request.getFileType(),
-                request.getAcceptedSuggestionIds(), request.getApplyAll());
+                request.sessionId(), request.fileName(), request.fileType(),
+                request.acceptedSuggestionIds(), request.applyAll());
         
         // 验证关键字段
-        if (request.getSessionId() == null || request.getSessionId().trim().isEmpty()) {
+        if (request.sessionId() == null || request.sessionId().trim().isEmpty()) {
             log.error("SessionId is null or empty");
             return Mono.just(ApiResponse.error("会话ID不能为空"));
         }
         
-        if (request.getFileName() == null || request.getFileName().trim().isEmpty()) {
+        if (request.fileName() == null || request.fileName().trim().isEmpty()) {
             log.error("FileName is null or empty");
             return Mono.just(ApiResponse.error("文件名不能为空"));
         }
         
-        if (request.getFileType() == null || request.getFileType().trim().isEmpty()) {
+        if (request.fileType() == null || request.fileType().trim().isEmpty()) {
             log.error("FileType is null or empty");
             return Mono.just(ApiResponse.error("文件类型不能为空"));
         }
